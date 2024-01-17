@@ -1,0 +1,15 @@
+import glob
+import importlib
+from pathlib import Path
+from typing import List
+
+from fastapi import APIRouter
+
+__all__ = ['routers']
+
+routers: List[APIRouter] = []
+
+for f in [f for f in glob.glob(f'{Path(__file__).parent}/*.py') if not f.endswith('__init__.py')]:
+    module = importlib.import_module(f'{__package__}.{Path(f).stem}')
+    if isinstance(module.router, APIRouter):
+        routers.append(module.router)

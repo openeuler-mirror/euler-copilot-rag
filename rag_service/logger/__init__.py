@@ -38,6 +38,7 @@ else:
     }
     _module_to_log_file: Dict[Module, Path] = {
         Module.APP: LOG_DIR / 'app.log',
+        Module.DAGSTER: LOG_DIR / 'dagster.log',
         Module.LLM_RESULT: LOG_DIR / 'llm_result.log',
         Module.VECTORIZATION: LOG_DIR / 'vectorization.log'
     }

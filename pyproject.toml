@@ -2,25 +2,32 @@
 name = "rag-service"
 version = "0.1.0"
 description = "Service that vectorizes your document assets and provides RAG capability."
+authors = []
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+aiofiles = "^23.2.1"
 concurrent-log-handler = "^0.9.24"
 fastapi = ">= 0.97.0, < 1.0.0"
+fastapi-pagination = ">= 0.12.9, < 1.0.0"
 langchain = "0.0.323"
+more-itertools = "^10.1.0"
+python = "^3.9.9"
 sqlmodel = ">= 0.0.8, < 1.0.0"
 starlette = ">= 0.27.0, < 0.28.0"
-torch = "^2.0.1"
 uvicorn = ">= 0.22.0, < 1.0.0"
 elasticsearch = "^8.10.0"
+sseclient-py = "^1.8.0"
 sseclient = "0.0.27"
 slowapi = "^0.1.8"
+urllib3 = "<2.0.0"
 psycopg2-binary = "^2.9.9"
-urllib3 = "< 2.0.0"
+itsdangerous = "^2.1.2"
+python-multipart = "^0.0.6"
+pydantic = "<2.0.0"
 
 [tool.poetry.extras]
-pgsql = ["psycopg2"]
+pgsql = ["dagster-postgres", "psycopg2"]
 
 [[tool.poetry.source]]
 name = "mirrors"

@@ -3,14 +3,14 @@ import uvicorn
 
 from fastapi_pagination import add_pagination
 from fastapi.middleware.cors import CORSMiddleware
-
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
-from starlette.middleware.sessions import SessionMiddleware
 
 from rag_service.logger import UVICORN_LOG_CONFIG
 from rag_service.rag_app.router import routers
 from rag_service.rag_app.slowapi_limiter import limiter
+
+from starlette.middleware.sessions import SessionMiddleware
 
 
 app = fastapi.FastAPI()
@@ -30,7 +30,6 @@ app.add_middleware(
 app.state.limiter = limiter
 # 绑定错误处理函数到fastapi应用
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
 
 def configure():
     _configure_router()

@@ -7,8 +7,9 @@ from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, JSON
 
 from rag_service.constants import DEFAULT_UPDATE_TIME_INTERVAL_SECOND
-from rag_service.models.enums import VectorizationJobStatus, VectorizationJobType, EmbeddingModel, \
+from rag_service.models.enums import VectorizationJobStatus, VectorizationJobType, AssetType, EmbeddingModel, \
     UpdateOriginalDocumentType
+
 
 
 class ServiceConfig(SQLModel, table=True):
@@ -32,8 +33,7 @@ class KnowledgeBase(SQLModel, table=True):
     )
     updated_at: datetime.datetime = Field(
         default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True),
-                         onupdate=datetime.datetime.now)
+        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
     )
 
     knowledge_base_assets: List['KnowledgeBaseAsset'] = Relationship(
@@ -50,19 +50,17 @@ class KnowledgeBaseAsset(SQLModel, table=True):
 
     id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str
-    # asset_type: AssetType
+    asset_type: AssetType
     asset_uri: Optional[str]
     embedding_model: Optional[EmbeddingModel]
-    vectorization_config: Optional[Dict[Any, Any]] = Field(
-        default={}, sa_column=Column(JSON))
+    vectorization_config: Optional[Dict[Any, Any]] = Field(default={}, sa_column=Column(JSON))
     created_at: datetime.datetime = Field(
         default_factory=datetime.datetime.now,
         sa_column=Column(DateTime(timezone=True))
     )
     updated_at: datetime.datetime = Field(
         default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True),
-                         onupdate=datetime.datetime.now)
+        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
     )
 
     kb_id: UUID = Field(foreign_key='knowledge_base.id')
@@ -75,8 +73,7 @@ class KnowledgeBaseAsset(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
     incremental_vectorization_job_schedule: Optional['IncrementalVectorizationJobSchedule'] = Relationship(
-        sa_relationship_kwargs={'uselist': False,
-                                "cascade": "all, delete-orphan"},
+        sa_relationship_kwargs={'uselist': False, "cascade": "all, delete-orphan"},
         back_populates='knowledge_base_asset',
     )
     vectorization_jobs: List['VectorizationJob'] = Relationship(
@@ -99,8 +96,7 @@ class VectorStore(SQLModel, table=True):
     )
     updated_at: datetime.datetime = Field(
         default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True),
-                         onupdate=datetime.datetime.now)
+        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
     )
 
     original_documents: List['OriginalDocument'] = Relationship(
@@ -123,17 +119,14 @@ class OriginalDocument(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
     uri: str = Field(index=True)
     source: str
-    source_link: str
-    mtime: datetime.datetime = Field(
-        sa_column=Column(DateTime(timezone=True), index=True))
+    mtime: datetime.datetime = Field(sa_column=Column(DateTime(timezone=True), index=True))
     created_at: datetime.datetime = Field(
         default_factory=datetime.datetime.now,
         sa_column=Column(DateTime(timezone=True))
     )
     updated_at: datetime.datetime = Field(
         default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True),
-                         onupdate=datetime.datetime.now)
+        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
     )
 
     vs_id: UUID = Field(foreign_key='vector_store.id')
@@ -159,8 +152,7 @@ class IncrementalVectorizationJobSchedule(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True))
     )
     updated_cycle: datetime.timedelta = Field(
-        default=datetime.timedelta(
-            seconds=DEFAULT_UPDATE_TIME_INTERVAL_SECOND),
+        default=datetime.timedelta(seconds=DEFAULT_UPDATE_TIME_INTERVAL_SECOND),
     )
     next_updated_at: datetime.datetime = Field(
         default=None,
@@ -168,8 +160,7 @@ class IncrementalVectorizationJobSchedule(SQLModel, table=True):
     )
 
     kba_id: UUID = Field(foreign_key='knowledge_base_asset.id')
-    knowledge_base_asset: KnowledgeBaseAsset = Relationship(
-        back_populates='incremental_vectorization_job_schedule')
+    knowledge_base_asset: KnowledgeBaseAsset = Relationship(back_populates='incremental_vectorization_job_schedule')
 
 
 class VectorizationJob(SQLModel, table=True):
@@ -184,16 +175,13 @@ class VectorizationJob(SQLModel, table=True):
     )
     updated_at: datetime.datetime = Field(
         default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True),
-                         onupdate=datetime.datetime.now)
+        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
     )
 
     kba_id: UUID = Field(foreign_key='knowledge_base_asset.id')
-    knowledge_base_asset: KnowledgeBaseAsset = Relationship(
-        back_populates='vectorization_jobs')
+    knowledge_base_asset: KnowledgeBaseAsset = Relationship(back_populates='vectorization_jobs')
 
-    updated_original_documents: List['UpdatedOriginalDocument'] = Relationship(
-        back_populates='vectorization_job')
+    updated_original_documents: List['UpdatedOriginalDocument'] = Relationship(back_populates='vectorization_job')
 
 
 class UpdatedOriginalDocument(SQLModel, table=True):
@@ -208,5 +196,4 @@ class UpdatedOriginalDocument(SQLModel, table=True):
     )
 
     job_id: UUID = Field(foreign_key='vectorization_job.id')
-    vectorization_job: VectorizationJob = Relationship(
-        back_populates='updated_original_documents')
+    vectorization_job: VectorizationJob = Relationship(back_populates='updated_original_documents')

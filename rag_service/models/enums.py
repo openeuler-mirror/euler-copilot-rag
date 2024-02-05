@@ -19,8 +19,15 @@ class VectorizationJobType(Enum):
     DELETE = 'DELETE'
 
 
+class AssetType(Enum):
+    UPLOADED_ASSET = 'UPLOADED_ASSET'
+
+    @classmethod
+    def types_require_upload_files(cls):
+        return [cls.UPLOADED_ASSET]
+
+
 class EmbeddingModel(Enum):
-    TEXT2VEC_BASE_CHINESE_PARAPHRASE = 'text2vec-base-chinese-paraphrase'
     BGE_LARGE_ZH = 'bge-large-zh'
 
 

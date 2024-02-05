@@ -7,4 +7,5 @@ RUN mkdir /rag-service
 ADD . /rag-service/
 
 WORKDIR /rag-service
+
 CMD ["/bin/bash", "run.sh"]

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-ES_URL = "http://localhost:9200"
 ES_PHRASE_QUERY_TEMPLATE = {
     "query": {
         "bool": {

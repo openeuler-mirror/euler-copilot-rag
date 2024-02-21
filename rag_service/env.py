@@ -1,6 +1,5 @@
+import os
 from enum import Enum, auto
-
-from rag_service.env_config import RAG_ENV
 
 
 class EnvEnum(Enum):
@@ -10,6 +9,6 @@ class EnvEnum(Enum):
 
 
 try:
-    ENV = EnvEnum[RAG_ENV.upper()]
+    ENV = EnvEnum[os.getenv("RAG_ENV").upper()]
 except KeyError:
     ENV = EnvEnum.DEV

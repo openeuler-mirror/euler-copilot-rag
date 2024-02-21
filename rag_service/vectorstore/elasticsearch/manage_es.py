@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import os
 import re
+import json
 from typing import List, Dict
 from collections import defaultdict
 
@@ -8,11 +10,12 @@ from sqlmodel import Session, select
 from elasticsearch import Elasticsearch
 
 from rag_service.logger import get_logger
+from rag_service.security.util import Security
 from rag_service.config import REMOTE_EMBEDDING_ENDPOINT
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.models.enums import EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 from rag_service.models.database.models import KnowledgeBase, KnowledgeBaseAsset, VectorizationJob
-from rag_service.vectorstore.elasticsearch.es_model import ES_URL, ES_PHRASE_QUERY_TEMPLATE, ES_MATCH_QUERY_TEMPLATE
+from rag_service.vectorstore.elasticsearch.es_model import ES_PHRASE_QUERY_TEMPLATE, ES_MATCH_QUERY_TEMPLATE
 
 logger = get_logger()
 
@@ -34,7 +37,11 @@ def es_search_data(question: str, knowledge_base_sn: str, top_k: int, session: S
     if not assets or not any(asset.vector_stores for asset in assets):
         return []
 
-    client = Elasticsearch(ES_URL)
+    with open("/rag-service/es-anonymous", "r") as f:
+        password = Security.decrypt(
+            os.getenv("ES_PASSWORD"), json.loads(f.read()))
+    es_url = os.getenv("ES_CONNECTION").replace('{pwd}', password)
+    client = Elasticsearch(es_url)
     remote_embedding = RemoteEmbedding(REMOTE_EMBEDDING_ENDPOINT)
 
     embedding_dicts: Dict[EmbeddingModel,

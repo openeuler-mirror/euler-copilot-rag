@@ -3,5 +3,10 @@
 *__pycache__*
 /.pytest_cache/
 /dist
+poetry.lock
 
 .env
+start.sh
+
+*.key
+*.crt

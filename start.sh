@@ -1,4 +1,3 @@
-docker rm -f ragv5
-docker build -t rag:v5 .
-docker run -itd --name ragv5 --net=host rag:v5
-docker logs ragv5
+docker rm -f rag
+docker build -t rag .
+docker run -itd --name rag --net=host rag

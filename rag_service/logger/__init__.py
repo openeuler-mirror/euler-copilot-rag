@@ -1,12 +1,12 @@
+import os
 import logging
-from enum import Enum, auto
-from pathlib import Path
-from typing import Dict
 
+from typing import Dict
+from pathlib import Path
+from enum import Enum, auto
 from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 from rag_service.env import EnvEnum
-from rag_service.env_config import RAG_ENV
 
 
 class Module(Enum):
@@ -16,7 +16,7 @@ class Module(Enum):
     VECTORIZATION = auto()
 
 
-if RAG_ENV == EnvEnum.DEV.name:
+if os.getenv("RAG_ENV") == EnvEnum.DEV.name:
     handlers = {
         "default": {
             "formatter": "default",
@@ -78,13 +78,14 @@ def get_logger(log_level: str = 'INFO', module: Module = Module.APP) -> logging.
     logger = logging.getLogger(module.name)
     if not logger.handlers:
         logger.setLevel(_name_to_level.get(log_level.upper(), logging.INFO))
-        if RAG_ENV != EnvEnum.DEV.name:
+        if os.getenv("RAG_ENV") != EnvEnum.DEV.name:
             _set_handler(logger, str(_module_to_log_file[module]))
     return logger
 
 
 def _set_handler(logger: logging.Logger, log_file_path: str) -> None:
-    rotate_handler = ConcurrentTimedRotatingFileHandler(filename=log_file_path, when='MIDNIGHT', backupCount=30)
+    rotate_handler = ConcurrentTimedRotatingFileHandler(
+        filename=log_file_path, when='MIDNIGHT', backupCount=30)
     formatter = logging.Formatter(fmt=LOG_FORMAT, style='{')
     rotate_handler.setFormatter(formatter)
     logger.addHandler(rotate_handler)

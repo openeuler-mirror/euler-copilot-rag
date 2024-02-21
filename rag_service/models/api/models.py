@@ -12,10 +12,3 @@ class QueryRequest(BaseModel):
     session_id: Optional[str] = ""
     llm_model: Optional[str] = ""
     history: Optional[List] = []
-
-
-class LlmAnswer(BaseModel):
-    answer: str
-    sources: List[str]
-    source_contents: Optional[List[str]]
-    scores: Optional[List[float]]

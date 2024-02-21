@@ -1,2 +1,6 @@
 class KnowledgeBaseNotExistsException(Exception):
     ...
+
+
+class TokenCheckFailed(Exception):
+    ...

@@ -8,8 +8,7 @@ from sqlmodel import Session
 from rag_service.logger import get_logger, Module
 from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
 from rag_service.vectorstore.elasticsearch.manage_es import es_search_data
-from rag_service.config import QWEN_LLM_URL, LLM_TEMPERATURE, LLM_TOP_P, \
-    QUERY_GENERATE_PROMPT_TEMPLATE, REMOTE_RERANKING_ENDPOINT
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, LLM_URL, QUERY_GENERATE_PROMPT_TEMPLATE, REMOTE_RERANKING_ENDPOINT
 
 from langchain.llms.base import LLM
 from langchain.chains import LLMChain
@@ -46,15 +45,14 @@ class RagLLM(LLM):
             "Content-Type": "application/json"
         }
         data = {
-            "model": "Qwen-72B-Chat-Int4",
+            "model": LLM_MODEL,
             "messages": messages,
             "temperature": LLM_TEMPERATURE,
-            "top_p": LLM_TOP_P,
             "stream": "False"
         }
         # 调用大模型
         response = requests.post(
-            QWEN_LLM_URL, json=data, headers=headers, stream=False)
+            LLM_URL, json=data, headers=headers, stream=False)
         if response.status_code == 200:
             answer_info = response.json()
             if 'choices' in answer_info and len(answer_info.get('choices')) > 0:
@@ -99,14 +97,12 @@ def query_generate(raw_question: str, kb_sn: str, top_k: int, session: Session, 
     with concurrent.futures.ThreadPoolExecutor() as pool:
         # 并发检索拓展问题的语料
         futures = []
-        results = []
         for query in res.lines:
             cleaned_query = query.split(': ')[1] if ': ' in query else query
-            results.append(es_search_data(cleaned_query, kb_sn, 5, session))
-        #     futures.append(pool.submit(
-        #         es_search_data, cleaned_query, kb_sn, 5, session))
-        # results = [future.result()
-        #            for future in concurrent.futures.as_completed(futures)]
+            futures.append(pool.submit(
+                es_search_data, cleaned_query, kb_sn, 5, session))
+        results = [future.result()
+                   for future in concurrent.futures.as_completed(futures)]
     # 语料去重
     docs = []
     seen_text = set()

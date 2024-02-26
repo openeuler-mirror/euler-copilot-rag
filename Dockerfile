@@ -1,24 +1,20 @@
-FROM bitnami/python:3.10.12
+FROM openeuler/openeuler:22.03-lts-sp1
 
-WORKDIR /rag-service
-ENV PYTHONPATH /rag-service
-ENV PATH /home/rag/.local/bin:$PATH
+RUN yum makecache && \
+    yum install -y python3 python3-pip shadow-utils && \
+    yum clean all
 
 COPY . /rag-service/
+WORKDIR /rag-service
 
-RUN useradd -d /home/rag -m -s /bin/bash rag &&\
-    chown -R rag:rag /rag-service &&\
-    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list &&\
-    sed -i 's/security.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list &&\
-    apt-get update &&\
-    apt-get install python3-dev default-libmysqlclient-dev build-essential -y
+RUN adduser rag &&\
+    chown -R rag:rag /rag-service
 
 USER rag
+ENV PATH="$PATH:/home/rag/.local/bin"
 
-RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pip -U &&\
-    pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple &&\
-    pip install poetry &&\
+RUN pip install poetry -i https://pypi.tuna.tsinghua.edu.cn/simple &&\
     cd /rag-service &&\
-    poetry install
+    poetry install --no-cache
 
 CMD ["poetry", "run", "rag_app"]

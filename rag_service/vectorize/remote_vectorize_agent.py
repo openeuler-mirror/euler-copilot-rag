@@ -1,6 +1,7 @@
 
-import requests
 from typing import List
+
+import requests
 
 from rag_service.models.enums import EmbeddingModel
 
@@ -16,7 +17,10 @@ class RemoteEmbedding:
             texts: List[str],
             embedding_model: EmbeddingModel = EmbeddingModel.BGE_LARGE_ZH
     ) -> List[List[float]]:
-        data = {'texts': texts, 'embedding_model': embedding_model.value}
+        data = {
+            'texts': texts,
+            'embedding_model': embedding_model.value
+        }
         return requests.post(self._endpoint, json=data).json()
 
 
@@ -32,6 +36,8 @@ class RemoteRerank:
             raw_question: str,
             top_k: int
     ) -> List[List[float]]:
-        data = {'documents': documents,
-                'raw_question': raw_question, 'top_k': top_k}
+        data = {
+            'documents': documents,
+            'raw_question': raw_question, 'top_k': top_k
+        }
         return requests.post(self._endpoint, json=data).json()

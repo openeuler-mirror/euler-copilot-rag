@@ -20,16 +20,15 @@ session_manager = get_session_manager()
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)
 @limiter.limit("10/second")
-def get_stream_answer(
+async def get_stream_answer(
         request: Request,
         req: QueryRequest,
-        response: Response,
-        session: Session = Depends(yield_session)
+        response: Response
 ):
     response.headers["Content-Type"] = "text/event-stream"
     try:
         return StreamingResponse(
-            get_llm_stream_answer(req, session),
+            get_llm_stream_answer(req),
             status_code=status.HTTP_200_OK,
             headers=response.headers
         )
@@ -40,4 +39,4 @@ def get_stream_answer(
                 code=ErrorCode.INVALID_KNOWLEDGE_BASE,
                 message=str(e)
             ).dict()
-        )
+        ) from e

@@ -1,27 +1,24 @@
 import io
 import json
+from typing import List
+
 import requests
 import sseclient
-
-from typing import List
-from sqlmodel import Session
 from fastapi import HTTPException
 
 from rag_service.logger import get_logger, Module
 from rag_service.exceptions import TokenCheckFailed
+from rag_service.exceptions import ElasitcsearchEmptyKeyException
 from rag_service.session.session_manager import get_session_manager
 from rag_service.query_generator.query_generator import query_generate
-from rag_service.config import LLM_MODEL, LLM_URL, LLM_TOKEN_CHECK_URL, LLM_TEMPERATURE, \
-    PROMPT_TEMPLATE, CLASSIFIER_PROMPT_TEMPLATE, CHECK_QWEN_QUESTION_PROMPT_TEMPLATE
+from rag_service.config import LLM_MODEL, LLM_URL, LLM_TOKEN_CHECK_URL, LLM_TEMPERATURE, PROMPT_TEMPLATE
 
 logger = get_logger(module=Module.APP)
 llm_logger = get_logger(module=Module.LLM_RESULT)
 session_manager = get_session_manager()
 
 llm_prompt_map = {
-    "general_qa": PROMPT_TEMPLATE,
-    "classify": CLASSIFIER_PROMPT_TEMPLATE,
-    "check_qwen": CHECK_QWEN_QUESTION_PROMPT_TEMPLATE
+    "general_qa": PROMPT_TEMPLATE
 }
 
 
@@ -31,16 +28,17 @@ def token_check(messages: str) -> bool:
     }
 
     content = "\n".join(message['content'] for message in messages)
-    data = {"prompts": [
-        {
-            "model": LLM_MODEL,
-            "prompt": content,
-            "max_tokens": 0
-        }
-    ]}
+    data = {
+        "prompts": [
+            {
+                "model": LLM_MODEL,
+                "prompt": content,
+                "max_tokens": 0
+            }
+        ]
+    }
 
-    response = requests.post(
-        LLM_TOKEN_CHECK_URL, json=data, headers=headers, stream=False)
+    response = requests.post(LLM_TOKEN_CHECK_URL, json=data, headers=headers, stream=False)
     if response.status_code == 200:
         check_result = response.json()
         prompts = check_result['prompts']
@@ -59,13 +57,13 @@ def token_check(messages: str) -> bool:
     return True
 
 
-def llm_stream_call(question: str, prompt: str, llm_model: str, llm_url: str, history: List = []):
+def llm_stream_call(question: str, prompt: str, history: List = None):
     """
-    底层函数
-    流式调用llm, 默认访问baichuan
+    底层函数, 流式调用llm
     """
     messages = [{"role": "system", "content": prompt},
                 {"role": "user", "content": question}]
+    history = history or []
     if len(history) > 0:
         messages[1:1] = history
     while not token_check(messages):
@@ -80,13 +78,13 @@ def llm_stream_call(question: str, prompt: str, llm_model: str, llm_url: str, hi
         "x-accel-buffering": "no"
     }
     data = {
-        "model": llm_model,
+        "model": LLM_MODEL,
         "messages": messages,
         "temperature": LLM_TEMPERATURE,
         "stream": True
     }
     # 调用大模型
-    response = requests.post(llm_url, json=data, headers=headers, stream=True)
+    response = requests.post(LLM_URL, json=data, headers=headers, stream=True)
     if response.status_code == 200:
         client = sseclient.SSEClient(response)
         for event in client.events():
@@ -102,31 +100,29 @@ def llm_stream_call(question: str, prompt: str, llm_model: str, llm_url: str, hi
         yield ""
 
 
-def llm_with_rag_stream_answer(question: str, kb_sn: str, top_k: int, fetch_source: bool, session: Session, session_id: str = None, history: List = []):
+def llm_with_rag_stream_answer(question: str, kb_sn: str, top_k: int, fetch_source: bool,
+                               session_id: str = None, history: List = None):
     """
-    非底层函数
-    流式调用llm, 默认查询baichuan, 通过rag检索文档片段后再发给llm生成答案, 带有qa prompt
+    非底层函数, 流式调用llm
     """
-
     res = ""
+    history = history or []
     if len(history) == 0:
-        history = []
         if session_id:
             history = session_manager.list_history(session_id=session_id)
 
-    documents_info = query_generate(
-        raw_question=question, kb_sn=kb_sn, top_k=top_k, session=session, history=history)
+    documents_info = query_generate(raw_question=question, kb_sn=kb_sn, top_k=top_k, history=history)
 
     query_context = ""
-    for i in range(len(documents_info)):
-        query_context += str(i+1)+". "+documents_info[i][1].strip()+"\n"
+    index = 1
+    for doc in documents_info:
+        query_context += str(index)+". "+doc[1].strip()+"\n"
+        index += 1
 
     try:
         prompt = llm_prompt_map["general_qa"]
-
         query = prompt.replace('{{ context }}', query_context)
-        answer = llm_stream_call(
-            question=question, prompt=query, llm_model=LLM_MODEL, llm_url=LLM_URL, history=history)
+        answer = llm_stream_call(question=question, prompt=query, history=history)
 
         for part in answer:
             res += part
@@ -136,15 +132,16 @@ def llm_with_rag_stream_answer(question: str, kb_sn: str, top_k: int, fetch_sour
         if fetch_source:
             source_info.write("\n检索的到原始片段内容如下: \n")
             contents = [con[1] for con in documents_info]
-            source_info.write(
-                '\n'.join(f'片段{idx}： \n{source}' for idx, source in enumerate(contents, 1)))
+            source_info.write('\n'.join(f'片段{idx}： \n{source}' for idx, source in enumerate(contents, 1)))
 
         for part in source_info.getvalue():
             yield "data: " + json.dumps({'content': part}) + '\n\n'
         yield "data: [DONE]"
+    except KeyError as error:
+        raise ElasitcsearchEmptyKeyException(f'Get llm prompt key error') from error
     except Exception as error:
         logger.exception("用户提问：%s，查询资产库：%s，运行失败：%s", question, kb_sn, error)
-        raise HTTPException(status_code=500, detail="结果报错，未获取到任何信息")
+        raise HTTPException(status_code=500, detail="结果报错，未获取到任何信息") from error
     # 记录历史对话
     if session_id:
         # 记录问题

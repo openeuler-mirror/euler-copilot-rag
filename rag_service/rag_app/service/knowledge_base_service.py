@@ -6,7 +6,6 @@ from rag_service.llms.llm import llm_with_rag_stream_answer
 
 
 def get_llm_stream_answer(
-        req: QueryRequest,
-        session: Session
+        req: QueryRequest
 ):
-    return llm_with_rag_stream_answer(req.question, req.kb_sn, req.top_k, req.fetch_source, session, req.session_id, req.history)
+    yield from llm_with_rag_stream_answer(req.question, req.kb_sn, req.top_k, req.fetch_source, req.session_id, req.history)

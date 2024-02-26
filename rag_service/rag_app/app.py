@@ -46,7 +46,9 @@ def _configure_router():
 
 def main():
     configure()
-    uvicorn.run(app, host=os.getenv("UVICORN_IP"), port=int(os.getenv("UVICORN_PORT")), log_config=UVICORN_LOG_CONFIG, proxy_headers=True, forwarded_allow_ips='*',
+    uvicorn.run(app, host=os.getenv("UVICORN_IP"), port=int(os.getenv("UVICORN_PORT")),
+                log_config=UVICORN_LOG_CONFIG,
+                proxy_headers=True, forwarded_allow_ips='*',
                 ssl_certfile=os.getenv("SSL_CERTFILE"), ssl_keyfile=os.getenv("SSL_KEYFILE"))
 
 

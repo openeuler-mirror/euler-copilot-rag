@@ -8,11 +8,11 @@ session_manager = None
 def get_session_manager():
     global session_manager
     if session_manager is None:
-        session_manager = sessionManager()
+        session_manager = SessionManager()
     return session_manager
 
 
-class sessionManager():
+class SessionManager():
 
     def __init__(self):
         self.session_map = {}
@@ -23,7 +23,7 @@ class sessionManager():
 
     def generate_session(self) -> str:
         session_id = str(uuid.uuid4().hex)
-        session = sessionData(session_id=session_id)
+        session = SessionData(session_id=session_id)
         self.session_map[session_id] = session
         return session_id
 
@@ -34,12 +34,12 @@ class sessionManager():
         return ""
 
     def list_session(self) -> List[str]:
-        list = []
+        session_list = []
         if len(self.session_map) == 0:
-            return list
+            return session_list
         for key in self.session_map:
-            list.append(key)
-        return list
+            session_list.append(key)
+        return session_list
 
     def list_history(self, session_id) -> List:
         if len(self.session_map) == 0:
@@ -50,13 +50,13 @@ class sessionManager():
 
     def add_question(self, session_id, question):
         if session_id not in self.session_map:
-            self.session_map[session_id] = sessionData(session_id=session_id)
+            self.session_map[session_id] = SessionData(session_id=session_id)
         session = self.session_map[session_id]
         session.history.append({"role": "user", "content": question})
 
     def add_answer(self, session_id, answer):
         if session_id not in self.session_map:
-            self.session_map[session_id] = sessionData(session_id=session_id)
+            self.session_map[session_id] = SessionData(session_id=session_id)
         session = self.session_map[session_id]
         chat_count = session.chat_count
         if chat_count >= 3:
@@ -66,7 +66,7 @@ class sessionManager():
         session.chat_count = chat_count + 1
 
 
-class sessionData():
+class SessionData():
     def __init__(self, session_id):
         self.session_id = session_id
         self.history = []

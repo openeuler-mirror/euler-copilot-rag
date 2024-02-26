@@ -24,5 +24,4 @@ def create_db_and_tables():
 
 
 def yield_session() -> Session:
-    with Session(engine) as session:
-        yield session
+    return Session(engine)

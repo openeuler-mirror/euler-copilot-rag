@@ -1,3 +1,5 @@
+__all__ = ['routers']
+
 import glob
 import importlib
 from pathlib import Path
@@ -5,7 +7,6 @@ from typing import List
 
 from fastapi import APIRouter
 
-__all__ = ['routers']
 
 routers: List[APIRouter] = []
 

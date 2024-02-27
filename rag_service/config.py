@@ -1,10 +1,11 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
 import contextlib
-
 from pathlib import Path
 from typing import Optional
 
 from sqlmodel import Session, select
+
 from rag_service.database import engine
 from rag_service.models.database.models import ServiceConfig
 

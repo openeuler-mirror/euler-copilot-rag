@@ -1,9 +1,10 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
 import logging
-
 from typing import Dict
 from pathlib import Path
 from enum import Enum, auto
+
 from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 from rag_service.env import EnvEnum

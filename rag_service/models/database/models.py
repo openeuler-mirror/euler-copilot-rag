@@ -1,7 +1,8 @@
-import datetime
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import uuid
-from typing import Optional, List, Dict, Any
+import datetime
 from uuid import UUID
+from typing import Optional, List, Dict, Any
 
 from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, JSON

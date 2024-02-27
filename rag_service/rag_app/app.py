@@ -1,13 +1,13 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
+
 import fastapi
 import uvicorn
-
 from dotenv import load_dotenv
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
-from starlette.middleware.sessions import SessionMiddleware
-
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from rag_service.rag_app.router import routers
 from rag_service.logger import UVICORN_LOG_CONFIG

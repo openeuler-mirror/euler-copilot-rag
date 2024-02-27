@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import uuid
 
 from typing import List
@@ -71,9 +72,3 @@ class SessionData():
         self.session_id = session_id
         self.history = []
         self.chat_count = 0
-
-
-class chatContent():
-    def __init__(self, role, content):
-        self.role = role
-        self.content = content

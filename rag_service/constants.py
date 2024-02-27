@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from pathlib import Path
 
 EMBEDDING_MODEL_BASE_DIR = Path(__file__).parent.parent / 'embedding_models'

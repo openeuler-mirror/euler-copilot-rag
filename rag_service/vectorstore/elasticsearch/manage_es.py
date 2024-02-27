@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
 import re
 import json
@@ -65,13 +66,11 @@ def es_search_data(question: str, knowledge_base_sn: str, top_k: int):
         index_name = ",".join(vector.name for vector in vectors)
         ans = client.search(index=index_name, body=query_json)
         result = [
-            (
-                result['_score'], result['_source']['general_text'],
-                result['_source']['source'],
-                result['_source']['mtime'],
-                result['_source']['extended_metadata']
-            )
-            for result in ans['hits']['hits'] if result
+            (result['_score'],
+             result['_source']['general_text'],
+             result['_source']['source'],
+             result['_source']['mtime'],
+             result['_source']['extended_metadata']) for result in ans['hits']['hits'] if result
         ]
         results.extend(result)
     results.sort(key=lambda x: x[0], reverse=True)

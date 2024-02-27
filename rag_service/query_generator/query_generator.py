@@ -1,21 +1,19 @@
-import requests
 import concurrent.futures
-
 from typing import Any, List, Optional
+
 from pydantic import BaseModel, Field
-
-from rag_service.logger import get_logger, Module
-from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
-from rag_service.vectorstore.elasticsearch.manage_es import es_search_data
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, LLM_URL, QUERY_GENERATE_PROMPT_TEMPLATE, \
-    REMOTE_RERANKING_ENDPOINT
-
+import requests
 from langchain.llms.base import LLM
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 
+from rag_service.logger import get_logger, Module
+from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
+from rag_service.vectorstore.elasticsearch.manage_es import es_search_data
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, LLM_URL, QUERY_GENERATE_PROMPT_TEMPLATE, \
+    REMOTE_RERANKING_ENDPOINT
 
 logger = get_logger(module=Module.APP)
 

@@ -11,7 +11,8 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 
 from rag_service.logger import get_logger, Module
 from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
-from rag_service.vectorstore.elasticsearch.manage_es import es_search_data
+# from rag_service.vectorstore.elasticsearch.manage_es import es_search_data
+from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
 from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, LLM_URL, QUERY_GENERATE_PROMPT_TEMPLATE, \
     REMOTE_RERANKING_ENDPOINT
 
@@ -92,23 +93,19 @@ def query_generate(raw_question: str, kb_sn: str, top_k: int, history: List):
         "question": raw_question,
         "history": history
     })
+    res.lines.append(raw_question)
 
     with concurrent.futures.ThreadPoolExecutor() as pool:
         # 并发检索拓展问题的语料
         futures = []
         for query in res.lines:
             cleaned_query = query.split(': ')[1] if ': ' in query else query
-            futures.append(pool.submit(es_search_data, cleaned_query, kb_sn, 5))
+            futures.append(pool.submit(pg_search_data, cleaned_query, kb_sn, top_k))
         results = [future.result() for future in concurrent.futures.as_completed(futures)]
-
-    # 语料去重
     docs = []
-    seen_text = set()
     for result in results:
         for doc in result:
-            if doc[1] not in seen_text:
-                docs.append(doc)
-                seen_text.add(doc[1])
+            docs.append(doc[1:])
     # ranker语料排序
     remote_rerank = RemoteRerank(REMOTE_RERANKING_ENDPOINT)
     rerank_res = remote_rerank.rerank(documents=docs, raw_question=raw_question, top_k=top_k)

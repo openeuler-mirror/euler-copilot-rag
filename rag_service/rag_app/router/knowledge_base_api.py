@@ -4,7 +4,6 @@ from fastapi import APIRouter, Request, status, Response, HTTPException
 
 from rag_service.logger import get_logger, Module
 from rag_service.models.api.models import QueryRequest
-from rag_service.rag_app.slowapi_limiter import limiter
 from rag_service.exceptions import KnowledgeBaseNotExistsException
 from rag_service.session.session_manager import get_session_manager
 from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
@@ -17,7 +16,6 @@ session_manager = get_session_manager()
 
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)
-@limiter.limit("10/second")
 async def get_stream_answer(
         request: Request,
         req: QueryRequest,

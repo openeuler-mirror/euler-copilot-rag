@@ -4,7 +4,7 @@
 /.pytest_cache/
 /dist
 poetry.lock
-
+rag_service/utils/init
 .env
 start.sh
 

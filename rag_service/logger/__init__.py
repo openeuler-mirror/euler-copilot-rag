@@ -8,7 +8,9 @@ from enum import Enum, auto
 from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 from rag_service.env import EnvEnum
-
+from dotenv import load_dotenv
+# Load the environment variables
+load_dotenv()
 
 class Module(Enum):
     APP = auto()
@@ -16,6 +18,13 @@ class Module(Enum):
     LLM_RESULT = auto()
     VECTORIZATION = auto()
 
+
+class CustomConcurrentTimedRotatingFileHandler(ConcurrentTimedRotatingFileHandler):
+    def doRollover(self):
+        self.stream.close()
+        os.chmod(self.baseFilename, 0o440)
+        ConcurrentTimedRotatingFileHandler.doRollover(self)
+        os.chmod(self.baseFilename, 0o640)
 
 if os.getenv("RAG_ENV") == EnvEnum.DEV.name:
     handlers = {
@@ -27,11 +36,11 @@ if os.getenv("RAG_ENV") == EnvEnum.DEV.name:
     }
 else:
     LOG_DIR = Path.home().absolute() / 'rag_logs'
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True, mode=0o750)
     handlers = {
         'default': {
             'formatter': 'default',
-            'class': 'concurrent_log_handler.ConcurrentTimedRotatingFileHandler',
+            'class': 'rag_service.logger.CustomConcurrentTimedRotatingFileHandler',
             'filename': str(LOG_DIR / 'uvicorn.log'),
             'backupCount': 30,
             'when': 'MIDNIGHT'
@@ -85,7 +94,7 @@ def get_logger(log_level: str = 'INFO', module: Module = Module.APP) -> logging.
 
 
 def _set_handler(logger: logging.Logger, log_file_path: str) -> None:
-    rotate_handler = ConcurrentTimedRotatingFileHandler(
+    rotate_handler = CustomConcurrentTimedRotatingFileHandler(
         filename=log_file_path, when='MIDNIGHT', backupCount=30)
     formatter = logging.Formatter(fmt=LOG_FORMAT, style='{')
     rotate_handler.setFormatter(formatter)

@@ -4,6 +4,8 @@ from enum import Enum, auto
 from dotenv import load_dotenv
 # Load the environment variables
 load_dotenv()
+
+
 class EnvEnum(Enum):
     PROD = auto()
     TEST = auto()

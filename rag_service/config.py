@@ -21,7 +21,6 @@ DEFAULT_SERVICE_CONFIG = {
     'llm_token_check_url': 'http://123.60.114.28:32315/api/v1/token_check',
     'llm_model': 'Qwen-72B-Chat-Int4',
     'llm_temperature': '0',
-    'max_tokens': '4096',
     'prompt_template': '''你是由openEuler社区构建的大型语言AI助手。请根据给定的用户问题，提供清晰、简洁、准确的答案。你将获得一系列与问题相关的背景信息。\
 如果适用，请使用这些背景信息；如果不适用，请忽略这些背景信息。
 
@@ -81,6 +80,5 @@ LLM_URL = load_service_config('llm_url')
 LLM_MODEL = load_service_config('llm_model')
 LLM_TEMPERATURE = float(load_service_config('llm_temperature'))
 LLM_TOKEN_CHECK_URL = load_service_config('llm_token_check_url')
-MAX_TOKENS = load_service_config('max_tokens')
 PROMPT_TEMPLATE = load_service_config('prompt_template')
 QUERY_GENERATE_PROMPT_TEMPLATE = load_service_config('query_generate_prompt_template')

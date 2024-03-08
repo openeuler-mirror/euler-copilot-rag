@@ -5,14 +5,9 @@
 /dist
 poetry.lock
 rag_service/utils/init
+
 .env
 start.sh
 
 *.key
 *.crt
-
-# pytest
-assets
-htmlcov
-.coverage
-report.html

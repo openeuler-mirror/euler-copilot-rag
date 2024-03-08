@@ -1,20 +1,16 @@
-import concurrent.futures
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import requests
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
-import requests
 from langchain.llms.base import LLM
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 
 from rag_service.logger import get_logger, Module
 from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
-# from rag_service.vectorstore.elasticsearch.manage_es import es_search_data
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, LLM_URL, QUERY_GENERATE_PROMPT_TEMPLATE, \
-    REMOTE_RERANKING_ENDPOINT
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, LLM_URL, REMOTE_RERANKING_ENDPOINT
 
 logger = get_logger(module=Module.APP)
 
@@ -83,29 +79,10 @@ output_parser = LineListOutputParser()
 
 
 def query_generate(raw_question: str, kb_sn: str, top_k: int, history: List):
-    llm = RagLLM()
-    chain = LLMChain(
-        llm=llm, prompt=PromptTemplate.from_template(
-            QUERY_GENERATE_PROMPT_TEMPLATE,
-            template_format='jinja2'
-        ), output_parser=output_parser)
-    res = chain.run({
-        "question": raw_question,
-        "history": history
-    })
-    res.lines.append(raw_question)
-
-    with concurrent.futures.ThreadPoolExecutor() as pool:
-        # 并发检索拓展问题的语料
-        futures = []
-        for query in res.lines:
-            cleaned_query = query.split(': ')[1] if ': ' in query else query
-            futures.append(pool.submit(pg_search_data, cleaned_query, kb_sn, top_k))
-        results = [future.result() for future in concurrent.futures.as_completed(futures)]
+    results = pg_search_data(raw_question, kb_sn, top_k)
     docs = []
     for result in results:
-        for doc in result:
-            docs.append(doc[1:])
+        docs.append(result[0])
     # ranker语料排序
     remote_rerank = RemoteRerank(REMOTE_RERANKING_ENDPOINT)
     rerank_res = remote_rerank.rerank(documents=docs, raw_question=raw_question, top_k=top_k)

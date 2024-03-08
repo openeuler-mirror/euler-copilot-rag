@@ -13,7 +13,7 @@ from rag_service.models.api.models import QueryRequest
 from rag_service.exceptions import ElasitcsearchEmptyKeyException
 from rag_service.session.session_manager import get_session_manager
 from rag_service.query_generator.query_generator import query_generate
-from rag_service.config import LLM_MODEL, LLM_URL, LLM_TOKEN_CHECK_URL, LLM_TEMPERATURE, PROMPT_TEMPLATE, MAX_TOKENS
+from rag_service.config import LLM_MODEL, LLM_URL, LLM_TOKEN_CHECK_URL, LLM_TEMPERATURE, PROMPT_TEMPLATE
 
 logger = get_logger(module=Module.APP)
 llm_logger = get_logger(module=Module.LLM_RESULT)
@@ -82,8 +82,7 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         "model": LLM_MODEL,
         "messages": messages,
         "temperature": LLM_TEMPERATURE,
-        "stream": True,
-        "max_tokens": MAX_TOKENS
+        "stream": True
     }
     response = requests.post(LLM_URL, json=data, headers=headers, stream=True)
     if response.status_code == 200:
@@ -113,7 +112,7 @@ def llm_with_rag_stream_answer(req: QueryRequest):
     query_context = ""
     index = 1
     for doc in documents_info:
-        query_context += str(index)+". "+doc[0].strip()+"\n"
+        query_context += str(index) + ". " + doc.strip() + "\n"
         index += 1
 
     try:
@@ -128,7 +127,7 @@ def llm_with_rag_stream_answer(req: QueryRequest):
         source_info = io.StringIO()
         if req.fetch_source:
             source_info.write("\n检索的到原始片段内容如下: \n")
-            contents = [con[0] for con in documents_info]
+            contents = [con for con in documents_info]
             source_info.write('\n'.join(f'片段{idx}： \n{source}' for idx, source in enumerate(contents, 1)))
 
         for part in source_info.getvalue():

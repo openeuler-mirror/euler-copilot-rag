@@ -4,17 +4,17 @@ import json
 
 from dotenv import load_dotenv
 from sqlmodel import create_engine, SQLModel, Session
+from rag_service.models.database import models
+from rag_service.vectorstore.postgresql import pg_model
 
 from rag_service.security.util import Security
+from rag_service.utils.cryptohub import CryptoHub
 
 # Load the environment variables
 load_dotenv()
 
-with open("/rag-service/db-anonymous", "r") as f:
-    password = Security.decrypt(os.getenv("DB_PASSWORD"), json.loads(f.read()))
-
 engine = create_engine(
-    os.getenv("DB_CONNECTION").replace('{pwd}', password),
+    CryptoHub.query_plaintext_by_config_name('DB_CONNECTION'),
     pool_size=20,   # 连接池的基本大小
     max_overflow=80  # 在连接池已满时允许的最大连接数
 )

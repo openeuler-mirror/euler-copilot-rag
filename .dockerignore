@@ -5,3 +5,9 @@ Dockerfile
 .dockerignore
 .vscode
 start.sh
+
+# pytest
+assets
+htmlcov
+.coverage
+report.html

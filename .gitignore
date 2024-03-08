@@ -10,3 +10,9 @@ start.sh
 
 *.key
 *.crt
+
+# pytest
+assets
+htmlcov
+.coverage
+report.html

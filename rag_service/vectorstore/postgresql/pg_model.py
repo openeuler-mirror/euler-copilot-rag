@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import List
 from datetime import datetime
 from sqlmodel import Field, SQLModel

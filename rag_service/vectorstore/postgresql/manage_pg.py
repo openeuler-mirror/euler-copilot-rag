@@ -1,24 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import os
-import re
-import json
 from typing import List, Dict
 from collections import defaultdict
 
 from sqlmodel import select
-from elasticsearch import Elasticsearch
+from sqlalchemy import text
 from rag_service.database import yield_session
 
 from rag_service.logger import get_logger
-from rag_service.security.util import Security
 from rag_service.config import REMOTE_EMBEDDING_ENDPOINT
+from rag_service.exceptions import PostgresQueryException
+from rag_service.vectorstore.postgresql.pg_model import VectorizeItems
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
-from rag_service.exceptions import ElasitcsearchEmptyKeyException, PostgresQueryException
 from rag_service.models.enums import EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 from rag_service.models.database.models import KnowledgeBase, KnowledgeBaseAsset, VectorizationJob
-from rag_service.vectorstore.postgresql.pg_model import VectorizeItems
 
 logger = get_logger()
 
@@ -54,24 +50,53 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
                 for asset_term in asset_terms:
                     vectors.extend(asset_term.vector_stores)
                 index_names = [vector.name for vector in vectors]
-                result = get_query(session, embedding_name, question,
-                                   remote_embedding, index_names, top_k)
+                result = get_query(session, embedding_name, question, remote_embedding, index_names, top_k)
                 results.extend(result)
-            results.sort(key=lambda x: x.score)
     except Exception as e:
         raise PostgresQueryException(f'Postgres query exception') from e
-    results = results[:top_k]
-    return [(result.score, result.VectorizeItems.general_text, result.VectorizeItems.source, result.VectorizeItems.mtime, result.VectorizeItems.extended_metadata) for result in results]
+    return results
+
+
+def semantic_search(session, index_names, vectors, top_k):
+    results = session.exec(select(VectorizeItems.general_text, VectorizeItems.source, VectorizeItems.mtime, VectorizeItems.extended_metadata).where(
+        VectorizeItems.index_name.in_(index_names)).order_by(VectorizeItems.general_text_vector.cosine_distance(vectors)).limit(top_k)).all()
+    return results
+
+
+def keyword_search(session, index_names, question, top_k):
+    # 将参数作为bindparam添加
+    query = text("""
+        SELECT 
+            general_text, source, mtime, extended_metadata
+        FROM 
+            vectorize_items, 
+            plainto_tsquery(:language, :question) query 
+        WHERE 
+            to_tsvector(:language, general_text) @@ query 
+            AND index_name IN :index_names 
+        ORDER BY 
+            ts_rank_cd(to_tsvector(:language, general_text), query) DESC 
+        LIMIT :top_k;
+    """)
+
+    # 安全地绑定参数
+    params = {
+        'language': 'zhparser',
+        'question': question,
+        'index_names': tuple(index_names),
+        'top_k': top_k,
+    }
+
+    cursor = session.execute(query, params)
+    return cursor.fetchall()
 
 
 def get_query(session, embedding_name, question, remote_embedding, index_names, top_k):
     vectors = remote_embedding.embedding([question], embedding_name)[0]
     try:
-        result = session.exec(
-            select(
-                VectorizeItems, VectorizeItems.general_text_vector.cosine_distance(vectors).label(
-                    "score")).where(VectorizeItems.index_name.in_(index_names)).order_by(
-                VectorizeItems.general_text_vector.cosine_distance(vectors)).limit(top_k)).all()
-        return result
+        results = []
+        results.extend(semantic_search(session, index_names, vectors, top_k))
+        results.extend(keyword_search(session, index_names, question, top_k))
+        return results
     except Exception as e:
         raise PostgresQueryException(f'Postgres query exception') from e

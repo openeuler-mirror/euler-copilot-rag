@@ -113,7 +113,7 @@ def llm_with_rag_stream_answer(req: QueryRequest):
     query_context = ""
     index = 1
     for doc in documents_info:
-        query_context += str(index)+". "+doc[0].strip()+"\n"
+        query_context += str(index) + ". " + doc.strip() + "\n"
         index += 1
 
     try:
@@ -128,7 +128,7 @@ def llm_with_rag_stream_answer(req: QueryRequest):
         source_info = io.StringIO()
         if req.fetch_source:
             source_info.write("\n检索的到原始片段内容如下: \n")
-            contents = [con[0] for con in documents_info]
+            contents = [con for con in documents_info]
             source_info.write('\n'.join(f'片段{idx}： \n{source}' for idx, source in enumerate(contents, 1)))
 
         for part in source_info.getvalue():

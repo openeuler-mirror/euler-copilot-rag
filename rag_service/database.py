@@ -1,13 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import os
-import json
-
 from dotenv import load_dotenv
 from sqlmodel import create_engine, SQLModel, Session
-from rag_service.models.database import models
-from rag_service.vectorstore.postgresql import pg_model
 
-from rag_service.security.util import Security
 from rag_service.utils.cryptohub import CryptoHub
 
 # Load the environment variables

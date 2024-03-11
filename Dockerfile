@@ -7,8 +7,10 @@ ENV PATH /home/rag/.local/bin:$PATH
 COPY . /rag-service/
 
 RUN yum makecache &&\
+    yum update -y &&\
     yum install -y python3 python3-pip shadow-utils &&\
-    adduser rag &&\
+    groupadd -g 2001 rag &&\
+    useradd -u 2001 -g 2001 rag &&\
     chown -R rag:rag /rag-service && \
     yum clean all
 

@@ -1,6 +1,7 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import os
 from typing import List, Dict
 from collections import defaultdict
 
@@ -9,7 +10,6 @@ from sqlalchemy import text
 from rag_service.database import yield_session
 
 from rag_service.logger import get_logger
-from rag_service.config import REMOTE_EMBEDDING_ENDPOINT
 from rag_service.exceptions import PostgresQueryException
 from rag_service.vectorstore.postgresql.pg_model import VectorizeItems
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
@@ -42,7 +42,7 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
             for asset_term in assets:
                 embedding_dicts[asset_term.embedding_model].append(asset_term)
 
-            remote_embedding = RemoteEmbedding(REMOTE_EMBEDDING_ENDPOINT)
+            remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
             results = []
             for embedding_name, asset_terms in embedding_dicts.items():
                 vectors = []
@@ -58,8 +58,11 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
 
 
 def semantic_search(session, index_names, vectors, top_k):
-    results = session.exec(select(VectorizeItems.general_text, VectorizeItems.source, VectorizeItems.mtime, VectorizeItems.extended_metadata).where(
-        VectorizeItems.index_name.in_(index_names)).order_by(VectorizeItems.general_text_vector.cosine_distance(vectors)).limit(top_k)).all()
+    results = session.exec(select(VectorizeItems.general_text, VectorizeItems.source,
+                                  VectorizeItems.mtime, VectorizeItems.extended_metadata)
+                           .where(VectorizeItems.index_name.in_(index_names))
+                           .order_by(VectorizeItems.general_text_vector.cosine_distance(vectors))
+                           .limit(top_k)).all()
     return results
 
 

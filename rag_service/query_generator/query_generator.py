@@ -1,19 +1,17 @@
-import concurrent.futures
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import os
+import requests
+from pydantic import BaseModel, Field
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field
-import requests
 from langchain.llms.base import LLM
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 
 from rag_service.logger import get_logger, Module
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE
 from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, LLM_URL, QUERY_GENERATE_PROMPT_TEMPLATE, \
-    REMOTE_RERANKING_ENDPOINT
 
 logger = get_logger(module=Module.APP)
 
@@ -49,8 +47,7 @@ class RagLLM(LLM):
             "stream": "False"
         }
         # 调用大模型
-        response = requests.post(
-            LLM_URL, json=data, headers=headers, stream=False)
+        response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False)
         if response.status_code == 200:
             answer_info = response.json()
             if 'choices' in answer_info and len(answer_info.get('choices')) > 0:
@@ -81,12 +78,12 @@ class LineListOutputParser(PydanticOutputParser):
 output_parser = LineListOutputParser()
 
 
-def query_generate(raw_question: str, kb_sn: str, top_k: int, history: List):
+def query_generate(raw_question: str, kb_sn: str, top_k: int):
     results = pg_search_data(raw_question, kb_sn, top_k)
     docs = []
     for result in results:
         docs.append(result[0])
     # ranker语料排序
-    remote_rerank = RemoteRerank(REMOTE_RERANKING_ENDPOINT)
+    remote_rerank = RemoteRerank(os.getenv("REMOTE_RERANKING_ENDPOINT"))
     rerank_res = remote_rerank.rerank(documents=docs, raw_question=raw_question, top_k=top_k)
     return rerank_res

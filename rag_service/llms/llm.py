@@ -1,5 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import io
+import os
 import json
 from typing import List
 
@@ -12,7 +13,7 @@ from rag_service.models.api.models import QueryRequest
 from rag_service.exceptions import ElasitcsearchEmptyKeyException
 from rag_service.session.session_manager import get_session_manager
 from rag_service.query_generator.query_generator import query_generate
-from rag_service.config import LLM_MODEL, LLM_URL, LLM_TOKEN_CHECK_URL, LLM_TEMPERATURE, PROMPT_TEMPLATE, MAX_TOKENS
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, PROMPT_TEMPLATE, MAX_TOKENS
 
 logger = get_logger(module=Module.APP)
 llm_logger = get_logger(module=Module.LLM_RESULT)
@@ -39,7 +40,7 @@ def token_check(messages: str) -> bool:
         ]
     }
 
-    response = requests.post(LLM_TOKEN_CHECK_URL, json=data, headers=headers, stream=False)
+    response = requests.post(os.getenv("LLM_TOKEN_CHECK_URL"), json=data, headers=headers, stream=False)
     if response.status_code == 200:
         check_result = response.json()
         prompts = check_result['prompts']
@@ -84,7 +85,7 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         "stream": True,
         "max_tokens": MAX_TOKENS
     }
-    response = requests.post(LLM_URL, json=data, headers=headers, stream=True)
+    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=True)
     if response.status_code == 200:
         for line in response.iter_lines(decode_unicode=True):
             if line:
@@ -108,7 +109,7 @@ def llm_with_rag_stream_answer(req: QueryRequest):
         if req.session_id:
             history = session_manager.list_history(session_id=req.session_id)
 
-    documents_info = query_generate(raw_question=req.question, kb_sn=req.kb_sn, top_k=req.top_k, history=history)
+    documents_info = query_generate(raw_question=req.question, kb_sn=req.kb_sn, top_k=req.top_k)
 
     query_context = ""
     index = 1

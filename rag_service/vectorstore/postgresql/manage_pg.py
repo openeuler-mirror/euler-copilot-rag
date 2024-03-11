@@ -1,6 +1,7 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import os
 from typing import List, Dict
 from collections import defaultdict
 
@@ -8,7 +9,6 @@ from sqlalchemy import text
 from rag_service.models.database.models import yield_session
 
 from rag_service.logger import get_logger
-from rag_service.config import REMOTE_EMBEDDING_ENDPOINT
 from rag_service.exceptions import PostgresQueryException
 from rag_service.models.database.models import VectorizeItems
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
@@ -41,7 +41,7 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
             for asset_term in assets:
                 embedding_dicts[asset_term.embedding_model].append(asset_term)
 
-            remote_embedding = RemoteEmbedding(REMOTE_EMBEDDING_ENDPOINT)
+            remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
             results = []
             for embedding_name, asset_terms in embedding_dicts.items():
                 vectors = []

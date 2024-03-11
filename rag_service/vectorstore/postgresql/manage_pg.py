@@ -1,17 +1,15 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import os
 from typing import List, Dict
 from collections import defaultdict
-from pydantic import BaseModel
 
 from sqlmodel import select
 from sqlalchemy import text
-from sqlmodel import select, Session
+from rag_service.database import yield_session
 
 from rag_service.logger import get_logger
-from rag_service.database import yield_session
-from rag_service.config import REMOTE_EMBEDDING_ENDPOINT
 from rag_service.exceptions import PostgresQueryException
 from rag_service.vectorstore.postgresql.pg_model import VectorizeItems
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
@@ -19,15 +17,6 @@ from rag_service.models.enums import EmbeddingModel, VectorizationJobType, Vecto
 from rag_service.models.database.models import KnowledgeBase, KnowledgeBaseAsset, VectorizationJob
 
 logger = get_logger()
-
-
-class QueryParam(BaseModel):
-    session: Session
-    embedding_name: str
-    question: str
-    remote_embedding: RemoteEmbedding
-    index_names: List[str]
-    top_k: int
 
 
 def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
@@ -53,7 +42,7 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
             for asset_term in assets:
                 embedding_dicts[asset_term.embedding_model].append(asset_term)
 
-            remote_embedding = RemoteEmbedding(REMOTE_EMBEDDING_ENDPOINT)
+            remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
             results = []
             for embedding_name, asset_terms in embedding_dicts.items():
                 vectors = []
@@ -61,8 +50,7 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
                 for asset_term in asset_terms:
                     vectors.extend(asset_term.vector_stores)
                 index_names = [vector.name for vector in vectors]
-                result = get_query(QueryParam(session=session, embedding_name=embedding_name, question=question,
-                                              remote_embedding=remote_embedding, index_names=index_names, top_k=top_k))
+                result = get_query(session, embedding_name, question, remote_embedding, index_names, top_k)
                 results.extend(result)
     except Exception as e:
         raise PostgresQueryException(f'Postgres query exception') from e
@@ -106,12 +94,12 @@ def keyword_search(session, index_names, question, top_k):
     return cursor.fetchall()
 
 
-def get_query(param: QueryParam):
-    vectors = param.remote_embedding.embedding([param.question], param.embedding_name)[0]
+def get_query(session, embedding_name, question, remote_embedding, index_names, top_k):
+    vectors = remote_embedding.embedding([question], embedding_name)[0]
     try:
         results = []
-        results.extend(semantic_search(param.session, param.index_names, vectors, param.top_k))
-        results.extend(keyword_search(param.session, param.index_names, param.question, param.top_k))
+        results.extend(semantic_search(session, index_names, vectors, top_k))
+        results.extend(keyword_search(session, index_names, question, top_k))
         return results
     except Exception as e:
         raise PostgresQueryException(f'Postgres query exception') from e

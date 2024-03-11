@@ -9,6 +9,7 @@ from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 from rag_service.env import EnvEnum
 from dotenv import load_dotenv
+
 # Load the environment variables
 load_dotenv()
 

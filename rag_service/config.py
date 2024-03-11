@@ -13,14 +13,11 @@ DEFAULT_SERVICE_CONFIG = {
     'data_dir': str(Path(os.sep).absolute() / 'vector_data'),
     'vectorization_chunk_size': '100',
     'embedding_chunk_size': '10000',
-    'remote_reranking_endpoint': 'https://euler-copilot-vectorize.test.osinfra.cn/reranking',
-    'remote_embedding_endpoint': 'https://euler-copilot-vectorize.test.osinfra.cn/embedding',
     'sentence_size': '300',
     'default_top_k': '5',
-    'llm_url': 'http://123.60.114.28:32315/v1/chat/completions',
-    'llm_token_check_url': 'http://123.60.114.28:32315/api/v1/token_check',
     'llm_model': 'Qwen-72B-Chat-Int4',
     'llm_temperature': '0',
+    'max_tokens': '4096',
     'prompt_template': '''你是由openEuler社区构建的大型语言AI助手。请根据给定的用户问题，提供清晰、简洁、准确的答案。你将获得一系列与问题相关的背景信息。\
 如果适用，请使用这些背景信息；如果不适用，请忽略这些背景信息。
 
@@ -72,13 +69,10 @@ def load_service_config(name: str) -> Optional[str]:
 DATA_DIR = load_service_config('data_dir')
 VECTORIZATION_CHUNK_SIZE = int(load_service_config('vectorization_chunk_size'))
 EMBEDDING_CHUNK_SIZE = int(load_service_config('embedding_chunk_size'))
-REMOTE_RERANKING_ENDPOINT = load_service_config('remote_reranking_endpoint')
-REMOTE_EMBEDDING_ENDPOINT = load_service_config('remote_embedding_endpoint')
 SENTENCE_SIZE = int(load_service_config('sentence_size'))
 DEFAULT_TOP_K = int(load_service_config('default_top_k'))
-LLM_URL = load_service_config('llm_url')
 LLM_MODEL = load_service_config('llm_model')
 LLM_TEMPERATURE = float(load_service_config('llm_temperature'))
-LLM_TOKEN_CHECK_URL = load_service_config('llm_token_check_url')
+MAX_TOKENS = load_service_config('max_tokens')
 PROMPT_TEMPLATE = load_service_config('prompt_template')
 QUERY_GENERATE_PROMPT_TEMPLATE = load_service_config('query_generate_prompt_template')

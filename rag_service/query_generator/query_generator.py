@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import concurrent.futures
 from typing import Any, List, Optional
 
@@ -12,8 +13,7 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 from rag_service.logger import get_logger, Module
 from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, LLM_URL, QUERY_GENERATE_PROMPT_TEMPLATE, \
-    REMOTE_RERANKING_ENDPOINT
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, LLM_URL, REMOTE_RERANKING_ENDPOINT
 
 logger = get_logger(module=Module.APP)
 

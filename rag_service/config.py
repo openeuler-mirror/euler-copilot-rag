@@ -4,10 +4,9 @@ import contextlib
 from pathlib import Path
 from typing import Optional
 
-from sqlmodel import Session, select
+from sqlalchemy import select
 
-from rag_service.database import engine
-from rag_service.models.database.models import ServiceConfig
+from rag_service.models.database.models import ServiceConfig, yield_session
 
 DEFAULT_SERVICE_CONFIG = {
     'data_dir': str(Path(os.sep).absolute() / 'vector_data'),
@@ -64,9 +63,15 @@ DEFAULT_SERVICE_CONFIG = {
 
 
 def load_service_config(name: str) -> Optional[str]:
-    with Session(engine) as session:
-        with contextlib.suppress(Exception):
-            return session.exec(select(ServiceConfig).where(ServiceConfig.name == name)).one().value
+    try:
+        with yield_session() as session:
+            result = session.execute(select(ServiceConfig).where(ServiceConfig.name == name))
+            service_config = result.scalar_one_or_none()
+            if service_config is not None:
+                return service_config.value
+            else:
+                return DEFAULT_SERVICE_CONFIG[name]
+    except:
         return DEFAULT_SERVICE_CONFIG[name]
 
 

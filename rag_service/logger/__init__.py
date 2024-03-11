@@ -9,8 +9,10 @@ from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 from rag_service.env import EnvEnum
 from dotenv import load_dotenv
+
 # Load the environment variables
 load_dotenv()
+
 
 class Module(Enum):
     APP = auto()
@@ -25,6 +27,7 @@ class CustomConcurrentTimedRotatingFileHandler(ConcurrentTimedRotatingFileHandle
         os.chmod(self.baseFilename, 0o440)
         ConcurrentTimedRotatingFileHandler.doRollover(self)
         os.chmod(self.baseFilename, 0o640)
+
 
 if os.getenv("RAG_ENV") == EnvEnum.DEV.name:
     handlers = {

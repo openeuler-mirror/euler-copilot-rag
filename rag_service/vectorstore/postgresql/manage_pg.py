@@ -1,5 +1,5 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 #!/usr/bin/env python
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 # -*- coding: UTF-8 -*-
 import os
 from typing import List, Dict
@@ -49,7 +49,8 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
                 for asset_term in asset_terms:
                     vectors.extend(asset_term.vector_stores)
                 index_names = [vector.name for vector in vectors]
-                result = get_query(session, embedding_name, question, remote_embedding, index_names, top_k)
+                vectors = remote_embedding.embedding([question], embedding_name)[0]
+                result = get_query(session, question, vectors, index_names, top_k)
                 results.extend(result)
     except Exception as e:
         raise PostgresQueryException(f'Postgres query exception') from e
@@ -57,8 +58,16 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
 
 
 def semantic_search(session, index_names, vectors, top_k):
-    results = session.query(VectorizeItems.general_text, VectorizeItems.source, VectorizeItems.mtime, VectorizeItems.extended_metadata).filter(
-        VectorizeItems.index_name.in_(index_names)).order_by(VectorizeItems.general_text_vector.cosine_distance(vectors)).limit(top_k).all()
+    results = session.query(
+        VectorizeItems.general_text,
+        VectorizeItems.source,
+        VectorizeItems.mtime,
+        VectorizeItems.extended_metadata
+    ).filter(
+        VectorizeItems.index_name.in_(index_names)
+    ).order_by(
+        VectorizeItems.general_text_vector.cosine_distance(vectors)
+    ).limit(top_k).all()
     return results
 
 
@@ -90,10 +99,9 @@ def keyword_search(session, index_names, question, top_k):
     return cursor.fetchall()
 
 
-def get_query(session, embedding_name, question, remote_embedding, index_names, top_k):
-    vectors = remote_embedding.embedding([question], embedding_name)[0]
+def get_query(session, question, vectors, index_names, top_k):
+    results = []
     try:
-        results = []
         results.extend(semantic_search(session, index_names, vectors, top_k))
         results.extend(keyword_search(session, index_names, question, top_k))
         return results

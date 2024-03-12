@@ -5,13 +5,12 @@ import os
 from typing import List, Dict
 from collections import defaultdict
 
-from sqlmodel import select
 from sqlalchemy import text
-from rag_service.database import yield_session
+from rag_service.models.database.models import yield_session
 
 from rag_service.logger import get_logger
 from rag_service.exceptions import PostgresQueryException
-from rag_service.vectorstore.postgresql.pg_model import VectorizeItems
+from rag_service.models.database.models import VectorizeItems
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.models.enums import EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 from rag_service.models.database.models import KnowledgeBase, KnowledgeBaseAsset, VectorizationJob
@@ -25,16 +24,16 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
     """
     try:
         with yield_session() as session:
-            assets = session.exec(
-                select(KnowledgeBaseAsset)
-                .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
-                .join(VectorizationJob, VectorizationJob.kba_id == KnowledgeBaseAsset.id)
-                .where(
-                    knowledge_base_sn == KnowledgeBase.sn,
-                    VectorizationJob.job_type == VectorizationJobType.INIT,
-                    VectorizationJob.status == VectorizationJobStatus.SUCCESS
-                )
+            assets = session.query(KnowledgeBaseAsset).join(
+                KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id
+            ).join(
+                VectorizationJob, VectorizationJob.kba_id == KnowledgeBaseAsset.id
+            ).filter(
+                KnowledgeBase.sn == knowledge_base_sn,
+                VectorizationJob.job_type == VectorizationJobType.INIT,
+                VectorizationJob.status == VectorizationJobStatus.SUCCESS
             ).all()
+
             if not assets or not any(asset.vector_stores for asset in assets):
                 return []
             embedding_dicts: Dict[EmbeddingModel, List[KnowledgeBaseAsset]] = defaultdict(list)
@@ -58,11 +57,8 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
 
 
 def semantic_search(session, index_names, vectors, top_k):
-    results = session.exec(select(VectorizeItems.general_text, VectorizeItems.source,
-                                  VectorizeItems.mtime, VectorizeItems.extended_metadata)
-                           .where(VectorizeItems.index_name.in_(index_names))
-                           .order_by(VectorizeItems.general_text_vector.cosine_distance(vectors))
-                           .limit(top_k)).all()
+    results = session.query(VectorizeItems.general_text, VectorizeItems.source, VectorizeItems.mtime, VectorizeItems.extended_metadata).filter(
+        VectorizeItems.index_name.in_(index_names)).order_by(VectorizeItems.general_text_vector.cosine_distance(vectors)).limit(top_k).all()
     return results
 
 

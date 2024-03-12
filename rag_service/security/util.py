@@ -20,9 +20,8 @@ class Security:
         :param plaintext:
         :return:
         """
-        seed = "hfdi73y2r2txi9wnyh336896aa8p4vfuhsgkseb4"
+        half_key1 = secrets.token_hex(16)
 
-        half_key1 = "".join(secrets.SystemRandom().sample(seed, 16))
         encrypted_work_key, encrypted_work_key_iv = Security._generate_encrypted_work_key(
             half_key1)
         encrypted_plaintext, encrypted_iv = Security._encrypt_plaintext(half_key1, encrypted_work_key,

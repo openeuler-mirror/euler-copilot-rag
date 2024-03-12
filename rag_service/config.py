@@ -4,21 +4,16 @@ import contextlib
 from pathlib import Path
 from typing import Optional
 
-from sqlmodel import Session, select
+from sqlalchemy import select
 
-from rag_service.database import engine
-from rag_service.models.database.models import ServiceConfig
+from rag_service.models.database.models import ServiceConfig, yield_session
 
 DEFAULT_SERVICE_CONFIG = {
     'data_dir': str(Path(os.sep).absolute() / 'vector_data'),
     'vectorization_chunk_size': '100',
     'embedding_chunk_size': '10000',
-    'remote_reranking_endpoint': 'https://euler-copilot-vectorize.test.osinfra.cn/reranking',
-    'remote_embedding_endpoint': 'https://euler-copilot-vectorize.test.osinfra.cn/embedding',
     'sentence_size': '300',
     'default_top_k': '5',
-    'llm_url': 'http://123.60.114.28:32315/v1/chat/completions',
-    'llm_token_check_url': 'http://123.60.114.28:32315/api/v1/token_check',
     'llm_model': 'Qwen-72B-Chat-Int4',
     'llm_temperature': '0',
     'max_tokens': '4096',
@@ -64,23 +59,25 @@ DEFAULT_SERVICE_CONFIG = {
 
 
 def load_service_config(name: str) -> Optional[str]:
-    with Session(engine) as session:
-        with contextlib.suppress(Exception):
-            return session.exec(select(ServiceConfig).where(ServiceConfig.name == name)).one().value
+    try:
+        with yield_session() as session:
+            result = session.execute(select(ServiceConfig).where(ServiceConfig.name == name))
+            service_config = result.scalar_one_or_none()
+            if service_config is not None:
+                return service_config.value
+            else:
+                return DEFAULT_SERVICE_CONFIG[name]
+    except:
         return DEFAULT_SERVICE_CONFIG[name]
 
 
 DATA_DIR = load_service_config('data_dir')
 VECTORIZATION_CHUNK_SIZE = int(load_service_config('vectorization_chunk_size'))
 EMBEDDING_CHUNK_SIZE = int(load_service_config('embedding_chunk_size'))
-REMOTE_RERANKING_ENDPOINT = load_service_config('remote_reranking_endpoint')
-REMOTE_EMBEDDING_ENDPOINT = load_service_config('remote_embedding_endpoint')
 SENTENCE_SIZE = int(load_service_config('sentence_size'))
 DEFAULT_TOP_K = int(load_service_config('default_top_k'))
-LLM_URL = load_service_config('llm_url')
 LLM_MODEL = load_service_config('llm_model')
 LLM_TEMPERATURE = float(load_service_config('llm_temperature'))
-LLM_TOKEN_CHECK_URL = load_service_config('llm_token_check_url')
 MAX_TOKENS = load_service_config('max_tokens')
 PROMPT_TEMPLATE = load_service_config('prompt_template')
 QUERY_GENERATE_PROMPT_TEMPLATE = load_service_config('query_generate_prompt_template')

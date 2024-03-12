@@ -1,5 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import datetime
+from uuid import uuid4
 from sqlalchemy import (
     Column,
     ForeignKey,
@@ -17,7 +18,6 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import TIMESTAMP, UUID
-from uuid import uuid4
 
 from rag_service.constants import DEFAULT_UPDATE_TIME_INTERVAL_SECOND
 from rag_service.models.enums import (

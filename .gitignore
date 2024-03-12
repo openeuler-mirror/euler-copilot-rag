@@ -5,6 +5,7 @@
 /dist
 poetry.lock
 rag_service/utils/init
+*venv
 
 .env
 start.sh

@@ -5,7 +5,6 @@ import json
 from typing import List
 
 import requests
-import sseclient
 from fastapi import HTTPException
 
 from rag_service.logger import get_logger, Module
@@ -88,16 +87,17 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
     }
     response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=True)
     if response.status_code == 200:
-        client = sseclient.SSEClient(response)
-        for event in client.events():
-            if event.data.lower() == '[done]':
-                continue
-            try:
-                info_json = json.loads(event.data)
-                part = info_json['choices'][0]['delta'].get('content', "")
-                yield part
-            except Exception as ex:
-                logger.error(f"{ex}")
+        for line in response.iter_lines(decode_unicode=True):
+            if line:
+                line = line.strip()
+                if line.lower() == 'data: [done]':
+                    continue
+                try:
+                    info_json = json.loads(line[6:])
+                    part = info_json['choices'][0]['delta'].get('content', "")
+                    yield part
+                except Exception as ex:
+                    logger.error(f"{ex}")
     else:
         yield ""
 

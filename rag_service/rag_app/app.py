@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from rag_service.rag_app.router import routers
 from rag_service.logger import UVICORN_LOG_CONFIG
-from rag_service.database import create_db_and_tables
+from rag_service.models.database.models import create_db_and_tables
 
 create_db_and_tables()
 

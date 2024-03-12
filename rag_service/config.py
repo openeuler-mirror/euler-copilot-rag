@@ -1,10 +1,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
-import contextlib
 from pathlib import Path
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from rag_service.models.database.models import ServiceConfig, yield_session
 
@@ -67,7 +67,7 @@ def load_service_config(name: str) -> Optional[str]:
                 return service_config.value
             else:
                 return DEFAULT_SERVICE_CONFIG[name]
-    except:
+    except SQLAlchemyError:
         return DEFAULT_SERVICE_CONFIG[name]
 
 

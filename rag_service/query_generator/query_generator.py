@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
+from typing import Any, List, Optional
 import requests
 from pydantic import BaseModel, Field
-from typing import Any, List, Optional
 
 from langchain.llms.base import LLM
 from langchain.output_parsers import PydanticOutputParser

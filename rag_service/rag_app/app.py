@@ -4,8 +4,6 @@ import os
 import fastapi
 import uvicorn
 from dotenv import load_dotenv
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
 
 from rag_service.rag_app.router import routers
 from rag_service.logger import UVICORN_LOG_CONFIG
@@ -17,17 +15,6 @@ create_db_and_tables()
 load_dotenv()
 
 app = fastapi.FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://172.168.0.4"],
-    allow_credentials=False,
-    allow_methods=["GET", "POST"],
-    allow_headers=["*"],
-)
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=""
-)
 
 
 def configure():

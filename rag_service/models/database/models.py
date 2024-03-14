@@ -193,7 +193,9 @@ class VectorizeItems(Base):
 engine = create_engine(
     CryptoHub.query_plaintext_by_config_name('DB_CONNECTION'),
     pool_size=20,   # 连接池的基本大小
-    max_overflow=80  # 在连接池已满时允许的最大连接数
+    max_overflow=80,  # 在连接池已满时允许的最大连接数
+    pool_recycle=300,
+    pool_pre_ping=True
 )
 
 

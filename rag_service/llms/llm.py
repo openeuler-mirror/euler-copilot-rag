@@ -40,7 +40,7 @@ def token_check(messages: str) -> bool:
         ]
     }
 
-    response = requests.post(os.getenv("LLM_TOKEN_CHECK_URL"), json=data, headers=headers, stream=False)
+    response = requests.post(os.getenv("LLM_TOKEN_CHECK_URL"), json=data, headers=headers, stream=False, timeout=30)
     if response.status_code == 200:
         check_result = response.json()
         prompts = check_result['prompts']
@@ -85,7 +85,7 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         "stream": True,
         "max_tokens": MAX_TOKENS
     }
-    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=True)
+    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=True, timeout=30)
     if response.status_code == 200:
         for line in response.iter_lines(decode_unicode=True):
             if line:
@@ -113,10 +113,12 @@ def llm_with_rag_stream_answer(req: QueryRequest):
 
     query_context = ""
     index = 1
-    for doc in documents_info:
-        query_context += str(index) + ". " + doc.strip() + "\n"
-        index += 1
-
+    try:
+        for doc in documents_info:
+            query_context += str(index) + ". " + doc.strip() + "\n"
+            index += 1
+    except Exception as error:
+        logger.error(error)
     try:
         prompt = llm_prompt_map["general_qa"]
         query = prompt.replace('{{ context }}', query_context)

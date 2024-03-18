@@ -21,7 +21,7 @@ class RemoteEmbedding:
             'texts': texts,
             'embedding_model': embedding_model.value
         }
-        return requests.post(self._endpoint, json=data).json()
+        return requests.post(self._endpoint, json=data, timeout=30).json()
 
 
 class RemoteRerank:
@@ -40,4 +40,4 @@ class RemoteRerank:
             'documents': documents,
             'raw_question': raw_question, 'top_k': top_k
         }
-        return requests.post(self._endpoint, json=data).json()
+        return requests.post(self._endpoint, json=data, timeout=30).json()

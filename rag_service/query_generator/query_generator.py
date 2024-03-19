@@ -78,7 +78,7 @@ class LineListOutputParser(PydanticOutputParser):
 output_parser = LineListOutputParser()
 
 
-def query_generate(raw_question: str, kb_sn: str, top_k: int):
+def query_generate(raw_question: str, kb_sn: str, top_k: int) -> List[str]:
     results = pg_search_data(raw_question, kb_sn, top_k)
     docs = []
     for result in results:

@@ -13,3 +13,11 @@ class ElasitcsearchEmptyKeyException(Exception):
 
 class PostgresQueryException(Exception):
     ...
+
+
+class LlmRequestException(Exception):
+    ...
+
+
+class LlmAnswerException(Exception):
+    ...

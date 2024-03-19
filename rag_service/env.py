@@ -15,5 +15,5 @@ class EnvEnum(Enum):
 
 try:
     ENV = EnvEnum[os.getenv("RAG_ENV").upper()]
-except KeyError:
+except Exception:
     ENV = EnvEnum.DEV

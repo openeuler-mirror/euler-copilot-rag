@@ -64,10 +64,13 @@ def get_documents_info(req: QueryRequest) -> List[str]:
 def get_query_context(documents_info) -> str:
     query_context = ""
     index = 1
-    for doc in documents_info:
-        query_context += str(index) + ". " + doc.strip() + "\n"
-        index += 1
-    return query_context
+    try:
+        for doc in documents_info:
+            query_context += str(index) + ". " + doc.strip() + "\n"
+            index += 1
+        return query_context
+    except Exception as error:
+        logger.error(error)
 
 
 def append_source_info(req: QueryRequest, documents_info):

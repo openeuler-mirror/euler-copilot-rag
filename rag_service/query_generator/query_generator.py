@@ -47,7 +47,7 @@ class RagLLM(LLM):
             "stream": "False"
         }
         # 调用大模型
-        response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False)
+        response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False, timeout=30)
         if response.status_code == 200:
             answer_info = response.json()
             if 'choices' in answer_info and len(answer_info.get('choices')) > 0:

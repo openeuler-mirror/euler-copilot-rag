@@ -11,7 +11,7 @@ import shutil
 import stat
 
 from rag_service.security.util import Security
-
+from rag_service.logger import get_logger
 
 class CryptoHub:
 
@@ -102,22 +102,24 @@ class CryptoHub:
     @staticmethod
     def query_plaintext_by_config_name(config_name,
                                        full_config_dir='.key_config_path_and_encrypted_plaintext.json'):
-        config_name_sha256 = CryptoHub.generate_str_from_sha256(config_name)
-        full_config_dir_sha256 = os.path.join(os.path.dirname(
-            full_config_dir), CryptoHub.generate_str_from_sha256(os.path.basename(full_config_dir)))
         plaintext = ''
-
-        with open(full_config_dir_sha256, 'r') as tmp_file:
-            full_config_dict = json.load(tmp_file)
-        encrypted_plaintext = full_config_dict[config_name_sha256][CryptoHub.generate_str_from_sha256(
-            'encrypted_plaintext')]
-        config_dir = full_config_dict[config_name_sha256][CryptoHub.generate_str_from_sha256(
-            'key_config_dir')]
-        config_deletion_flag = full_config_dict[config_name_sha256][CryptoHub.generate_str_from_sha256(
-            'config_deletion_flag')]
-        plaintext = CryptoHub.decrypt_with_config(
-            config_dir, encrypted_plaintext, config_deletion_flag)
-
+        try:
+            config_name_sha256 = CryptoHub.generate_str_from_sha256(config_name)
+            full_config_dir_sha256 = os.path.join(os.path.dirname(
+                full_config_dir), CryptoHub.generate_str_from_sha256(os.path.basename(full_config_dir)))
+            with open(full_config_dir_sha256, 'r') as tmp_file:
+                full_config_dict = json.load(tmp_file)
+            encrypted_plaintext = full_config_dict[config_name_sha256][CryptoHub.generate_str_from_sha256(
+                'encrypted_plaintext')]
+            config_dir = full_config_dict[config_name_sha256][CryptoHub.generate_str_from_sha256(
+                'key_config_dir')]
+            config_deletion_flag = full_config_dict[config_name_sha256][CryptoHub.generate_str_from_sha256(
+                'config_deletion_flag')]
+            plaintext = CryptoHub.decrypt_with_config(
+                config_dir, encrypted_plaintext, config_deletion_flag)
+        except Exception as ex:
+            logger = get_logger()
+            logger.error(f"Query plaintext by config name failed due to error: {ex}")
         return plaintext
 
     @staticmethod

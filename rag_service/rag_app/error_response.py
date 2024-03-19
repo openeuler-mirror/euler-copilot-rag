@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 class ErrorCode(IntEnum):
     INVALID_KNOWLEDGE_BASE = 1
+    REQUEST_LLM_ERROR = 2
 
 
 class ErrorResponse(BaseModel):

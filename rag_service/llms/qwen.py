@@ -85,6 +85,6 @@ def qwen_llm_call(question: str, system: str, history: List = None):
                     part = info_json['choices'][0]['delta'].get('content', "")
                     yield part
                 except Exception as e:
-                    raise LlmAnswerException(f'解析大模型返回发生错误') from e
+                    raise LlmAnswerException(f'请求大模型返回发生错误') from e
     else:
         yield ""

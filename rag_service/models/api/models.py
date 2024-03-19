@@ -11,6 +11,5 @@ class QueryRequest(BaseModel):
     kb_sn: str
     top_k: int = Field(DEFAULT_TOP_K, ge=1, le=10)
     fetch_source: bool = False
-    session_id: Optional[str] = ""
     llm_model: Optional[str] = "qwen"
     history: Optional[List] = []

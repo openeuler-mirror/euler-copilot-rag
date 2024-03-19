@@ -135,5 +135,5 @@ async def spark_llm_call(question, system, history):
             yield data
         yield ""
     except asyncio.CancelledError as e:
-        logger.error(f'解析大模型返回发生错误')
-        raise LlmAnswerException(f'解析大模型返回发生错误') from e
+        logger.error(f'请求大模型返回发生错误')
+        raise LlmAnswerException(f'请求大模型返回发生错误') from e

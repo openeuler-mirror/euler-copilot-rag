@@ -3,8 +3,12 @@
 *__pycache__*
 /.pytest_cache/
 /dist
+poetry.lock
 rag_service/utils/init
-*.crt
-*.key
+*venv
+
 .env
-*venv/
+start.sh
+
+*.key
+*.crt

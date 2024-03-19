@@ -28,6 +28,7 @@ class AssetType(Enum):
 
 
 class EmbeddingModel(Enum):
+    TEXT2VEC_BASE_CHINESE_PARAPHRASE = 'text2vec-base-chinese-paraphrase'
     BGE_LARGE_ZH = 'bge-large-zh'
 
 

@@ -1,4 +1,5 @@
 import logging
+import os
 from enum import Enum, auto
 from pathlib import Path
 from typing import Dict
@@ -6,8 +7,9 @@ from typing import Dict
 from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 from rag_service.env import EnvEnum
-from rag_service.env_config import RAG_ENV
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class Module(Enum):
     APP = auto()
@@ -16,7 +18,7 @@ class Module(Enum):
     VECTORIZATION = auto()
 
 
-if RAG_ENV == EnvEnum.DEV.name:
+if os.getenv("RAG_ENV") == EnvEnum.DEV.name:
     handlers = {
         "default": {
             "formatter": "default",
@@ -78,7 +80,7 @@ def get_logger(log_level: str = 'INFO', module: Module = Module.APP) -> logging.
     logger = logging.getLogger(module.name)
     if not logger.handlers:
         logger.setLevel(_name_to_level.get(log_level.upper(), logging.INFO))
-        if RAG_ENV != EnvEnum.DEV.name:
+        if os.getenv("RAG_ENV") != EnvEnum.DEV.name:
             _set_handler(logger, str(_module_to_log_file[module]))
     return logger
 

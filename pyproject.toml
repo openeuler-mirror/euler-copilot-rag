@@ -8,6 +8,9 @@ readme = "README.md"
 [tool.poetry.dependencies]
 aiofiles = "^23.2.1"
 concurrent-log-handler = "^0.9.24"
+dagster = "^1.4.12"
+dagster-postgres = { version = ">= 0.20.12, < 1.0.0", optional = true }
+dagster-webserver = "^1.4.12"
 fastapi = ">= 0.97.0, < 1.0.0"
 fastapi-pagination = ">= 0.12.9, < 1.0.0"
 langchain = "0.0.323"

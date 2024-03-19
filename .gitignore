@@ -3,5 +3,8 @@
 *__pycache__*
 /.pytest_cache/
 /dist
-
+rag_service/utils/init
+*.crt
+*.key
 .env
+*venv/

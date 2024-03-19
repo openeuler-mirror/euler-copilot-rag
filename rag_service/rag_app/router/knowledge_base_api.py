@@ -1,33 +1,37 @@
+from typing import List
 from sqlmodel import Session
 
-from fastapi.responses import StreamingResponse, HTMLResponse
-from fastapi import APIRouter, Depends, Request, status, Response, HTTPException
+from fastapi_pagination import Page
+from fastapi import APIRouter, Depends, status, HTTPException
 
 from rag_service.database import yield_session
 from rag_service.logger import get_logger, Module
-from rag_service.rag_app.slowapi_limiter import limiter
-from rag_service.models.api.models import LlmAnswer,  QueryRequest
-from rag_service.exceptions import KnowledgeBaseNotExistsException
-from rag_service.session.session_manager import get_session_manager
+from rag_service.rag_app.service import knowledge_base_service
 from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
-from rag_service.rag_app.service.knowledge_base_service import get_llm_answer, get_llm_stream_answer
+from rag_service.exceptions import KnowledgeBaseNotExistsException, KnowledgeBaseExistNonEmptyKnowledgeBaseAsset
+from rag_service.rag_app.service.knowledge_base_service import get_knowledge_base_list, delele_knowledge_base
+from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, QueryRequest, RetrievedDocument
 
 
 router = APIRouter(prefix='/kb', tags=['Knowledge Base'])
 logger = get_logger(module=Module.APP)
-session_manager = get_session_manager()
 
 
-@router.post('/get_answer')
-@limiter.limit("10/second")
-def get_answer(
-        request: Request,
+@router.post('/create')
+async def create(
+        req: CreateKnowledgeBaseReq,
+        session: Session = Depends(yield_session)
+) -> str:
+    return await knowledge_base_service.create_knowledge_base(req, session)
+
+
+@router.post('/get_related_docs')
+def get_related_docs(
         req: QueryRequest,
         session: Session = Depends(yield_session)
-) -> LlmAnswer:
+) -> List[RetrievedDocument]:
     try:
-        llmAnswer = get_llm_answer(req, session)
-        return llmAnswer
+        return knowledge_base_service.get_related_docs(req, session)
     except KnowledgeBaseNotExistsException as e:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -38,26 +42,43 @@ def get_answer(
         )
 
 
-@router.post('/get_stream_answer', response_class=HTMLResponse)
-@limiter.limit("10/second")
-def get_stream_answer(
-        request: Request,
-        req: QueryRequest,
-        response: Response,
+@router.get('/list', response_model=Page[KnowledgeBaseInfo])
+async def get_kb_list(
+        owner: str,
+        session: Session = Depends(yield_session)
+) -> Page[KnowledgeBaseInfo]:
+    return get_knowledge_base_list(owner, session)
+
+
+@router.delete('/delete')
+def delete_kb(
+        kb_sn: str,
         session: Session = Depends(yield_session)
 ):
-    response.headers["Content-Type"] = "text/event-stream"
     try:
-        return StreamingResponse(
-            get_llm_stream_answer(req, session),
-            status_code=status.HTTP_200_OK,
-            headers=response.headers
+        delele_knowledge_base(kb_sn, session)
+        return f"deleted {kb_sn} knowledge base."
+    except KnowledgeBaseExistNonEmptyKnowledgeBaseAsset as e:
+        logger.error(f"deleted {kb_sn} knowledge base error was {e}.")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            ErrorResponse(
+                code=ErrorCode.KNOWLEDGE_BASE_EXIST_KNOWLEDGE_BASE_ASSET,
+                message=f"Knowledge base exist Knowledge base assets, please delete knowledge base asset first."
+            ).dict()
         )
     except KnowledgeBaseNotExistsException as e:
+        logger.error(f"deleted {kb_sn} knowledge base error was {e}.")
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             ErrorResponse(
-                code=ErrorCode.INVALID_KNOWLEDGE_BASE,
-                message=str(e)
+                code=ErrorCode.KNOWLEDGE_BASE_NOT_EXIST,
+                message=f'Knowledge base <{kb_sn}> was not exists.'
             ).dict()
+        )
+    except Exception as e:
+        logger.error(f"deleted {kb_sn} knowledge base error was {e}.")
+        return HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"deleted {kb_sn} knowledge base occur error."
         )

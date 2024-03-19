@@ -1,7 +1,8 @@
+import os
 from enum import Enum, auto
+from dotenv import load_dotenv
 
-from rag_service.env_config import RAG_ENV
-
+load_dotenv()
 
 class EnvEnum(Enum):
     PROD = auto()
@@ -10,6 +11,6 @@ class EnvEnum(Enum):
 
 
 try:
-    ENV = EnvEnum[RAG_ENV.upper()]
+    ENV = EnvEnum[os.getenv("RAG_ENV").upper()]
 except KeyError:
     ENV = EnvEnum.DEV

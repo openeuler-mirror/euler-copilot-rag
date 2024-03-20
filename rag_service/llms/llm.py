@@ -108,9 +108,20 @@ def llm_with_rag_stream_answer(req: QueryRequest):
     if len(history) == 0:
         if req.session_id:
             history = session_manager.list_history(session_id=req.session_id)
-
-    documents_info = query_generate(raw_question=req.question, kb_sn=req.kb_sn, top_k=req.top_k)
-
+    documents_info = []
+    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn, top_k=req.top_k))
+    if len(history) >= 2:
+        documents_info.extend(
+            query_generate(
+                raw_question=history[-2]['content'] + ' ' + req.question,
+                kb_sn=req.kb_sn, top_k=req.top_k))
+        documents_info.extend(query_generate(raw_question=history[-2]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
+    if len(history) >= 4:
+        documents_info.extend(
+            query_generate(
+                raw_question=history[-4]['content'] + ' ' + req.question,
+                kb_sn=req.kb_sn, top_k=req.top_k))
+        documents_info.extend(query_generate(raw_question=history[-4]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
     query_context = ""
     index = 1
     try:

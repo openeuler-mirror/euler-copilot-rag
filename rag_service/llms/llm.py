@@ -33,8 +33,9 @@ async def spark_llm_stream_answer(req: QueryRequest):
     async for part in answer:
         res += part
         yield "data: "+json.dumps({"content": part}, ensure_ascii=False)+'\n\n'
-
-    append_source_info(req=req, documents_info=documents_info)
+    source_info = append_source_info(req=req, documents_info=documents_info)
+    for source in source_info:
+        yield source
 
 
 def qwen_llm_stream_answer(req: QueryRequest):
@@ -50,9 +51,9 @@ def qwen_llm_stream_answer(req: QueryRequest):
     for part in answer:
         res += part
         yield "data: "+json.dumps({"content": part}, ensure_ascii=False)+'\n\n'
-
-    append_source_info(req=req, documents_info=documents_info)
-
+    source_info = append_source_info(req=req, documents_info=documents_info)
+    for source in source_info:
+        yield source
 
 def get_documents_info(req: QueryRequest) -> List[str]:
     try:

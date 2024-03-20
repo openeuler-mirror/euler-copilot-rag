@@ -57,7 +57,23 @@ def qwen_llm_stream_answer(req: QueryRequest):
 
 def get_documents_info(req: QueryRequest) -> List[str]:
     try:
-        return query_generate(raw_question=req.question, kb_sn=req.kb_sn, top_k=req.top_k)
+        history = req.history
+        documents_info = []
+        documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn, top_k=req.top_k))
+        if len(history) >= 2:
+            documents_info.extend(
+                query_generate(
+                    raw_question=history[-2]['content'] + ' ' + req.question,
+                    kb_sn=req.kb_sn, top_k=req.top_k))
+            documents_info.extend(query_generate(raw_question=history[-2]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
+        if len(history) >= 4:
+            documents_info.extend(
+                query_generate(
+                    raw_question=history[-4]['content'] + ' ' + req.question,
+                    kb_sn=req.kb_sn, top_k=req.top_k))
+            documents_info.extend(query_generate(raw_question=history[-4]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
+
+        return documents_info
     except PostgresQueryException as error:
         raise LlmRequestException(f'请求大模型返回发生错误') from error
 

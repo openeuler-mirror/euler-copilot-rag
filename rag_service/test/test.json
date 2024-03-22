@@ -1,0 +1,145 @@
+{
+    "nodes": [
+        {
+            "id": "openEuler",
+            "type": "operation_system"
+        },
+        {
+            "id": "Linux_Kernel_5.10",
+            "type": "kernel"
+        },
+        {
+            "id": "process_scheduling",
+            "type": "feature"
+        },
+        {
+            "id": "memory_management",
+            "type": "feature"
+        },
+        {
+            "id": "Arm64",
+            "type": "architecture"
+        },
+        {
+            "id": "x86",
+            "type": "architecture"
+        },
+        {
+            "id": "RISC-V",
+            "type": "architecture"
+        },
+        {
+            "id": "LoongArch64",
+            "type": "architecture"
+        },
+        {
+            "id": "dynamic_preemption",
+            "type": "feature"
+        },
+        {
+            "id": "mremap_performance_optimization",
+            "type": "feature"
+        }
+    ],
+    "edges": [
+        {
+            "source": {
+                "id": "openEuler",
+                "type": "operation_system"
+            },
+            "target": {
+                "id": "Linux_Kernel_5.10",
+                "type": "kernel"
+            },
+            "type": "based_on"
+        },
+        {
+            "source": {
+                "id": "openEuler",
+                "type": "operation_system"
+            },
+            "target": {
+                "id": "process_scheduling",
+                "type": "feature"
+            },
+            "type": "includes"
+        },
+        {
+            "source": {
+                "id": "openEuler",
+                "type": "operation_system"
+            },
+            "target": {
+                "id": "memory_management",
+                "type": "feature"
+            },
+            "type": "includes"
+        },
+        {
+            "source": {
+                "id": "openEuler",
+                "type": "operation_system"
+            },
+            "target": {
+                "id": "Arm64",
+                "type": "architecture"
+            },
+            "type": "supports"
+        },
+        {
+            "source": {
+                "id": "openEuler",
+                "type": "operation_system"
+            },
+            "target": {
+                "id": "x86",
+                "type": "architecture"
+            },
+            "type": "supports"
+        },
+        {
+            "source": {
+                "id": "openEuler",
+                "type": "operation_system"
+            },
+            "target": {
+                "id": "RISC-V",
+                "type": "architecture"
+            },
+            "type": "supports"
+        },
+        {
+            "source": {
+                "id": "openEuler",
+                "type": "operation_system"
+            },
+            "target": {
+                "id": "LoongArch64",
+                "type": "architecture"
+            },
+            "type": "supports"
+        },
+        {
+            "source": {
+                "id": "Linux_Kernel_5.10",
+                "type": "kernel"
+            },
+            "target": {
+                "id": "dynamic_preemption",
+                "type": "feature"
+            },
+            "type": "includes"
+        },
+        {
+            "source": {
+                "id": "Linux_Kernel_5.10",
+                "type": "kernel"
+            },
+            "target": {
+                "id": "mremap_performance_optimization",
+                "type": "feature"
+            },
+            "type": "includes"
+        }
+    ]
+}

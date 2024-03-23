@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 from rag_service.logger import get_logger
 from rag_service.models.database.models import ServiceConfig, yield_session
 logger = get_logger()
@@ -59,6 +58,7 @@ try:
     }
 except Exception as e:
     logger.error(e)
+
 
 def load_service_config(name: str) -> Optional[str]:
     try:

@@ -20,6 +20,7 @@ app = fastapi.FastAPI(docs_url=None, redoc_url=None)
 
 logger = get_logger()
 
+
 def configure():
     _configure_router()
 
@@ -41,6 +42,7 @@ def main():
                     )
     except Exception as e:
         logger.error(e)
+
 
 if __name__ == '__main__':
     main()

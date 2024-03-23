@@ -51,6 +51,7 @@ Format:
 }
 """
 
+llm = ChatOpenAI(api_key="", base_url="http://123.60.114.28:32315/v1", model="Qwen-72B-Chat-Int4", temperature=0)
 
 def test_neo4j():
     NEO4J_URI = "bolt://127.0.0.1:7687"
@@ -94,7 +95,6 @@ def map_to_base_edge(edge: dict) -> Relationship:
 
 
 def convert_to_graph_documents(documents: List[Document]) -> List[GraphDocument]:
-    llm = ChatOpenAI(api_key="", base_url="http://123.60.114.28:32315/v1", model="Qwen-72B-Chat-Int4", temperature=0)
     graph_documents = []
 
     for doc in documents:
@@ -140,7 +140,24 @@ def load_documents():
     return sequence_documents
 
 
+def query(question: str):
+    system = "You are extracting entities from the text."
+    human = """Use the given format to extract information from the following input: {{question}}
+format: ["apple","banana"]
+"""
+    message = [
+        SystemMessage(
+            content=system
+        ),
+        HumanMessage(
+            content=human.replace('{{question}}', question)
+        )
+    ]
+    res = llm.invoke(message)
+    print("yes")
+
 if __name__ == "__main__":
-    documents = load_documents()
-    graph_documents = convert_to_graph_documents(documents=documents)
-    add_graph_documents_to_neo4j(graph_documents=graph_documents)
+    # documents = load_documents()
+    # graph_documents = convert_to_graph_documents(documents=documents)
+    # add_graph_documents_to_neo4j(graph_documents=graph_documents)
+    query("openEuler每个版本下的内核版本是多少")

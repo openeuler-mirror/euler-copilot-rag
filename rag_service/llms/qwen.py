@@ -5,6 +5,7 @@ from typing import List
 
 import requests
 
+from rag_service.utils.cryptohub import CryptoHub
 from rag_service.logger import get_logger, Module
 from rag_service.exceptions import TokenCheckFailed, LlmAnswerException
 from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS
@@ -64,7 +65,8 @@ def qwen_llm_call(question: str, system: str, history: List = None):
         "Content-Type": "application/json",
         "cache-control": "no-cache",
         "connection": "keep-alive",
-        "x-accel-buffering": "no"
+        "x-accel-buffering": "no",
+        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
     }
     data = {
         "model": LLM_MODEL,

@@ -13,6 +13,7 @@ import stat
 from rag_service.security.util import Security
 from rag_service.logger import get_logger
 
+
 class CryptoHub:
 
     @staticmethod

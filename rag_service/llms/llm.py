@@ -8,6 +8,7 @@ import requests
 from fastapi import HTTPException
 
 from rag_service.logger import get_logger, Module
+from rag_service.utils.cryptohub import CryptoHub
 from rag_service.exceptions import TokenCheckFailed
 from rag_service.models.api.models import QueryRequest
 from rag_service.exceptions import ElasitcsearchEmptyKeyException
@@ -76,7 +77,8 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         "Content-Type": "application/json",
         "cache-control": "no-cache",
         "connection": "keep-alive",
-        "x-accel-buffering": "no"
+        "x-accel-buffering": "no",
+        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
     }
     data = {
         "model": LLM_MODEL,

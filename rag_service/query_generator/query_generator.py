@@ -8,12 +8,12 @@ from langchain.llms.base import LLM
 from langchain.output_parsers import PydanticOutputParser
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 
-from rag_service.logger import get_logger, Module
+from rag_service.logger import get_logger
 from rag_service.config import LLM_MODEL, LLM_TEMPERATURE
 from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
 
-logger = get_logger(module=Module.APP)
+logger = get_logger()
 
 
 class RagLLM(LLM):

@@ -1,5 +1,4 @@
 aiofiles == 23.1.0
-concurrent-log-handler == 0.9.24
 fastapi == 0.89.1
 langchain == 0.0.351
 more-itertools == 10.1.0

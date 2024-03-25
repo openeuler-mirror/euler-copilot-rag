@@ -3,16 +3,17 @@ import io
 import json
 from typing import List
 
+from rag_service.logger import get_logger
 from rag_service.llms.qwen import qwen_llm_call
 from rag_service.llms.spark import spark_llm_call
-from rag_service.logger import get_logger, Module
+
+from rag_service.logger import get_logger
 from rag_service.models.api.models import QueryRequest
 from rag_service.query_generator.query_generator import query_generate
 from rag_service.config import QWEN_PROMPT_TEMPLATE, SPARK_PROMPT_TEMPLATE
-from rag_service.exceptions import ElasitcsearchEmptyKeyException, LlmAnswerException, LlmRequestException, PostgresQueryException
+from rag_service.exceptions import LlmAnswerException, LlmRequestException, PostgresQueryException
 
-logger = get_logger(module=Module.APP)
-llm_logger = get_logger(module=Module.LLM_RESULT)
+logger = get_logger()
 
 llm_prompt_map = {
     "qwen": QWEN_PROMPT_TEMPLATE,

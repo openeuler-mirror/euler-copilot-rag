@@ -6,8 +6,8 @@ import uvicorn
 from dotenv import load_dotenv
 
 from rag_service.logger import get_logger
+from rag_service.logger import log_config
 from rag_service.rag_app.router import routers
-from rag_service.logger import UVICORN_LOG_CONFIG
 from rag_service.models.database.models import create_db_and_tables
 from rag_service.utils.cryptohub import CryptoHub
 
@@ -34,7 +34,7 @@ def main():
     configure()
     try:
         uvicorn.run(app, host=os.getenv("UVICORN_IP"), port=int(os.getenv("UVICORN_PORT")),
-                    log_config=UVICORN_LOG_CONFIG,
+                    log_config=log_config,
                     proxy_headers=True, forwarded_allow_ips='*',
                     ssl_certfile=os.getenv("SSL_CERTFILE"),
                     ssl_keyfile=os.getenv("SSL_KEYFILE"),

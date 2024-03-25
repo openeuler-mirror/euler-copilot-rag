@@ -7,7 +7,7 @@ from typing import List
 import requests
 from fastapi import HTTPException
 
-from rag_service.logger import get_logger, Module
+from rag_service.logger import get_logger
 from rag_service.utils.cryptohub import CryptoHub
 from rag_service.exceptions import TokenCheckFailed
 from rag_service.models.api.models import QueryRequest
@@ -16,8 +16,7 @@ from rag_service.session.session_manager import get_session_manager
 from rag_service.query_generator.query_generator import query_generate
 from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, PROMPT_TEMPLATE, MAX_TOKENS
 
-logger = get_logger(module=Module.APP)
-llm_logger = get_logger(module=Module.LLM_RESULT)
+logger = get_logger()
 session_manager = get_session_manager()
 
 llm_prompt_map = {

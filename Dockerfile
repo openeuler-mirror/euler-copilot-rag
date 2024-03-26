@@ -24,10 +24,6 @@ RUN mkdir -p ./rag_service/utils/init &&\
 
 RUN chmod -R 750 /home/eulercopilot &&\
     chmod -R 550 /rag-service &&\
-    chmod -R 550 /rag-service/rag_service/* &&\
-    chmod -R 600 /rag-service/*.crt &&\
-    chmod -R 600 /rag-service/*.key &&\
-    chmod -R 640 /rag-service/.env &&\
     chmod -R 500 /rag-service/rag_service/utils/cryptohub.py
 
 CMD ["python3", "/rag-service/rag_service/rag_app/app.py"]

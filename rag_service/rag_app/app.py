@@ -14,7 +14,7 @@ from rag_service.utils.cryptohub import CryptoHub
 create_db_and_tables()
 
 # Load the environment variables
-load_dotenv()
+load_dotenv("/config/.env")
 
 app = fastapi.FastAPI(docs_url=None, redoc_url=None)
 

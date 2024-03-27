@@ -7,8 +7,8 @@ import json
 import os
 import shutil
 
-from apps.common.security import Security
-from apps.logger import get_logger
+from rag_service.security.util import Security
+from rag_service.logger import get_logger
 
 
 class CryptoHub:

@@ -18,12 +18,7 @@ USER eulercopilot
 
 RUN pip3 install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-RUN mkdir -p ./rag_service/utils/init &&\
-    python3 rag_service/utils/cryptohub.py --in_dir /config/init &&\
-    rm -rf /config/init
-
 RUN chmod -R 750 /home/eulercopilot &&\
-    chmod -R 550 /rag-service &&\
-    chmod -R 500 /rag-service/rag_service/utils/cryptohub.py
+    chmod -R 550 /rag-service
 
 CMD ["python3", "/rag-service/rag_service/rag_app/app.py"]

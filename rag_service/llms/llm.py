@@ -8,7 +8,7 @@ import requests
 from fastapi import HTTPException
 
 from rag_service.logger import get_logger
-from rag_service.utils.cryptohub import CryptoHub
+from rag_service.security.cryptohub import CryptoHub
 from rag_service.exceptions import TokenCheckFailed
 from rag_service.models.api.models import QueryRequest
 from rag_service.exceptions import ElasitcsearchEmptyKeyException

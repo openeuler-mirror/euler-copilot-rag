@@ -27,7 +27,7 @@ from rag_service.models.enums import (
     EmbeddingModel,
     UpdateOriginalDocumentType,
 )
-from rag_service.utils.cryptohub import CryptoHub
+from rag_service.security.cryptohub import CryptoHub
 from dotenv import load_dotenv
 
 # Load the environment variables

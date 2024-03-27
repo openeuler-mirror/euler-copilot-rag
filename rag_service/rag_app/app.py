@@ -9,12 +9,12 @@ from rag_service.logger import get_logger
 from rag_service.logger import log_config
 from rag_service.rag_app.router import routers
 from rag_service.models.database.models import create_db_and_tables
-from rag_service.utils.cryptohub import CryptoHub
+from rag_service.security.cryptohub import CryptoHub
 
 create_db_and_tables()
 
 # Load the environment variables
-load_dotenv()
+load_dotenv("/config/.env")
 
 app = fastapi.FastAPI(docs_url=None, redoc_url=None)
 

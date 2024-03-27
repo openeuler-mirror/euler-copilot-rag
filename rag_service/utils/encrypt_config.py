@@ -5,8 +5,8 @@ import json
 import os
 import stat
 
-from apps.common.security import Security
-from apps.common.cryptohub import CryptoHub
+from rag_service.security.util import Security
+from rag_service.security.cryptohub import CryptoHub
 
 
 def generate_key_config(plaintext):

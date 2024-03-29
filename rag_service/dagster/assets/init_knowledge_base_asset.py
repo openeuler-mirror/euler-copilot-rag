@@ -1,16 +1,17 @@
 import uuid
 import shutil
 import itertools
+import os
 
 from uuid import UUID
 from typing import List, Tuple
 from more_itertools import chunked
-from sqlmodel import Session, select
+from sqlalchemy import select
 from langchain.schema import Document
 from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut, DynamicOutput, RetryPolicy
 
 
-from rag_service.database import engine
+from rag_service.models.database.models import yield_session
 from rag_service.document_loaders.loader import load_file
 from rag_service.models.enums import VectorizationJobStatus
 from rag_service.models.generic.models import OriginalDocument
@@ -20,18 +21,16 @@ from rag_service.original_document_fetchers import select_fetcher, Fetcher
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
 from rag_service.models.database.models import VectorStore, VectorizationJob, KnowledgeBaseAsset
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir, parse_asset_partition_key
-from rag_service.config import VECTORIZATION_CHUNK_SIZE, REMOTE_EMBEDDING_ENDPOINT, EMBEDDING_CHUNK_SIZE
+from rag_service.config import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.models.database.models import OriginalDocument as OriginalDocumentEntity, KnowledgeBase
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
-
+from dotenv import load_dotenv
+load_dotenv()
 
 @op(retry_policy=RetryPolicy(max_retries=3))
 def change_vectorization_job_status_to_started(context: OpExecutionContext):
-    with Session(engine) as session:
-        job = session.exec(
-            select(VectorizationJob)
-            .where(VectorizationJob.id == UUID(context.op_config['job_id']))
-        ).one()
+    with yield_session() as session:
+        job = session.query(VectorizationJob).filter(VectorizationJob.id == UUID(context.op_config['job_id'])).one()
         change_vectorization_job_status(session, job, VectorizationJobStatus.STARTED)
 
 
@@ -40,14 +39,11 @@ def fetch_original_documents(context: OpExecutionContext):
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
     knowledge_base_asset_dir = get_knowledge_base_asset_root_dir(knowledge_base_serial_number,
                                                                  knowledge_base_asset_name)
-    with Session(engine) as session:
-        knowledge_base_asset = session.exec(
-            select(KnowledgeBaseAsset)
-            .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
-            .where(
+    with yield_session() as session:
+        knowledge_base_asset = session.query(KnowledgeBaseAsset).join(
+            KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id).filter(
                 KnowledgeBase.sn == knowledge_base_serial_number,
                 KnowledgeBaseAsset.name == knowledge_base_asset_name
-            )
         ).one()
 
     fetcher: Fetcher = select_fetcher(knowledge_base_asset.asset_type)
@@ -77,17 +73,14 @@ def embedding_documents(
     original_documents, documents = ins
 
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
-    with Session(engine) as session:
-        knowledge_base_asset = session.exec(
-            select(KnowledgeBaseAsset)
-            .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
-            .where(
+    with yield_session() as session:
+        knowledge_base_asset = session.query(
+            KnowledgeBaseAsset).join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id).filter(
                 KnowledgeBase.sn == knowledge_base_serial_number,
                 KnowledgeBaseAsset.name == knowledge_base_asset_name
-            )
         ).one()
 
-    remote_embedding = RemoteEmbedding(REMOTE_EMBEDDING_ENDPOINT)
+    remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
     embeddings = list(
         itertools.chain.from_iterable(
             [
@@ -109,7 +102,7 @@ def save_to_vector_store(
     original_documents, documents, embeddings = ins
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
 
-    with Session(engine) as session:
+    with yield_session() as session:
         knowledge_base_asset = get_knowledge_base_asset(
             session,
             knowledge_base_serial_number,
@@ -131,25 +124,13 @@ def save_original_documents_to_db(
     original_documents, vector_store_name = ins
 
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
-    with Session(engine) as session:
-        vector_store = session.exec(
-            select(VectorStore)
-            .join(KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id)
-            .where(
-                KnowledgeBaseAsset.name == knowledge_base_asset_name,
-                VectorStore.name == vector_store_name
-            )
-        ).one_or_none()
+    with yield_session() as session:
+        vector_store = session.query(VectorStore).join(KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id).filter(
+            KnowledgeBaseAsset.name == knowledge_base_asset_name, VectorStore.name == vector_store_name).one_or_none()
 
         if not vector_store:
-            knowledge_base_asset = session.exec(
-                select(KnowledgeBaseAsset)
-                .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
-                .where(
-                    KnowledgeBase.sn == knowledge_base_serial_number,
-                    KnowledgeBaseAsset.name == knowledge_base_asset_name
-                )
-            ).one()
+            knowledge_base_asset = session.query(KnowledgeBaseAsset).join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id).filter(
+                KnowledgeBase.sn == knowledge_base_serial_number, KnowledgeBaseAsset.name == knowledge_base_asset_name).one()
             vector_store = VectorStore(name=vector_store_name)
             vector_store.knowledge_base_asset = knowledge_base_asset
 
@@ -185,11 +166,8 @@ def delete_original_documents(context: OpExecutionContext):
 
 @op(ins={'no_input': In(Nothing)}, retry_policy=RetryPolicy(max_retries=3))
 def change_vectorization_job_status_to_success(context: OpExecutionContext):
-    with Session(engine) as session:
-        job = session.exec(
-            select(VectorizationJob)
-            .where(VectorizationJob.id == UUID(context.op_config['job_id']))
-        ).one()
+    with yield_session() as session:
+        job = session.query(VectorizationJob).filter(VectorizationJob.id == UUID(context.op_config['job_id'])).one()
         change_vectorization_job_status(session, job, VectorizationJobStatus.SUCCESS)
 
 

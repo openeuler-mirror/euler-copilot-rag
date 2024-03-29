@@ -1,14 +1,15 @@
 import collections
 import itertools
 import shutil
+import os
 
 from typing import List, Tuple, Set
 from more_itertools import chunked
 from langchain.schema import Document
-from sqlmodel import Session, select, col
+from sqlalchemy import select
 from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut, DynamicOutput, RetryPolicy
 
-from rag_service.database import engine
+from rag_service.models.database.models import yield_session
 from rag_service.document_loaders.loader import load_file
 from rag_service.models.generic.models import OriginalDocument
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
@@ -18,19 +19,17 @@ from rag_service.vectorstore.postgresql.manage_pg import pg_insert_data, pg_dele
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
 from rag_service.models.database.models import VectorStore, VectorizationJob, KnowledgeBaseAsset
 from rag_service.utils.dagster_util import parse_asset_partition_key, get_knowledge_base_asset_root_dir
-from rag_service.config import VECTORIZATION_CHUNK_SIZE, REMOTE_EMBEDDING_ENDPOINT, EMBEDDING_CHUNK_SIZE
+from rag_service.config import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
 from rag_service.models.database.models import OriginalDocument as OriginalDocumentEntity, KnowledgeBase, \
     UpdatedOriginalDocument
-
+from dotenv import load_dotenv
+load_dotenv()
 
 @op(retry_policy=RetryPolicy(max_retries=3))
 def change_update_vectorization_job_status_to_started(context: OpExecutionContext):
-    with Session(engine) as session:
-        job = session.exec(
-            select(VectorizationJob)
-            .where(VectorizationJob.id == context.op_config['job_id'])
-        ).one()
+    with yield_session() as session:
+        job = session.query(VectorizationJob).filter(VectorizationJob.id == context.op_config['job_id']).one()
         change_vectorization_job_status(session, job, VectorizationJobStatus.STARTED)
 
 
@@ -42,7 +41,7 @@ def fetch_updated_original_document_set(
     # 获取上传的文档目录/vectorize_data/kb/kba
     knowledge_base_asset_dir = get_knowledge_base_asset_root_dir(knowledge_base_serial_number,
                                                                  knowledge_base_asset_name)
-    with Session(engine) as session:
+    with yield_session() as session:
         knowledge_base_asset = get_knowledge_base_asset(session, knowledge_base_serial_number,
                                                         knowledge_base_asset_name)
         # 获取当前资产下的所有文档(vector_stores)
@@ -85,17 +84,14 @@ def delete_pg_documents(
     # 删除ES上的内容
     deleted_original_document_dict = collections.defaultdict(list)
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
-    with Session(engine) as session:
-        deleted_term = session.exec(
-            select(VectorStore.name, OriginalDocumentEntity.source)
-            .join(VectorStore, VectorStore.id == OriginalDocumentEntity.vs_id)
-            .join(KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id)
-            .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
-            .where(
+    with yield_session() as session:
+        deleted_term = session.query(VectorStore.name, OriginalDocumentEntity.source).join(
+            VectorStore, VectorStore.id == OriginalDocumentEntity.vs_id).join(
+                KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id).join(
+                    KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id).filter(
                 KnowledgeBase.sn == knowledge_base_serial_number,
                 KnowledgeBaseAsset.name == knowledge_base_asset_name,
-                col(OriginalDocumentEntity.source).in_(union_deleted_original_document_set)
-            )
+                OriginalDocumentEntity.source.in_(union_deleted_original_document_set)
         ).all()
 
         for vector_store_name, deleted_original_document_source in deleted_term:
@@ -114,19 +110,16 @@ def delete_database_original_documents(
      uploaded_original_documents) = ins
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
 
-    with Session(engine) as session:
+    with yield_session() as session:
         # 刪除数据库内容
-        deleted_original_document_terms = session.exec(
-            select(OriginalDocumentEntity)
-            .join(VectorStore, VectorStore.id == OriginalDocumentEntity.vs_id)
-            .join(KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id)
-            .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
-            .where(
-                col(OriginalDocumentEntity.source).in_(union_deleted_original_document_set),
+        deleted_original_document_terms = session.query(OriginalDocumentEntity).join(
+            VectorStore, VectorStore.id == OriginalDocumentEntity.vs_id).join(
+                KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id).join(
+                    KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id).filter(
+                OriginalDocumentEntity.source.in_(union_deleted_original_document_set),
                 KnowledgeBase.sn == knowledge_base_serial_number,
                 KnowledgeBaseAsset.name == knowledge_base_asset_name
-            )
-        ).all()
+            ).all()
 
         for deleted_original_document_term in deleted_original_document_terms:
             session.delete(deleted_original_document_term)
@@ -142,7 +135,7 @@ def insert_update_record(
 ) -> List[OriginalDocument]:
     (union_deleted_original_document_set, updated_original_document_set, incremented_original_document_set,
      uploaded_original_documents) = ins
-    with Session(engine) as session:
+    with yield_session() as session:
         for deleted_original_document_source in (union_deleted_original_document_set - updated_original_document_set):
             delete_database = UpdatedOriginalDocument(
                 update_type=UpdateOriginalDocumentType.DELETE,
@@ -201,11 +194,11 @@ def embedding_update_documents(
     updated_original_documents, documents = ins
 
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
-    with Session(engine) as session:
+    with yield_session() as session:
         knowledge_base_asset = get_knowledge_base_asset(session, knowledge_base_serial_number,
                                                         knowledge_base_asset_name)
         vector_stores = knowledge_base_asset.vector_stores
-        remote_embedding = RemoteEmbedding(REMOTE_EMBEDDING_ENDPOINT)
+        remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
         # embeddings = list(
         #     itertools.chain.from_iterable(
         #         [
@@ -250,15 +243,11 @@ def save_update_original_documents_to_db(
 ):
     updated_original_documents, vector_store_name = ins
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
-    with Session(engine) as session:
-        vector_store = session.exec(
-            select(VectorStore)
-            .join(KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id)
-            .where(
+    with yield_session() as session:
+        vector_store = session.query(VectorStore).join(KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id).filter(
                 KnowledgeBaseAsset.name == knowledge_base_asset_name,
                 VectorStore.name == vector_store_name
-            )
-        ).one_or_none()
+            ).one_or_none()
 
         if not vector_store:
             knowledge_base_asset = get_knowledge_base_asset(session, knowledge_base_serial_number,
@@ -286,11 +275,8 @@ def no_update_op_fan_in():
 
 @op(ins={'no_input': In(Nothing)}, retry_policy=RetryPolicy(max_retries=3))
 def change_update_vectorization_job_status_to_success(context: OpExecutionContext):
-    with Session(engine) as session:
-        job = session.exec(
-            select(VectorizationJob)
-            .where(VectorizationJob.id == context.op_config['job_id'])
-        ).one()
+    with yield_session() as session:
+        job = session.query(VectorizationJob).filter(VectorizationJob.id == context.op_config['job_id']).one()
         change_vectorization_job_status(session, job, VectorizationJobStatus.SUCCESS)
 
 

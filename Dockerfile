@@ -1,38 +1,21 @@
 FROM openeuler/openeuler:22.03-lts-sp1
 
-RUN yum makecache && \
-    yum install -y python3 python3-pip shadow-utils && \
-    yum clean all
-    
-
 COPY ./ /rag-service/
 WORKDIR /rag-service
+ENV PYTHONPATH /rag-service
+ENV PATH /home/eulercopilot/.local/bin:$PATH
+
+RUN yum makecache &&\
+    yum update -y &&\
+    yum install -y python3 python3-pip shadow-utils &&\
+    yum clean all &&\
+    pip3 install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 RUN mkdir /dagster_home && cp /rag-service/dagster.yaml /rag-service/workspace.yaml /rag-service/pyproject.toml /dagster_home &&\
-    pip install aiofiles \
-    concurrent-log-handler \
-    dagster\
-    dagster-postgres \
-    dagster-webserver \
-    fastapi \
-    fastapi-pagination \
-    langchain \
-    more-itertools \
-    sqlmodel \
-    starlette \
-    uvicorn \
-    sseclient-py \
-    sseclient \
-    'urllib3<2.0.0' \
-    psycopg2-binary \
-    itsdangerous\
-    python-multipart \
-    python-docx \
-    pandas \
-    pgvector \
-    langchain-community \
-    chardet \
-    'pydantic<2.0.0' -i https://pypi.tuna.tsinghua.edu.cn/simple
+    mkdir /config && python3 /rag-service/rag_service/utils/encrypt_config.py --in_file /rag-service/rag_service/utils/init/secret.json &&\
+    cp /rag-service/encrypted_config.json /config &&\
+    rm -rf /rag-service/rag_service/utils/init
+    
 
 ENV PYTHONPATH /rag-service
 ENV DAGSTER_HOME /dagster_home

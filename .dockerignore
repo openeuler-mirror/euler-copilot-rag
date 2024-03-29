@@ -1,0 +1,7 @@
+.vscode
+**/__pycache__/
+**/*.pyc
+Dockerfile
+.dockerignore
+.vscode
+start.sh

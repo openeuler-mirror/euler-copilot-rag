@@ -1,199 +1,207 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import datetime
-import uuid
-from typing import Optional, List, Dict, Any
-from uuid import UUID
-
-from sqlalchemy import UniqueConstraint
-from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, JSON
+from uuid import uuid4
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    JSON,
+    String,
+    UniqueConstraint,
+    UnicodeText,
+    Enum as SAEnum,
+    Integer,
+    DateTime,
+    create_engine,
+    func
+)
+from pgvector.sqlalchemy import Vector
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.types import TIMESTAMP, UUID
 
 from rag_service.constants import DEFAULT_UPDATE_TIME_INTERVAL_SECOND
-from rag_service.models.enums import VectorizationJobStatus, VectorizationJobType, AssetType, EmbeddingModel, \
-    UpdateOriginalDocumentType
+from rag_service.models.enums import (
+    VectorizationJobStatus,
+    VectorizationJobType,
+    AssetType,
+    EmbeddingModel,
+    UpdateOriginalDocumentType,
+)
+from rag_service.security.cryptohub import CryptoHub
+from dotenv import load_dotenv
+
+# Load the environment variables
+load_dotenv()
+
+Base = declarative_base()
 
 
-
-class ServiceConfig(SQLModel, table=True):
+class ServiceConfig(Base):
     __tablename__ = 'service_config'
 
-    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str = Field(unique=True)
-    value: str
+    id = Column(UUID, default=uuid4, primary_key=True)
+    name = Column(String, unique=True)
+    value = Column(UnicodeText)
 
 
-class KnowledgeBase(SQLModel, table=True):
+class KnowledgeBase(Base):
     __tablename__ = 'knowledge_base'
 
-    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str
-    sn: str = Field(unique=True)  # 知识库名唯一标识
-    owner: str
-    created_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True))
-    )
-    updated_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
-    )
+    id = Column(UUID, default=uuid4, primary_key=True)
+    name = Column(String)
+    sn = Column(String, unique=True)
+    owner = Column(String)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
 
-    knowledge_base_assets: List['KnowledgeBaseAsset'] = Relationship(
-        back_populates='knowledge_base',
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
+    knowledge_base_assets = relationship(
+        "KnowledgeBaseAsset", back_populates="knowledge_base", cascade="all, delete-orphan")
 
 
-class KnowledgeBaseAsset(SQLModel, table=True):
+class KnowledgeBaseAsset(Base):
     __tablename__ = 'knowledge_base_asset'
     __table_args__ = (
         UniqueConstraint('kb_id', 'name', name='knowledge_base_asset_name_uk'),
     )
 
-    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str
-    asset_type: AssetType
-    asset_uri: Optional[str]
-    embedding_model: Optional[EmbeddingModel]
-    vectorization_config: Optional[Dict[Any, Any]] = Field(default={}, sa_column=Column(JSON))
-    created_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True))
-    )
-    updated_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
-    )
+    id = Column(UUID, default=uuid4, primary_key=True)
+    name = Column(String)
+    asset_type = Column(SAEnum(AssetType))
+    asset_uri = Column(String, nullable=True)
+    embedding_model = Column(SAEnum(EmbeddingModel), nullable=True)
+    vectorization_config = Column(JSON, default=dict)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
 
-    kb_id: UUID = Field(foreign_key='knowledge_base.id')
-    knowledge_base: KnowledgeBase = Relationship(
-        back_populates='knowledge_base_assets',
-    )
+    kb_id = Column(UUID, ForeignKey('knowledge_base.id'))
+    knowledge_base = relationship("KnowledgeBase", back_populates="knowledge_base_assets")
 
-    vector_stores: List['VectorStore'] = Relationship(
-        back_populates='knowledge_base_asset',
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    vector_stores = relationship("VectorStore", back_populates="knowledge_base_asset", cascade="all, delete-orphan")
+    incremental_vectorization_job_schedule = relationship(
+        "IncrementalVectorizationJobSchedule",
+        uselist=False,
+        cascade="all, delete-orphan",
+        back_populates="knowledge_base_asset"
     )
-    incremental_vectorization_job_schedule: Optional['IncrementalVectorizationJobSchedule'] = Relationship(
-        sa_relationship_kwargs={'uselist': False, "cascade": "all, delete-orphan"},
-        back_populates='knowledge_base_asset',
-    )
-    vectorization_jobs: List['VectorizationJob'] = Relationship(
-        back_populates='knowledge_base_asset',
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
+    vectorization_jobs = relationship(
+        "VectorizationJob", back_populates="knowledge_base_asset", cascade="all, delete-orphan")
 
 
-class VectorStore(SQLModel, table=True):
+class VectorStore(Base):
     __tablename__ = 'vector_store'
     __table_args__ = (
         UniqueConstraint('kba_id', 'name', name='vector_store_name_uk'),
     )
 
-    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str
-    created_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True))
-    )
-    updated_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
-    )
+    id = Column(UUID, default=uuid4, primary_key=True)
+    name = Column(String)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
 
-    original_documents: List['OriginalDocument'] = Relationship(
-        back_populates='vector_store',
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
+    original_documents = relationship("OriginalDocument", back_populates="vector_store", cascade="all, delete-orphan")
 
-    kba_id: UUID = Field(foreign_key='knowledge_base_asset.id')
-    knowledge_base_asset: KnowledgeBaseAsset = Relationship(
-        back_populates='vector_stores',
-    )
+    kba_id = Column(UUID, ForeignKey('knowledge_base_asset.id'))
+    knowledge_base_asset = relationship("KnowledgeBaseAsset", back_populates="vector_stores")
 
 
-class OriginalDocument(SQLModel, table=True):
+class OriginalDocument(Base):
     __tablename__ = 'original_document'
     __table_args__ = (
         UniqueConstraint('vs_id', 'uri', name='kb_doc_uk'),
     )
 
-    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
-    uri: str = Field(index=True)
-    source: str
-    mtime: datetime.datetime = Field(sa_column=Column(DateTime(timezone=True), index=True))
-    created_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True))
-    )
-    updated_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
-    )
+    id = Column(UUID, default=uuid4, primary_key=True)
+    uri = Column(String, index=True)
+    source = Column(String)
+    mtime = Column(TIMESTAMP(timezone=True), index=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
 
-    vs_id: UUID = Field(foreign_key='vector_store.id')
-    vector_store: VectorStore = Relationship(
-        back_populates='original_documents',
-    )
+    vs_id = Column(UUID, ForeignKey('vector_store.id'))
+    vector_store = relationship("VectorStore", back_populates="original_documents")
 
 
-class IncrementalVectorizationJobSchedule(SQLModel, table=True):
+class IncrementalVectorizationJobSchedule(Base):
     __tablename__ = 'incremental_vectorization_job_schedule'
 
-    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
-    created_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True))
-    )
-    updated_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True))
-    )
-    last_updated_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True))
-    )
-    updated_cycle: datetime.timedelta = Field(
-        default=datetime.timedelta(seconds=DEFAULT_UPDATE_TIME_INTERVAL_SECOND),
-    )
-    next_updated_at: datetime.datetime = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True))
-    )
+    id = Column(UUID, default=uuid4, primary_key=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    last_updated_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_cycle = Column(TIMESTAMP, default=DEFAULT_UPDATE_TIME_INTERVAL_SECOND)
+    next_updated_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
-    kba_id: UUID = Field(foreign_key='knowledge_base_asset.id')
-    knowledge_base_asset: KnowledgeBaseAsset = Relationship(back_populates='incremental_vectorization_job_schedule')
+    kba_id = Column(UUID, ForeignKey('knowledge_base_asset.id'))
+    knowledge_base_asset = relationship("KnowledgeBaseAsset", back_populates="incremental_vectorization_job_schedule")
 
 
-class VectorizationJob(SQLModel, table=True):
+class VectorizationJob(Base):
     __tablename__ = 'vectorization_job'
 
-    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
-    status: VectorizationJobStatus
-    job_type: VectorizationJobType
-    created_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True))
-    )
-    updated_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True), onupdate=datetime.datetime.now)
-    )
+    id = Column(UUID, default=uuid4, primary_key=True)
+    status = Column(SAEnum(VectorizationJobStatus))
+    job_type = Column(SAEnum(VectorizationJobType))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
 
-    kba_id: UUID = Field(foreign_key='knowledge_base_asset.id')
-    knowledge_base_asset: KnowledgeBaseAsset = Relationship(back_populates='vectorization_jobs')
+    kba_id = Column(UUID, ForeignKey('knowledge_base_asset.id'))
+    knowledge_base_asset = relationship("KnowledgeBaseAsset", back_populates="vectorization_jobs")
 
-    updated_original_documents: List['UpdatedOriginalDocument'] = Relationship(back_populates='vectorization_job')
+    updated_original_documents = relationship("UpdatedOriginalDocument", back_populates="vectorization_job")
 
 
-class UpdatedOriginalDocument(SQLModel, table=True):
+class UpdatedOriginalDocument(Base):
     __tablename__ = 'updated_original_document'
 
-    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
-    update_type: UpdateOriginalDocumentType
-    source: str
-    created_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.now,
-        sa_column=Column(DateTime(timezone=True))
-    )
+    id = Column(UUID, default=uuid4, primary_key=True)
+    update_type = Column(SAEnum(UpdateOriginalDocumentType))
+    source = Column(String)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
 
-    job_id: UUID = Field(foreign_key='vectorization_job.id')
-    vectorization_job: VectorizationJob = Relationship(back_populates='updated_original_documents')
+    job_id = Column(UUID, ForeignKey('vectorization_job.id'))
+    vectorization_job = relationship("VectorizationJob", back_populates="updated_original_documents")
+
+
+class VectorizeItems(Base):
+    __tablename__ = 'vectorize_items'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    general_text = Column(String())
+    general_text_vector = Column(Vector(1024))
+    source = Column(String())
+    uri = Column(String())
+    mtime = Column(DateTime, default=datetime.datetime.now)
+    extended_metadata = Column(String())
+    index_name = Column(String())
+
+
+engine = create_engine(
+    CryptoHub.query_plaintext_by_config_name('DB_CONNECTION'),
+    pool_size=20,   # 连接池的基本大小
+    max_overflow=80,  # 在连接池已满时允许的最大连接数
+    pool_recycle=300,
+    pool_pre_ping=True
+)
+
+
+def create_db_and_tables():
+    Base.metadata.create_all(engine)
+
+
+def yield_session():
+    return sessionmaker(bind=engine)()

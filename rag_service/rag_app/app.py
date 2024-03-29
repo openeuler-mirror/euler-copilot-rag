@@ -1,35 +1,28 @@
-import fastapi
-import uvicorn
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
 
-from fastapi_pagination import add_pagination
-from fastapi.middleware.cors import CORSMiddleware
-
-from rag_service.logger import UVICORN_LOG_CONFIG
-from rag_service.rag_app.router import routers
-
-from starlette.middleware.sessions import SessionMiddleware
+import fastapi
+import uvicorn
 from dotenv import load_dotenv
 
-load_dotenv()
+from rag_service.logger import get_logger
+from rag_service.logger import log_config
+from rag_service.rag_app.router import routers
+from rag_service.models.database.models import create_db_and_tables
+from rag_service.security.cryptohub import CryptoHub
 
-app = fastapi.FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=""
-)
+create_db_and_tables()
+
+# Load the environment variables
+load_dotenv("/config/.env")
+
+app = fastapi.FastAPI(docs_url=None, redoc_url=None)
+
+logger = get_logger()
 
 
 def configure():
     _configure_router()
-    _configure_pagination()
 
 
 def _configure_router():
@@ -37,14 +30,18 @@ def _configure_router():
         app.include_router(router)
 
 
-def _configure_pagination():
-    add_pagination(app)
-
-
 def main():
     configure()
-    uvicorn.run(app, host=os.getenv("UVICORN_IP"), port=int(os.getenv("UVICORN_PORT")),
-                log_config=UVICORN_LOG_CONFIG, proxy_headers=True, forwarded_allow_ips='*')
+    try:
+        uvicorn.run(app, host=os.getenv("UVICORN_IP"), port=int(os.getenv("UVICORN_PORT")),
+                    log_config=log_config,
+                    proxy_headers=True, forwarded_allow_ips='*',
+                    ssl_certfile=os.getenv("SSL_CERTFILE"),
+                    ssl_keyfile=os.getenv("SSL_KEYFILE"),
+                    ssl_keyfile_password=CryptoHub.query_plaintext_by_config_name("SSL_KEY_PWD")
+                    )
+    except Exception as e:
+        logger.error(e)
 
 
 if __name__ == '__main__':

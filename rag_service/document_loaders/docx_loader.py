@@ -7,9 +7,9 @@ from docx.text.paragraph import Paragraph
 from langchain.docstore.document import Document as Doc
 from langchain.document_loaders.base import BaseLoader
 
-from rag_service.logger import get_logger, Module
+from rag_service.logger import get_logger
 
-logger = get_logger(module=Module.VECTORIZATION)
+logger = get_logger()
 
 
 class DocxLoader(BaseLoader):

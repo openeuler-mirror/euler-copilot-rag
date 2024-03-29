@@ -1,11 +1,11 @@
 from uuid import UUID
 
 from dagster import OpExecutionContext, op, job, In, Nothing
-from sqlmodel import Session, select
+from sqlalchemy import select
 
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def_config, \
     knowledge_base_asset_partitions_def
-from rag_service.database import engine
+from rag_service.models.database.models import yield_session
 from rag_service.models.database.models import VectorizationJob
 from rag_service.models.enums import VectorizationJobStatus
 from rag_service.utils.dagster_util import parse_asset_partition_key
@@ -15,18 +15,15 @@ from rag_service.vectorstore.postgresql.manage_pg import pg_delete_asset
 
 @op
 def change_deleted_vectorization_job_status_to_started(context: OpExecutionContext):
-    with Session(engine) as session:
-        task = session.exec(
-            select(VectorizationJob)
-            .where(VectorizationJob.id == UUID(context.op_config['job_id']))
-        ).one()
+    with yield_session() as session:
+        task = session.query(VectorizationJob).filter(VectorizationJob.id == UUID(context.op_config['job_id'])).one()
         change_vectorization_job_status(session, task, VectorizationJobStatus.STARTED)
 
 
 @op(ins={'no_input': In(Nothing)})
 def delete_knowledge_base_asset_vector_store(context: OpExecutionContext):
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
-    with Session(engine) as session:
+    with yield_session() as session:
         knowledge_base_asset = get_knowledge_base_asset(session, knowledge_base_serial_number,
                                                         knowledge_base_asset_name)
 
@@ -37,7 +34,7 @@ def delete_knowledge_base_asset_vector_store(context: OpExecutionContext):
 @op(ins={'no_input': In(Nothing)})
 def delete_knowledge_base_asset_database(context: OpExecutionContext):
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
-    with Session(engine) as session:
+    with yield_session() as session:
         knowledge_base_asset = get_knowledge_base_asset(session, knowledge_base_serial_number,
                                                         knowledge_base_asset_name)
     session.delete(knowledge_base_asset)

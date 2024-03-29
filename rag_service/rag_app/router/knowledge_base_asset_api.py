@@ -2,9 +2,8 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi_pagination import Page
-from sqlmodel import Session
 
-from rag_service.database import yield_session
+from rag_service.models.database.models import yield_session
 from rag_service.exceptions import (
     ApiRequestValidationError,
     KnowledgeBaseAssetNotExistsException,
@@ -13,7 +12,7 @@ from rag_service.exceptions import (
     DuplicateKnowledgeBaseAssetException, KnowledgeBaseAssetNotInitializedException,
     KnowledgeBaseAssetProductValidationError, KnowledgeBaseAssetJobIsRunning
 )
-from rag_service.logger import get_logger, Module
+from rag_service.logger import get_logger
 from rag_service.models.api.models import CreateKnowledgeBaseAssetReq, InitKnowledgeBaseAssetReq, AssetInfo, \
     OriginalDocumentInfo, UpdateKnowledgeBaseAssetReq
 from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
@@ -22,13 +21,13 @@ from rag_service.rag_app.service.knowledge_base_asset_service import get_kb_asse
     get_kb_asset_original_documents, delete_knowledge_base_asset
 
 router = APIRouter(prefix='/kba', tags=['Knowledge Base Asset'])
-logger = get_logger(module=Module.APP)
+logger = get_logger()
 
 
 @router.post('/create')
 async def create(
         req: CreateKnowledgeBaseAssetReq,
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ) -> str:
     try:
         await knowledge_base_asset_service.create_knowledge_base_asset(req, session)
@@ -41,7 +40,7 @@ async def create(
 async def init(
         req: InitKnowledgeBaseAssetReq = Depends(),
         files: List[UploadFile] = File(None),
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ) -> str:
     try:
         await knowledge_base_asset_service.init_knowledge_base_asset(req, files, session)
@@ -97,7 +96,7 @@ async def init(
 async def update(
         req: UpdateKnowledgeBaseAssetReq = Depends(),
         files: List[UploadFile] = File(None),
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ) -> str:
     try:
         await knowledge_base_asset_service.update_knowledge_base_asset(req, files, session)
@@ -143,7 +142,7 @@ async def update(
 @router.get('/list', response_model=Page[AssetInfo])
 async def get_asset_list(
         kb_sn: str,
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ) -> Page[AssetInfo]:
     return get_kb_asset_list(kb_sn, session)
 
@@ -152,7 +151,7 @@ async def get_asset_list(
 async def get_original_documents(
         kb_sn: str,
         asset_name: str,
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ) -> Page[OriginalDocumentInfo]:
     return get_kb_asset_original_documents(kb_sn, asset_name, session)
 
@@ -161,7 +160,7 @@ async def get_original_documents(
 def delete_kba(
         kb_sn: str,
         asset_name: str,
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ):
     try:
         delete_knowledge_base_asset(kb_sn, asset_name, session)

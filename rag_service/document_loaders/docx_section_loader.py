@@ -10,10 +10,10 @@ from docx.text.paragraph import Paragraph
 from langchain.docstore.document import Document as Doc
 
 from rag_service.document_loaders.docx_loader import DocxLoader
-from rag_service.logger import get_logger, Module
+from rag_service.logger import get_logger
 from rag_service.text_splitters.chinese_tsplitter import ChineseTextSplitter
 
-logger = get_logger(module=Module.VECTORIZATION)
+logger = get_logger()
 
 
 def iter_block_items(parent: Document):

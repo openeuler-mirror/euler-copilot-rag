@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import datetime
 import inspect
 from typing import Optional, Type, Dict, Any, List

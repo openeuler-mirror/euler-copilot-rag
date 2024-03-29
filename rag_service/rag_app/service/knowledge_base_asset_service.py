@@ -4,8 +4,8 @@ from typing import List, Optional
 import aiofiles
 from fastapi import UploadFile
 from fastapi_pagination import Page
-from fastapi_pagination.ext.sqlmodel import paginate
-from sqlmodel import Session, select
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import select
 
 from rag_service.constants import DELETE_ORIGINAL_DOCUMENT_METADATA, DELETE_ORIGINAL_DOCUMENT_METADATA_KEY
 from rag_service.exceptions import (
@@ -22,14 +22,14 @@ from rag_service.models.enums import AssetType, VectorizationJobStatus, Vectoriz
 from rag_service.models.generic.models import VectorizationConfig
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir
 from rag_service.utils.db_util import validate_knowledge_base, get_knowledge_base_asset, get_running_knowledge_base_asset
-from rag_service.logger import Module, get_logger
+from rag_service.logger import get_logger
 
-logger = get_logger(module=Module.VECTORIZATION)
+logger = get_logger()
 
 
 async def create_knowledge_base_asset(
         req: CreateKnowledgeBaseAssetReq,
-        session: Session
+        session
 ) -> None:
     knowledge_base = validate_knowledge_base(session, req.kb_sn)
     _validate_create_knowledge_base_asset(req.name, knowledge_base)
@@ -54,7 +54,7 @@ def _validate_create_knowledge_base_asset(
 async def update_knowledge_base_asset(
         req: UpdateKnowledgeBaseAssetReq,
         files: List[UploadFile],
-        session: Session
+        session
 ) -> None:
     knowledge_base_asset = get_knowledge_base_asset(session, req.kb_sn, req.asset_name)
 
@@ -99,7 +99,7 @@ def _save_deleted_original_document_to_json(knowledge_base_asset, req):
 async def init_knowledge_base_asset(
         req: InitKnowledgeBaseAssetReq,
         files: List[UploadFile],
-        session: Session
+        session
 ) -> None:
     initialing_knowledge_base_asset = get_running_knowledge_base_asset(session, req.kb_sn, req.name)
     if initialing_knowledge_base_asset:
@@ -207,7 +207,7 @@ async def _save_uploaded_files(
 
 def get_kb_asset_list(
         kb_sn: str,
-        session: Session
+        session
 ) -> Page[AssetInfo]:
     return paginate(
         session,
@@ -222,7 +222,7 @@ def get_kb_asset_list(
 def get_kb_asset_original_documents(
         kb_sn: str,
         asset_name: str,
-        session: Session
+        session
 ) -> Page[OriginalDocumentInfo]:
     return paginate(
         session,
@@ -243,7 +243,7 @@ def parse_uri_to_get_product_info(asset_uri: str):
     return lang, value, version
 
 
-def delete_knowledge_base_asset(kb_sn: str, asset_name: str, session: Session):
+def delete_knowledge_base_asset(kb_sn: str, asset_name: str, session):
     knowledge_base_asset = get_knowledge_base_asset(session, kb_sn, asset_name)
 
     if not knowledge_base_asset.vectorization_jobs:

@@ -5,9 +5,9 @@ import pandas as pd
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
 
-from rag_service.logger import get_logger, Module
+from rag_service.logger import get_logger
 
-logger = get_logger(module=Module.VECTORIZATION)
+logger = get_logger()
 
 
 class ExcelLoader(BaseLoader):

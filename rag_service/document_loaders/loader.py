@@ -12,11 +12,11 @@ from rag_service.config import SENTENCE_SIZE
 from rag_service.document_loaders.docx_loader import DocxLoader
 from rag_service.document_loaders.docx_section_loader import DocxLoaderByHead
 from rag_service.document_loaders.excel_loader import ExcelLoader
-from rag_service.logger import get_logger, Module
+from rag_service.logger import get_logger
 from rag_service.models.generic.models import OriginalDocument
 from rag_service.text_splitters.chinese_tsplitter import ChineseTextSplitter
 
-logger = get_logger(module=Module.VECTORIZATION)
+logger = get_logger()
 
 spec_loader_config = {
     ".docx": {

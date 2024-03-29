@@ -1,24 +1,41 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+
 import logging
 import os
-from enum import Enum, auto
-from pathlib import Path
-from typing import Dict
-
-from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
-
-from rag_service.env import EnvEnum
+import time
+from logging.handlers import TimedRotatingFileHandler
 from dotenv import load_dotenv
-
 load_dotenv()
 
-class Module(Enum):
-    APP = auto()
-    DAGSTER = auto()
-    LLM_RESULT = auto()
-    VECTORIZATION = auto()
+class SizedTimedRotatingFileHandler(TimedRotatingFileHandler):
+    def __init__(self, filename, max_bytes=0, backup_count=0, encoding=None,
+                 delay=False, when='midnight', interval=1, utc=False):
+        super().__init__(filename, when, interval, backup_count, encoding, delay, utc)
+        self.max_bytes = max_bytes
+
+    def shouldRollover(self, record):
+        if self.stream is None:
+            self.stream = self._open()
+        if self.max_bytes > 0:
+            msg = "%s\n" % self.format(record)
+            self.stream.seek(0, 2)
+            if self.stream.tell()+len(msg) >= self.max_bytes:
+                return 1
+        t = int(time.time())
+        if t >= self.rolloverAt:
+            return 1
+        return 0
+
+    def doRollover(self):
+        self.stream.close()
+        os.chmod(self.baseFilename, 0o440)
+        TimedRotatingFileHandler.doRollover(self)
+        os.chmod(self.baseFilename, 0o640)
 
 
-if os.getenv("RAG_ENV") == EnvEnum.DEV.name:
+LOG_FORMAT = '[{asctime}][{levelname}][{name}][P{process}][T{thread}][{message}][{funcName}({filename}:{lineno})]'
+
+if os.getenv("RAG_ENV") == "stdout":
     handlers = {
         "default": {
             "formatter": "default",
@@ -27,66 +44,59 @@ if os.getenv("RAG_ENV") == EnvEnum.DEV.name:
         },
     }
 else:
-    LOG_DIR = Path.home().absolute() / 'rag_logs'
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR = './logs'
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR, 0o750)
     handlers = {
         'default': {
             'formatter': 'default',
-            'class': 'concurrent_log_handler.ConcurrentTimedRotatingFileHandler',
-            'filename': str(LOG_DIR / 'uvicorn.log'),
-            'backupCount': 30,
-            'when': 'MIDNIGHT'
+            'class': 'rag_service.logger.SizedTimedRotatingFileHandler',
+            'filename': f"{LOG_DIR}/app.log",
+            'backup_count': 30,
+            'when': 'MIDNIGHT',
+            'max_bytes': 5000000
         }
     }
-    _module_to_log_file: Dict[Module, Path] = {
-        Module.APP: LOG_DIR / 'app.log',
-        Module.DAGSTER: LOG_DIR / 'dagster.log',
-        Module.LLM_RESULT: LOG_DIR / 'llm_result.log',
-        Module.VECTORIZATION: LOG_DIR / 'vectorization.log'
-    }
 
-LOG_FORMAT = '[{asctime}][{levelname}][{name}][P{process}][T{thread}][{message}][{funcName}({filename}:{lineno})]'
-UVICORN_LOG_CONFIG = {
-    'version': 1,
+log_config = {
+    "version": 1,
     'disable_existing_loggers': False,
-    'formatters': {
-        'default': {
+    "formatters": {
+        "default": {
             '()': 'logging.Formatter',
             'fmt': LOG_FORMAT,
             'style': '{'
         }
     },
     "handlers": handlers,
-    'loggers': {
-        'uvicorn': {'handlers': ['default'], 'level': 'INFO', 'propagate': False},
-        'uvicorn.error': {'handlers': ['default'], 'level': 'INFO', 'propagate': False},
-        'uvicorn.access': {'handlers': ['default'], 'level': 'INFO', 'propagate': False},
-    },
+    "loggers": {
+        "uvicorn": {
+            "level": "INFO",
+            "handlers": ["default"],
+            'propagate': False
+        },
+        "uvicorn.errors": {
+            "level": "INFO",
+            "handlers": ["default"],
+            'propagate': False
+        },
+        "uvicorn.access": {
+            "level": "INFO",
+            "handlers": ["default"],
+            'propagate': False
+        }
+    }
 }
 
-_name_to_level: Dict[str, int] = {
-    'CRITICAL': logging.CRITICAL,
-    'FATAL': logging.FATAL,
-    'ERROR': logging.ERROR,
-    'WARN': logging.WARNING,
-    'WARNING': logging.WARNING,
-    'INFO': logging.INFO,
-    'DEBUG': logging.DEBUG,
-    'NOTSET': logging.NOTSET,
-}
 
-
-def get_logger(log_level: str = 'INFO', module: Module = Module.APP) -> logging.Logger:
-    logger = logging.getLogger(module.name)
-    if not logger.handlers:
-        logger.setLevel(_name_to_level.get(log_level.upper(), logging.INFO))
-        if os.getenv("RAG_ENV") != EnvEnum.DEV.name:
-            _set_handler(logger, str(_module_to_log_file[module]))
+def get_logger():
+    logger = logging.getLogger('uvicorn')
+    if os.getenv("RAG_ENV") != "stdout" and not logger.handlers:
+        logger.setLevel(logging.INFO)
+        rotate_handler = SizedTimedRotatingFileHandler(
+            filename=f'{LOG_DIR}/app.log', when='MIDNIGHT', backup_count=30, max_bytes=5000000)
+        formatter = logging.Formatter(fmt=LOG_FORMAT, style='{')
+        rotate_handler.setFormatter(formatter)
+        logger.addHandler(rotate_handler)
+        logger.propagate = False
     return logger
-
-
-def _set_handler(logger: logging.Logger, log_file_path: str) -> None:
-    rotate_handler = ConcurrentTimedRotatingFileHandler(filename=log_file_path, when='MIDNIGHT', backupCount=30)
-    formatter = logging.Formatter(fmt=LOG_FORMAT, style='{')
-    rotate_handler.setFormatter(formatter)
-    logger.addHandler(rotate_handler)

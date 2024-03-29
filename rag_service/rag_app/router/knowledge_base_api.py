@@ -1,26 +1,37 @@
+
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import List
-from sqlmodel import Session
 
 from fastapi_pagination import Page
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Request, Depends, status, Response, HTTPException
 
-from rag_service.database import yield_session
-from rag_service.logger import get_logger, Module
+from fastapi.responses import StreamingResponse, HTMLResponse
+from rag_service.models.database.models import yield_session
+from rag_service.logger import get_logger
 from rag_service.rag_app.service import knowledge_base_service
 from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
 from rag_service.exceptions import KnowledgeBaseNotExistsException, KnowledgeBaseExistNonEmptyKnowledgeBaseAsset
 from rag_service.rag_app.service.knowledge_base_service import get_knowledge_base_list, delele_knowledge_base
 from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, QueryRequest, RetrievedDocument
-
+from rag_service.rag_app.service.knowledge_base_service import get_llm_stream_answer
 
 router = APIRouter(prefix='/kb', tags=['Knowledge Base'])
-logger = get_logger(module=Module.APP)
+logger = get_logger()
 
+@router.post('/get_stream_answer', response_class=HTMLResponse)
+async def get_stream_answer(
+        request: Request,
+        req: QueryRequest,
+        response: Response):
+        return StreamingResponse(
+            get_llm_stream_answer(req),
+            status_code=status.HTTP_200_OK,
+            headers=response.headers)
 
 @router.post('/create')
 async def create(
         req: CreateKnowledgeBaseReq,
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ) -> str:
     return await knowledge_base_service.create_knowledge_base(req, session)
 
@@ -28,7 +39,7 @@ async def create(
 @router.post('/get_related_docs')
 def get_related_docs(
         req: QueryRequest,
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ) -> List[RetrievedDocument]:
     try:
         return knowledge_base_service.get_related_docs(req, session)
@@ -45,7 +56,7 @@ def get_related_docs(
 @router.get('/list', response_model=Page[KnowledgeBaseInfo])
 async def get_kb_list(
         owner: str,
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ) -> Page[KnowledgeBaseInfo]:
     return get_knowledge_base_list(owner, session)
 
@@ -53,7 +64,7 @@ async def get_kb_list(
 @router.delete('/delete')
 def delete_kb(
         kb_sn: str,
-        session: Session = Depends(yield_session)
+        session=Depends(yield_session)
 ):
     try:
         delele_knowledge_base(kb_sn, session)

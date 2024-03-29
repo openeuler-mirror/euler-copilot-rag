@@ -4,9 +4,9 @@ from typing import List
 from langchain.text_splitter import CharacterTextSplitter
 
 from rag_service.config import SENTENCE_SIZE
-from rag_service.logger import get_logger, Module
+from rag_service.logger import get_logger
 
-logger = get_logger(module=Module.VECTORIZATION)
+logger = get_logger()
 
 # 最大分句长度
 MAX_SENTENCE_SIZE = SENTENCE_SIZE * 3

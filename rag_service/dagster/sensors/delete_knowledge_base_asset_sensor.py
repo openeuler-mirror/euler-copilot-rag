@@ -1,11 +1,10 @@
 from typing import List
 
 from dagster import sensor, DefaultSensorStatus, SensorResult, RunRequest, SkipReason
-from sqlmodel import Session
 
 from rag_service.dagster.jobs.delete_knowledge_base_asset_job import delete_knowledge_base_asset_job, \
     change_deleted_vectorization_job_status_to_started
-from rag_service.database import engine
+from rag_service.models.database.models import yield_session
 from rag_service.models.database.models import VectorizationJob
 from rag_service.models.enums import VectorizationJobStatus
 from rag_service.utils.dagster_util import generate_asset_partition_key
@@ -14,7 +13,7 @@ from rag_service.utils.db_util import change_vectorization_job_status, get_delet
 
 @sensor(job=delete_knowledge_base_asset_job, default_status=DefaultSensorStatus.RUNNING)
 def delete_knowledge_base_asset_sensor():
-    with Session(engine) as session:
+    with yield_session() as session:
         pending_jobs: List[VectorizationJob] = get_deleted_pending_jobs(session)
 
         if not pending_jobs:

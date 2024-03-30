@@ -41,6 +41,14 @@ async def get_stream_answer(req: QueryRequest, response: Response):
                 message=str(e)
             ).dict()
         ) from e
+    except KnowledgeBaseNotExistsException as e:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ErrorResponse(
+                code=ErrorCode.INVALID_KNOWLEDGE_BASE,
+                message=str(e)
+            ).dict()
+        ) from e
 
 
 @router.post('/create')

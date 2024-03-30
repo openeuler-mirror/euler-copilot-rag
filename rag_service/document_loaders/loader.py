@@ -1,20 +1,21 @@
-import copy
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import re
-from abc import ABC, abstractmethod
+import copy
 from pathlib import Path
 from typing import Dict, List
+from abc import ABC, abstractmethod
 
 from langchain.docstore.document import Document
 from langchain.document_loaders import TextLoader, UnstructuredWordDocumentLoader, \
-    UnstructuredMarkdownLoader, UnstructuredPowerPointLoader, UnstructuredPDFLoader
+    UnstructuredPowerPointLoader, UnstructuredPDFLoader
 
-from rag_service.config import SENTENCE_SIZE
-from rag_service.document_loaders.docx_loader import DocxLoader
-from rag_service.document_loaders.docx_section_loader import DocxLoaderByHead
-from rag_service.document_loaders.excel_loader import ExcelLoader
 from rag_service.logger import get_logger
+from rag_service.config import SENTENCE_SIZE
 from rag_service.models.generic.models import OriginalDocument
+from rag_service.document_loaders.docx_loader import DocxLoader
+from rag_service.document_loaders.excel_loader import ExcelLoader
 from rag_service.text_splitters.chinese_tsplitter import ChineseTextSplitter
+from rag_service.document_loaders.docx_section_loader import DocxLoaderByHead
 
 logger = get_logger()
 

@@ -1,31 +1,32 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import os
 import uuid
 import shutil
 import itertools
-import os
 
 from uuid import UUID
+from dotenv import load_dotenv
 from typing import List, Tuple
 from more_itertools import chunked
-from sqlalchemy import select
 from langchain.schema import Document
 from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut, DynamicOutput, RetryPolicy
 
-
-from rag_service.models.database.models import yield_session
 from rag_service.document_loaders.loader import load_file
 from rag_service.models.enums import VectorizationJobStatus
+from rag_service.models.database.models import yield_session
 from rag_service.models.generic.models import OriginalDocument
-from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.vectorstore.postgresql.manage_pg import pg_insert_data
+from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.original_document_fetchers import select_fetcher, Fetcher
+from rag_service.config import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
 from rag_service.models.database.models import VectorStore, VectorizationJob, KnowledgeBaseAsset
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir, parse_asset_partition_key
-from rag_service.config import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.models.database.models import OriginalDocument as OriginalDocumentEntity, KnowledgeBase
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
-from dotenv import load_dotenv
+
 load_dotenv()
+
 
 @op(retry_policy=RetryPolicy(max_retries=3))
 def change_vectorization_job_status_to_started(context: OpExecutionContext):
@@ -104,9 +105,9 @@ def save_to_vector_store(
 
     with yield_session() as session:
         knowledge_base_asset = get_knowledge_base_asset(
-            session,
             knowledge_base_serial_number,
-            knowledge_base_asset_name
+            knowledge_base_asset_name,
+            session
         )
         vector_stores = knowledge_base_asset.vector_stores
 

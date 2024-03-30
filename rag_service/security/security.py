@@ -3,9 +3,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 
 import base64
-import binascii
 import hashlib
 import secrets
+import binascii
+from typing import Tuple
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -14,7 +15,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 class Security:
 
     @staticmethod
-    def encrypt(plaintext: str) -> (str, dict):
+    def encrypt(plaintext: str) -> Tuple[str, dict]:
         """
         加密公共方法
         :param plaintext:
@@ -62,7 +63,7 @@ class Security:
         return binascii.hexlify(hash_key)[13:45]
 
     @staticmethod
-    def _generate_encrypted_work_key(half_key1: str) -> (str, str):
+    def _generate_encrypted_work_key(half_key1: str) -> Tuple[str, str]:
         bin_root_key = Security._get_root_key(half_key1)
         bin_work_key = secrets.token_bytes(32)
         bin_encrypted_work_key_iv = secrets.token_bytes(16)
@@ -92,7 +93,7 @@ class Security:
 
     @staticmethod
     def _encrypt_plaintext(half_key1: str, encrypted_work_key: str, encrypted_work_key_iv: str,
-                           plaintext: str) -> (str, str):
+                           plaintext: str) -> Tuple[str, str]:
         bin_work_key = Security._get_work_key(half_key1, encrypted_work_key, encrypted_work_key_iv)
         salt = f"{half_key1}{plaintext}"
         plaintext_temp = salt.encode("utf-8")

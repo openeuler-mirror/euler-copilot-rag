@@ -5,7 +5,7 @@ import json
 import os
 import stat
 
-from rag_service.security.util import Security
+from rag_service.security.security import Security
 from rag_service.security.cryptohub import CryptoHub
 
 

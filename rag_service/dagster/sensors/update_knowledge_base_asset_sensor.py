@@ -1,4 +1,4 @@
-import datetime
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import List
 
 from dagster import sensor, SensorResult, RunRequest, DefaultSensorStatus, SkipReason
@@ -8,13 +8,13 @@ from rag_service.dagster.assets.updated_knowledge_base_asset import (
     change_update_vectorization_job_status_to_success,
     update_knowledge_base_asset, fetch_updated_original_document_set, insert_update_record
 )
-from rag_service.dagster.jobs.update_knowledge_base_asset_job import update_knowledge_base_asset_job
-from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
+from rag_service.models.enums import VectorizationJobStatus
 from rag_service.models.database.models import yield_session
 from rag_service.models.database.models import VectorizationJob
-from rag_service.models.enums import VectorizationJobStatus
 from rag_service.utils.dagster_util import generate_asset_partition_key
 from rag_service.utils.db_util import change_vectorization_job_status, get_incremental_pending_jobs
+from rag_service.dagster.jobs.update_knowledge_base_asset_job import update_knowledge_base_asset_job
+from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
 
 
 @sensor(job=update_knowledge_base_asset_job, default_status=DefaultSensorStatus.RUNNING)

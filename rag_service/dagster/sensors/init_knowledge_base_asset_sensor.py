@@ -1,27 +1,27 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import List
 
 from dagster import sensor, SensorResult, RunRequest, DefaultSensorStatus, SkipReason
-from sqlalchemy import select
 
 from rag_service.dagster.assets.init_knowledge_base_asset import (
     change_vectorization_job_status_to_started,
     change_vectorization_job_status_to_success,
     init_knowledge_base_asset
 )
-from rag_service.dagster.jobs.init_knowledge_base_asset_job import init_knowledge_base_asset_job
-from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
 from rag_service.models.database.models import yield_session
 from rag_service.models.database.models import VectorizationJob
-from rag_service.models.enums import VectorizationJobType, VectorizationJobStatus
-from rag_service.utils.dagster_util import generate_asset_partition_key
 from rag_service.utils.db_util import change_vectorization_job_status
+from rag_service.utils.dagster_util import generate_asset_partition_key
+from rag_service.models.enums import VectorizationJobType, VectorizationJobStatus
+from rag_service.dagster.jobs.init_knowledge_base_asset_job import init_knowledge_base_asset_job
+from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
 
 
 @sensor(job=init_knowledge_base_asset_job, default_status=DefaultSensorStatus.RUNNING)
 def init_knowledge_base_asset_sensor():
     with yield_session() as session:
         pending_jobs: List[VectorizationJob] = session.query(VectorizationJob).filter(
-                VectorizationJob.job_type == VectorizationJobType.INIT,
+            VectorizationJob.job_type == VectorizationJobType.INIT,
             VectorizationJob.status == VectorizationJobStatus.PENDING
         ).all()
 

@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import base64
 import pickle
 from typing import Any

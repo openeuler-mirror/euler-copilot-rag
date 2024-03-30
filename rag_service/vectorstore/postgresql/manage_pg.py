@@ -4,13 +4,15 @@
 import os
 from typing import List, Dict
 from collections import defaultdict
-from langchain.schema import Document
-from sqlalchemy import text, select
+
+from sqlalchemy import text
 from more_itertools import chunked
-from rag_service.models.database.models import yield_session
-from rag_service.utils.serdes import deserialize, serialize
+from langchain.schema import Document
+
 from rag_service.logger import get_logger
+from rag_service.utils.serdes import serialize
 from rag_service.exceptions import PostgresQueryException
+from rag_service.models.database.models import yield_session
 from rag_service.models.database.models import VectorizeItems
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.models.enums import EmbeddingModel, VectorizationJobType, VectorizationJobStatus
@@ -19,40 +21,39 @@ from rag_service.models.database.models import KnowledgeBase, KnowledgeBaseAsset
 logger = get_logger()
 
 
-def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
+def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
     """
     knowledge_base_sn，检索vector_store_name中的所有资产，再检索资产之下的所有vector_store，并进行联合检索
     """
     try:
-        with yield_session() as session:
-            assets = session.query(KnowledgeBaseAsset).join(
-                KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id
-            ).join(
-                VectorizationJob, VectorizationJob.kba_id == KnowledgeBaseAsset.id
-            ).filter(
-                KnowledgeBase.sn == knowledge_base_sn,
-                VectorizationJob.job_type == VectorizationJobType.INIT,
-                VectorizationJob.status == VectorizationJobStatus.SUCCESS
-            ).all()
+        assets = session.query(KnowledgeBaseAsset).join(
+            KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id
+        ).join(
+            VectorizationJob, VectorizationJob.kba_id == KnowledgeBaseAsset.id
+        ).filter(
+            KnowledgeBase.sn == knowledge_base_sn,
+            VectorizationJob.job_type == VectorizationJobType.INIT,
+            VectorizationJob.status == VectorizationJobStatus.SUCCESS
+        ).all()
 
-            if not assets or not any(asset.vector_stores for asset in assets):
-                return []
-            embedding_dicts: Dict[EmbeddingModel, List[KnowledgeBaseAsset]] = defaultdict(list)
-            # 按embedding类型分组
-            for asset_term in assets:
-                embedding_dicts[asset_term.embedding_model].append(asset_term)
+        if not assets or not any(asset.vector_stores for asset in assets):
+            return []
+        embedding_dicts: Dict[EmbeddingModel, List[KnowledgeBaseAsset]] = defaultdict(list)
+        # 按embedding类型分组
+        for asset_term in assets:
+            embedding_dicts[asset_term.embedding_model].append(asset_term)
 
-            remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
-            results = []
-            for embedding_name, asset_terms in embedding_dicts.items():
-                vectors = []
-                # 遍历embedding分组类型下的asset条目
-                for asset_term in asset_terms:
-                    vectors.extend(asset_term.vector_stores)
-                index_names = [vector.name for vector in vectors]
-                vectors = remote_embedding.embedding([question], embedding_name)[0]
-                result = get_query(session, question, vectors, index_names, top_k)
-                results.extend(result)
+        remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
+        results = []
+        for embedding_name, asset_terms in embedding_dicts.items():
+            vectors = []
+            # 遍历embedding分组类型下的asset条目
+            for asset_term in asset_terms:
+                vectors.extend(asset_term.vector_stores)
+            index_names = [vector.name for vector in vectors]
+            vectors = remote_embedding.embedding([question], embedding_name)[0]
+            result = get_query(session, question, vectors, index_names, top_k)
+            results.extend(result)
     except Exception as e:
         raise PostgresQueryException(f'Postgres query exception') from e
     return [item[0] for item in results]

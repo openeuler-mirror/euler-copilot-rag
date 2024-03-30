@@ -1,14 +1,14 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import datetime
 import inspect
+import datetime
 from typing import Optional, Type, Dict, Any, List
 
 from fastapi import Form
 from pydantic import BaseModel, Field
 
 from rag_service.config import DEFAULT_TOP_K
-from rag_service.models.enums import AssetType, EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 from rag_service.models.generic.models import VectorizationConfig
+from rag_service.models.enums import AssetType, EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 
 
 def as_form(cls: Type[BaseModel]):
@@ -53,12 +53,13 @@ class QueryRequest(BaseModel):
     kb_sn: str
     top_k: int = Field(DEFAULT_TOP_K, ge=3, le=10)
     fetch_source: bool = False
-    session_id: Optional[str] = ""
-    llm_model: Optional[str] = ""
+    llm_model: Optional[str] = "qwen"
     history: Optional[List] = []
 
 
 class AssetInfo(BaseModel):
+    class Config:
+        orm_mode = True
     vectorization_config: Dict[Any, Any]
     created_at: datetime.datetime
     updated_at: datetime.datetime
@@ -68,6 +69,8 @@ class AssetInfo(BaseModel):
 
 
 class OriginalDocumentInfo(BaseModel):
+    class Config:
+        orm_mode = True
     source: str
     mtime: datetime.datetime
 
@@ -84,6 +87,8 @@ class RetrievedDocument(BaseModel):
 
 
 class KnowledgeBaseInfo(BaseModel):
+    class Config:
+        orm_mode = True
     name: str
     sn: str
     owner: str

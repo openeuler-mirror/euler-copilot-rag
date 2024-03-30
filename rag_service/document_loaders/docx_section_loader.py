@@ -1,16 +1,17 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import List, Dict, Tuple, Any
 
 import docx
 import unicodedata
 from docx.document import Document
 from docx.oxml.table import CT_Tbl
-from docx.oxml.text.paragraph import CT_P
 from docx.table import _Cell, Table
+from docx.oxml.text.paragraph import CT_P
 from docx.text.paragraph import Paragraph
 from langchain.docstore.document import Document as Doc
 
-from rag_service.document_loaders.docx_loader import DocxLoader
 from rag_service.logger import get_logger
+from rag_service.document_loaders.docx_loader import DocxLoader
 from rag_service.text_splitters.chinese_tsplitter import ChineseTextSplitter
 
 logger = get_logger()

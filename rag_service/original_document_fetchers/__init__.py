@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import importlib
 from pathlib import Path
 from typing import Dict, TypeVar

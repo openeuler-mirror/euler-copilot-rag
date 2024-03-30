@@ -1,24 +1,27 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import traceback
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi_pagination import Page
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 
-from rag_service.models.database.models import yield_session
 from rag_service.exceptions import (
     ApiRequestValidationError,
     KnowledgeBaseAssetNotExistsException,
     KnowledgeBaseAssetAlreadyInitializedException,
     KnowledgeBaseNotExistsException,
     DuplicateKnowledgeBaseAssetException, KnowledgeBaseAssetNotInitializedException,
-    KnowledgeBaseAssetProductValidationError, KnowledgeBaseAssetJobIsRunning
+    KnowledgeBaseAssetProductValidationError, KnowledgeBaseAssetJobIsRunning,
+    PostgresQueryException
 )
 from rag_service.logger import get_logger
-from rag_service.models.api.models import CreateKnowledgeBaseAssetReq, InitKnowledgeBaseAssetReq, AssetInfo, \
-    OriginalDocumentInfo, UpdateKnowledgeBaseAssetReq
-from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
+from rag_service.models.database.models import yield_session
 from rag_service.rag_app.service import knowledge_base_asset_service
+from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
 from rag_service.rag_app.service.knowledge_base_asset_service import get_kb_asset_list, \
     get_kb_asset_original_documents, delete_knowledge_base_asset
+from rag_service.models.api.models import CreateKnowledgeBaseAssetReq, InitKnowledgeBaseAssetReq, AssetInfo, \
+    OriginalDocumentInfo, UpdateKnowledgeBaseAssetReq
 
 router = APIRouter(prefix='/kba', tags=['Knowledge Base Asset'])
 logger = get_logger()
@@ -33,6 +36,14 @@ async def create(
         await knowledge_base_asset_service.create_knowledge_base_asset(req, session)
     except (KnowledgeBaseNotExistsException, DuplicateKnowledgeBaseAssetException) as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+    except PostgresQueryException as e:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            ErrorResponse(
+                code=ErrorCode.POSTGRES_REQUEST_ERROR,
+                message=str(e)
+            ).dict()
+        ) from e
     return f'Successfully create knowledge base asset <{req.name}>.'
 
 
@@ -85,6 +96,14 @@ async def init(
                 message=f'Knowledge base asset job is running.'
             ).dict()
         )
+    except PostgresQueryException as e:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            ErrorResponse(
+                code=ErrorCode.POSTGRES_REQUEST_ERROR,
+                message=str(e)
+            ).dict()
+        ) from e
     except Exception as e:
         logger.error(f'Initializing {req.kb_sn} asset {req.name} error was {e}.')
         raise HTTPException(
@@ -134,6 +153,14 @@ async def update(
                 message=f'Requested knowledge base asset job is running.'
             ).dict()
         )
+    except PostgresQueryException as e:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            ErrorResponse(
+                code=ErrorCode.POSTGRES_REQUEST_ERROR,
+                message=str(e)
+            ).dict()
+        ) from e
     except Exception as e:
         logger.error(f"update knowledge base asset error is {e}.")
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Update knowledge base asset occur error.')
@@ -144,7 +171,16 @@ async def get_asset_list(
         kb_sn: str,
         session=Depends(yield_session)
 ) -> Page[AssetInfo]:
-    return get_kb_asset_list(kb_sn, session)
+    try:
+        return get_kb_asset_list(kb_sn, session)
+    except PostgresQueryException as e:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            ErrorResponse(
+                code=ErrorCode.POSTGRES_REQUEST_ERROR,
+                message=str(e)
+            ).dict()
+        ) from e
 
 
 @router.get('/docs', response_model=Page[OriginalDocumentInfo])
@@ -153,7 +189,16 @@ async def get_original_documents(
         asset_name: str,
         session=Depends(yield_session)
 ) -> Page[OriginalDocumentInfo]:
-    return get_kb_asset_original_documents(kb_sn, asset_name, session)
+    try:
+        return get_kb_asset_original_documents(kb_sn, asset_name, session)
+    except PostgresQueryException as e:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            ErrorResponse(
+                code=ErrorCode.POSTGRES_REQUEST_ERROR,
+                message=str(e)
+            ).dict()
+        ) from e
 
 
 @router.delete('/delete')
@@ -181,6 +226,14 @@ def delete_kba(
                 message=f'{kb_sn} asset {asset_name} job is running.'
             ).dict()
         )
+    except PostgresQueryException as e:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            ErrorResponse(
+                code=ErrorCode.POSTGRES_REQUEST_ERROR,
+                message=str(e)
+            ).dict()
+        ) from e
     except Exception as e:
         logger.error(f"delete knowledge base asset {asset_name} error is {e}")
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,

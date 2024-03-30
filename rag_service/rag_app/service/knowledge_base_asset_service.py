@@ -1,37 +1,39 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import json
-from typing import List, Optional
+import traceback
+from typing import List
 
 import aiofiles
+from sqlalchemy import select
 from fastapi import UploadFile
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
 
-from rag_service.constants import DELETE_ORIGINAL_DOCUMENT_METADATA, DELETE_ORIGINAL_DOCUMENT_METADATA_KEY
 from rag_service.exceptions import (
     KnowledgeBaseAssetNotExistsException,
     KnowledgeBaseAssetAlreadyInitializedException,
     ApiRequestValidationError,
     DuplicateKnowledgeBaseAssetException, KnowledgeBaseAssetNotInitializedException,
-    KnowledgeBaseAssetJobIsRunning
+    KnowledgeBaseAssetJobIsRunning,
+    PostgresQueryException
 )
-from rag_service.models.api.models import CreateKnowledgeBaseAssetReq, InitKnowledgeBaseAssetReq, AssetInfo, \
-    OriginalDocumentInfo, UpdateKnowledgeBaseAssetReq
-from rag_service.models.database.models import KnowledgeBase, VectorizationJob, KnowledgeBaseAsset, OriginalDocument, VectorStore
-from rag_service.models.enums import AssetType, VectorizationJobStatus, VectorizationJobType
+from rag_service.logger import get_logger
 from rag_service.models.generic.models import VectorizationConfig
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir
-from rag_service.utils.db_util import validate_knowledge_base, get_knowledge_base_asset, get_running_knowledge_base_asset
-from rag_service.logger import get_logger
+from rag_service.models.enums import AssetType, VectorizationJobStatus, VectorizationJobType
+from rag_service.constants import DELETE_ORIGINAL_DOCUMENT_METADATA, DELETE_ORIGINAL_DOCUMENT_METADATA_KEY
+from rag_service.utils.db_util import validate_knowledge_base, get_knowledge_base_asset, \
+    get_running_knowledge_base_asset
+from rag_service.models.database.models import KnowledgeBase, VectorizationJob, KnowledgeBaseAsset, \
+    OriginalDocument, VectorStore
+from rag_service.models.api.models import CreateKnowledgeBaseAssetReq, InitKnowledgeBaseAssetReq, AssetInfo, \
+    OriginalDocumentInfo, UpdateKnowledgeBaseAssetReq
 
 logger = get_logger()
 
 
-async def create_knowledge_base_asset(
-        req: CreateKnowledgeBaseAssetReq,
-        session
-) -> None:
-    knowledge_base = validate_knowledge_base(session, req.kb_sn)
+async def create_knowledge_base_asset(req: CreateKnowledgeBaseAssetReq, session) -> None:
+    knowledge_base = validate_knowledge_base(req.kb_sn, session)
     _validate_create_knowledge_base_asset(req.name, knowledge_base)
 
     new_knowledge_base_asset = KnowledgeBaseAsset(
@@ -39,8 +41,12 @@ async def create_knowledge_base_asset(
         asset_type=req.asset_type
     )
     knowledge_base.knowledge_base_assets.append(new_knowledge_base_asset)
-    session.add(knowledge_base)
-    session.commit()
+    try:
+        session.add(knowledge_base)
+        session.commit()
+    except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
+        raise PostgresQueryException(f'Postgres query exception') from e
 
 
 def _validate_create_knowledge_base_asset(
@@ -56,7 +62,7 @@ async def update_knowledge_base_asset(
         files: List[UploadFile],
         session
 ) -> None:
-    knowledge_base_asset = get_knowledge_base_asset(session, req.kb_sn, req.asset_name)
+    knowledge_base_asset = get_knowledge_base_asset(req.kb_sn, req.asset_name, session)
 
     if any(job.status not in VectorizationJobStatus.types_not_running() for job in
            knowledge_base_asset.vectorization_jobs):
@@ -79,8 +85,12 @@ async def update_knowledge_base_asset(
             job_type=VectorizationJobType.INCREMENTAL
         )
     )
-    session.add(knowledge_base_asset)
-    session.commit()
+    try:
+        session.add(knowledge_base_asset)
+        session.commit()
+    except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
+        raise PostgresQueryException(f'Postgres query exception') from e
 
 
 def _save_deleted_original_document_to_json(knowledge_base_asset, req):
@@ -101,12 +111,11 @@ async def init_knowledge_base_asset(
         files: List[UploadFile],
         session
 ) -> None:
-    initialing_knowledge_base_asset = get_running_knowledge_base_asset(session, req.kb_sn, req.name)
+    initialing_knowledge_base_asset = get_running_knowledge_base_asset(req.kb_sn, req.name, session)
     if initialing_knowledge_base_asset:
         raise KnowledgeBaseAssetJobIsRunning(f'Knowledge Base asset {req.name} job is running.')
-
-    knowledge_base_asset = get_knowledge_base_asset(session, req.kb_sn, req.name)
-    _validate_init_knowledge_base_asset(req.name, req.asset_uri, files, knowledge_base_asset)
+    knowledge_base_asset = get_knowledge_base_asset(req.kb_sn, req.name, session)
+    _validate_init_knowledge_base_asset(req.name, files, knowledge_base_asset)
 
     await _save_uploaded_files(
         knowledge_base_asset.knowledge_base.sn,
@@ -127,13 +136,16 @@ async def init_knowledge_base_asset(
             job_type=VectorizationJobType.INIT
         )
     )
-    session.add(knowledge_base_asset)
-    session.commit()
+    try:
+        session.add(knowledge_base_asset)
+        session.commit()
+    except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
+        raise PostgresQueryException(f'Postgres query exception') from e
 
 
 def _validate_init_knowledge_base_asset(
         name: str,
-        asset_uri: Optional[str],
         files: List[UploadFile],
         knowledge_base_asset: KnowledgeBaseAsset
 ) -> None:
@@ -209,14 +221,16 @@ def get_kb_asset_list(
         kb_sn: str,
         session
 ) -> Page[AssetInfo]:
-    return paginate(
-        session,
-        select(KnowledgeBaseAsset)
-        .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
-        .where(
-            KnowledgeBase.sn == kb_sn,
+    try:
+        return paginate(
+            session,
+            select(KnowledgeBaseAsset)
+            .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
+            .where(KnowledgeBase.sn == kb_sn,)
         )
-    )
+    except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
+        raise PostgresQueryException(f'Postgres query exception') from e
 
 
 def get_kb_asset_original_documents(
@@ -224,17 +238,18 @@ def get_kb_asset_original_documents(
         asset_name: str,
         session
 ) -> Page[OriginalDocumentInfo]:
-    return paginate(
-        session,
-        select(OriginalDocument)
-        .join(VectorStore, VectorStore.id == OriginalDocument.vs_id)
-        .join(KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id)
-        .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
-        .where(
-            kb_sn == KnowledgeBase.sn,
-            asset_name == KnowledgeBaseAsset.name
+    try:
+        return paginate(
+            session,
+            select(OriginalDocument)
+            .join(VectorStore, VectorStore.id == OriginalDocument.vs_id)
+            .join(KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id)
+            .join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id)
+            .where(kb_sn == KnowledgeBase.sn, asset_name == KnowledgeBaseAsset.name)
         )
-    )
+    except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
+        raise PostgresQueryException(f'Postgres query exception') from e
 
 
 def parse_uri_to_get_product_info(asset_uri: str):
@@ -244,11 +259,15 @@ def parse_uri_to_get_product_info(asset_uri: str):
 
 
 def delete_knowledge_base_asset(kb_sn: str, asset_name: str, session):
-    knowledge_base_asset = get_knowledge_base_asset(session, kb_sn, asset_name)
+    knowledge_base_asset = get_knowledge_base_asset(kb_sn, asset_name, session)
 
     if not knowledge_base_asset.vectorization_jobs:
-        session.delete(knowledge_base_asset)
-        session.commit()
+        try:
+            session.delete(knowledge_base_asset)
+            session.commit()
+        except Exception as e:
+            logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
+            raise PostgresQueryException(f'Postgres query exception') from e
         return
 
     if any(job.status not in VectorizationJobStatus.types_not_running() for job in
@@ -264,5 +283,9 @@ def delete_knowledge_base_asset(kb_sn: str, asset_name: str, session):
             job_type=VectorizationJobType.DELETE
         )
     )
-    session.add(knowledge_base_asset)
-    session.commit()
+    try:
+        session.add(knowledge_base_asset)
+        session.commit()
+    except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
+        raise PostgresQueryException(f'Postgres query exception') from e

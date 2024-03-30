@@ -3,8 +3,7 @@ import io
 import os
 import json
 import requests
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
 from typing import List
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -174,27 +173,25 @@ def intent_detect(raw_question: str, history: List = None):
     return user_intent
 
 
-async def async_extend_query_generate(user_intent):
-    return await asyncio.get_event_loop().run_in_executor(
-        ThreadPoolExecutor(), extend_query_generate, user_intent
-    )
-
-
-async def llm_with_rag_stream_answer(req: QueryRequest):
+def llm_with_rag_stream_answer(req: QueryRequest):
     res = ""
     history = req.history or []
     user_intent = intent_detect(req.question, history)
+    user_intent = req.question
     documents_info = []
 
-    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        tasks = {
+            executor.submit(extend_query_generate, user_intent): 'extend_query_generate',
+        }
 
-    tasks = [
-        async_extend_query_generate(user_intent),
-    ]
-    task_result = await asyncio.gather(*tasks)
-    documents_info.extend(res for res in task_result if res is not None)
+        for future in concurrent.futures.as_completed(tasks):
+            task_name = tasks[future]
+            result = future.result()
+            if result is not None:
+                documents_info.append(result)
 
-    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
+    documents_info.extend(query_generate(raw_question=user_intent, kb_sn=req.kb_sn,
                                          top_k=req.top_k-len(documents_info)))
     query_context = ""
     index = 1

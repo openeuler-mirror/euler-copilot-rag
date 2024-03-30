@@ -54,7 +54,24 @@ try:
     请提供这些问题，并用换行符分隔。
 
     原始问题: {{question}}
-    上下文: {{ history }}'''
+    上下文: {{ history }}''',
+        'sql_generate_prompt_template': '''你是一个openEuler的数据库专家，请根据数据库的表结构生成用户想要查询的sql语句，sql语句查询结果必须限制在30个。
+
+    输出结果的json格式：
+    {
+        "sql":""
+    }
+
+    openEuler常用的版本：
+    openEuler-20.03-LTS、openEuler-20.03-LTS-SP1、openEuler-20.03-LTS-SP2、openEuler-20.03-LTS-SP3、openEuler-20.03-LTS-SP4、openEuler-20.03-LTS-Next、 \
+    openEuler-21.03、openEuler-21.09、openEuler-22.03-LTS、openEuler-22.03-LTS-SP1、openEuler-22.03-LTS-SP2、openEuler-22.03-LTS-SP3、openEuler-22.03-LTS-Next \
+    openEuler-22.03-LTS-LoongArch、sync-pr1314-openEuler-22.03-LTS-SP3-to-openEuler-22.03-LTS-Next、openEuler-22.09、openEuler-22.09-HeXin \
+    openEuler-23.03、 openEuler-23.09
+
+    表结构： {{table}}
+
+    示例： {{example}}''',
+        'intent_detect_prompt_template': '''请根据历史对话简短的总结用户的最新意图'''
     }
 except Exception as e:
     logger.error(e)
@@ -86,3 +103,5 @@ LLM_MODEL = load_service_config('llm_model')
 MAX_TOKENS = load_service_config('max_tokens')
 PROMPT_TEMPLATE = load_service_config('prompt_template')
 QUERY_GENERATE_PROMPT_TEMPLATE = load_service_config('query_generate_prompt_template')
+SQL_GENERATE_PROMPT_TEMPLATE = load_service_config('sql_generate_prompt_template')
+INTENT_DETECT_PROMPT_TEMPLATE = load_service_config('intent_detect_prompt_template')

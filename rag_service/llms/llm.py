@@ -7,13 +7,15 @@ from typing import List
 import requests
 from fastapi import HTTPException
 
+from sqlalchemy import text
 from rag_service.logger import get_logger
 from rag_service.security.cryptohub import CryptoHub
 from rag_service.exceptions import TokenCheckFailed
 from rag_service.models.api.models import QueryRequest
 from rag_service.exceptions import ElasitcsearchEmptyKeyException
 from rag_service.query_generator.query_generator import query_generate
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, PROMPT_TEMPLATE, MAX_TOKENS
+from rag_service.models.database.models import yield_session
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, PROMPT_TEMPLATE, MAX_TOKENS, SQL_GENERATE_PROMPT_TEMPLATE, INTENT_DETECT_PROMPT_TEMPLATE
 
 logger = get_logger()
 
@@ -74,8 +76,7 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         "Content-Type": "application/json",
         "cache-control": "no-cache",
         "connection": "keep-alive",
-        "x-accel-buffering": "no",
-        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+        "x-accel-buffering": "no"
     }
     data = {
         "model": LLM_MODEL,
@@ -101,23 +102,83 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         yield ""
 
 
+def llm_call(question: str, prompt: str, history: List = None):
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": question}
+    ]
+    history = history or []
+    if len(history) > 0:
+        messages[1:1] = history
+    while not token_check(messages):
+        if len(messages) > 2:
+            messages = messages[:1]+messages[2:]
+        else:
+            raise TokenCheckFailed(f'Token is too long.')
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": LLM_MODEL,
+        "messages": messages,
+        "temperature": LLM_TEMPERATURE,
+        "stream": False,
+        "max_tokens": MAX_TOKENS
+    }
+    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False, timeout=30)
+    if response.status_code == 200:
+        answer_info = response.json()
+        if 'choices' in answer_info and len(answer_info.get('choices')) > 0:
+            final_ans = answer_info['choices'][0]['message']['content']
+            return final_ans
+        else:
+            logger.error("大模型响应不合规，返回：%s", answer_info)
+            return ""
+    else:
+        logger.error("大模型调用失败，返回：%s", response.content)
+        return ""
+
+
+def extend_query_generate(raw_question: str, history: List = None):
+    prompt = SQL_GENERATE_PROMPT_TEMPLATE
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    table_sql_path = os.path.join(current_path, 'extend_search', 'table.sql')
+    with open(table_sql_path, 'r') as f:
+        table_content = f.read()
+        prompt = prompt.replace('{{table}}', table_content)
+    example_path = os.path.join(current_path, 'extend_search', 'example.md')
+    with open(example_path, 'r') as f:
+        example_content = f.read()
+        prompt = prompt.replace('{{example}}', example_content)
+    raw_generate_sql = llm_call(raw_question, prompt, history)
+    generate_sql = json.loads(raw_generate_sql)
+    if not generate_sql['sql'] or "SELECT" not in generate_sql['sql']:
+        return None
+    with yield_session() as session:
+        raw_result = session.execute(text(generate_sql['sql']))
+        results = raw_result.mappings().all()
+    if len(results) == 0:
+        return None
+    string_results = [str(item) for item in results]
+    joined_results = ', '.join(string_results)
+    return raw_question + ",查询关系型数据库的结果为：" + joined_results
+
+
+def intent_detect(raw_question: str, history: List = None):
+    prompt = INTENT_DETECT_PROMPT_TEMPLATE
+    user_intent = llm_call(raw_question, prompt, history)
+    return user_intent
+
 def llm_with_rag_stream_answer(req: QueryRequest):
     res = ""
     history = req.history or []
+    user_intent = intent_detect(req.question, history)
     documents_info = []
-    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn, top_k=req.top_k))
-    if len(history) >= 2:
-        documents_info.extend(
-            query_generate(
-                raw_question=history[-2]['content'] + ' ' + req.question,
-                kb_sn=req.kb_sn, top_k=req.top_k))
-        documents_info.extend(query_generate(raw_question=history[-2]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
-    if len(history) >= 4:
-        documents_info.extend(
-            query_generate(
-                raw_question=history[-4]['content'] + ' ' + req.question,
-                kb_sn=req.kb_sn, top_k=req.top_k))
-        documents_info.extend(query_generate(raw_question=history[-4]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
+    extend_documents = extend_query_generate(user_intent)
+    if extend_documents:
+        documents_info.append(extend_documents)
+    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
+                                         top_k=req.top_k-len(documents_info)))
     query_context = ""
     index = 1
     try:

@@ -58,6 +58,8 @@ class QueryRequest(BaseModel):
 
 
 class AssetInfo(BaseModel):
+    class Config:
+        orm_mode = True
     vectorization_config: Dict[Any, Any]
     created_at: datetime.datetime
     updated_at: datetime.datetime
@@ -67,6 +69,8 @@ class AssetInfo(BaseModel):
 
 
 class OriginalDocumentInfo(BaseModel):
+    class Config:
+        orm_mode = True
     source: str
     mtime: datetime.datetime
 
@@ -83,6 +87,8 @@ class RetrievedDocument(BaseModel):
 
 
 class KnowledgeBaseInfo(BaseModel):
+    class Config:
+        orm_mode = True
     name: str
     sn: str
     owner: str

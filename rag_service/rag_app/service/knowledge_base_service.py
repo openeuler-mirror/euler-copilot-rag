@@ -1,14 +1,14 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import traceback
-import uuid
 from typing import List
-
+import uuid
 from sqlalchemy import select
 
 from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlalchemy import paginate
+
 from rag_service.logger import get_logger
 from rag_service.models.api.models import QueryRequest
-from fastapi_pagination.ext.sqlalchemy import paginate
 from rag_service.models.database.models import KnowledgeBase
 from rag_service.utils.db_util import validate_knowledge_base
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data

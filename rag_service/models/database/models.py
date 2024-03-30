@@ -51,7 +51,7 @@ class KnowledgeBase(Base):
     name = Column(String)
     sn = Column(String, unique=True)
     owner = Column(String)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    created_at = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
     updated_at = Column(
         TIMESTAMP(timezone=True),
         server_default=func.current_timestamp(),

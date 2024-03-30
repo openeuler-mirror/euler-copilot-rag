@@ -105,9 +105,9 @@ def save_to_vector_store(
 
     with yield_session() as session:
         knowledge_base_asset = get_knowledge_base_asset(
-            session,
             knowledge_base_serial_number,
-            knowledge_base_asset_name
+            knowledge_base_asset_name,
+            session
         )
         vector_stores = knowledge_base_asset.vector_stores
 

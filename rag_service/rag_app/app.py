@@ -4,6 +4,7 @@ import os
 import fastapi
 import uvicorn
 from dotenv import load_dotenv
+from fastapi_pagination import add_pagination
 
 from rag_service.logger import get_logger
 from rag_service.logger import log_config
@@ -17,6 +18,7 @@ create_db_and_tables()
 load_dotenv("/config/.env")
 
 app = fastapi.FastAPI(docs_url=None, redoc_url=None)
+add_pagination(app)
 
 logger = get_logger()
 

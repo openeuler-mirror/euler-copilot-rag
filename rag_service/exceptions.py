@@ -7,6 +7,18 @@ class KnowledgeBaseAssetNotExistsException(Exception):
     ...
 
 
+class KnowledgeBaseAssetJobIsRunning(Exception):
+    ...
+
+
+class KnowledgeBaseAssetProductValidationError(Exception):
+    ...
+
+
+class DuplicateKnowledgeBaseAssetException(Exception):
+    ...
+
+
 class KnowledgeBaseAssetAlreadyInitializedException(Exception):
     ...
 

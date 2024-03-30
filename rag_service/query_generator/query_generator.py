@@ -79,7 +79,7 @@ class LineListOutputParser(PydanticOutputParser):
 output_parser = LineListOutputParser()
 
 
-def query_generate(raw_question: str, kb_sn: str, top_k: int, session) -> List[str]:
+def query_generate(raw_question: str, kb_sn: str, top_k: int) -> List[str]:
     with yield_session() as session:
         results = pg_search_data(raw_question, kb_sn, top_k, session)
     docs = []

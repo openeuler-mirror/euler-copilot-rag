@@ -1,5 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import json
+import traceback
 from typing import List
 
 import aiofiles
@@ -44,6 +45,7 @@ async def create_knowledge_base_asset(req: CreateKnowledgeBaseAssetReq, session)
         session.add(knowledge_base)
         session.commit()
     except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
         raise PostgresQueryException(f'Postgres query exception') from e
 
 
@@ -87,6 +89,7 @@ async def update_knowledge_base_asset(
         session.add(knowledge_base_asset)
         session.commit()
     except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
         raise PostgresQueryException(f'Postgres query exception') from e
 
 
@@ -108,7 +111,7 @@ async def init_knowledge_base_asset(
         files: List[UploadFile],
         session
 ) -> None:
-    initialing_knowledge_base_asset = get_running_knowledge_base_asset(session, req.kb_sn, req.name)
+    initialing_knowledge_base_asset = get_running_knowledge_base_asset(req.kb_sn, req.name, "session")
     if initialing_knowledge_base_asset:
         raise KnowledgeBaseAssetJobIsRunning(f'Knowledge Base asset {req.name} job is running.')
 
@@ -138,6 +141,7 @@ async def init_knowledge_base_asset(
         session.add(knowledge_base_asset)
         session.commit()
     except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
         raise PostgresQueryException(f'Postgres query exception') from e
 
 
@@ -226,6 +230,7 @@ def get_kb_asset_list(
             .where(KnowledgeBase.sn == kb_sn,)
         )
     except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
         raise PostgresQueryException(f'Postgres query exception') from e
 
 
@@ -244,6 +249,7 @@ def get_kb_asset_original_documents(
             .where(kb_sn == KnowledgeBase.sn, asset_name == KnowledgeBaseAsset.name)
         )
     except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
         raise PostgresQueryException(f'Postgres query exception') from e
 
 
@@ -261,6 +267,7 @@ def delete_knowledge_base_asset(kb_sn: str, asset_name: str, session):
             session.delete(knowledge_base_asset)
             session.commit()
         except Exception as e:
+            logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
             raise PostgresQueryException(f'Postgres query exception') from e
         return
 
@@ -281,4 +288,5 @@ def delete_knowledge_base_asset(kb_sn: str, asset_name: str, session):
         session.add(knowledge_base_asset)
         session.commit()
     except Exception as e:
+        logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
         raise PostgresQueryException(f'Postgres query exception') from e

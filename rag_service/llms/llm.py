@@ -2,11 +2,11 @@
 import io
 import os
 import json
-from typing import List
-
 import requests
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from typing import List
 from fastapi import HTTPException
-
 from sqlalchemy import text
 from rag_service.logger import get_logger
 from rag_service.security.cryptohub import CryptoHub
@@ -151,12 +151,16 @@ def extend_query_generate(raw_question: str, history: List = None):
         example_content = f.read()
         prompt = prompt.replace('{{example}}', example_content)
     raw_generate_sql = llm_call(raw_question, prompt, history)
-    generate_sql = json.loads(raw_generate_sql)
-    if not generate_sql['sql'] or "SELECT" not in generate_sql['sql']:
+    try:
+        generate_sql = json.loads(raw_generate_sql)
+        if not generate_sql['sql'] or "SELECT" not in generate_sql['sql']:
+            return None
+        with yield_session() as session:
+            raw_result = session.execute(text(generate_sql['sql']))
+            results = raw_result.mappings().all()
+    except Exception as ex:
+        logger.error(f"查询关系型数据库失败sql失败，raw_question：{raw_question}，sql：{raw_generate_sql}")
         return None
-    with yield_session() as session:
-        raw_result = session.execute(text(generate_sql['sql']))
-        results = raw_result.mappings().all()
     if len(results) == 0:
         return None
     string_results = [str(item) for item in results]
@@ -169,14 +173,27 @@ def intent_detect(raw_question: str, history: List = None):
     user_intent = llm_call(raw_question, prompt, history)
     return user_intent
 
-def llm_with_rag_stream_answer(req: QueryRequest):
+
+async def async_extend_query_generate(user_intent):
+    return await asyncio.get_event_loop().run_in_executor(
+        ThreadPoolExecutor(), extend_query_generate, user_intent
+    )
+
+
+async def llm_with_rag_stream_answer(req: QueryRequest):
     res = ""
     history = req.history or []
     user_intent = intent_detect(req.question, history)
     documents_info = []
-    extend_documents = extend_query_generate(user_intent)
-    if extend_documents:
-        documents_info.append(extend_documents)
+
+    loop = asyncio.get_event_loop()
+
+    tasks = [
+        async_extend_query_generate(user_intent),
+    ]
+    task_result = await asyncio.gather(*tasks)
+    documents_info.extend(res for res in task_result if res is not None)
+
     documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
                                          top_k=req.top_k-len(documents_info)))
     query_context = ""

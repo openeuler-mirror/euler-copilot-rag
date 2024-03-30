@@ -1,13 +1,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import io
-import json
 import os
-from typing import List
-
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-from typing import List
+import json
 import requests
+import concurrent.futures
+from typing import List
 from sqlalchemy import text
 from rag_service.logger import get_logger
 from rag_service.llms.qwen import qwen_llm_call, token_check
@@ -28,13 +25,17 @@ logger = get_logger()
 async def spark_llm_stream_answer(req: QueryRequest):
     user_intent = intent_detect(req.question, req.history)
     documents_info = []
-    loop = asyncio.get_event_loop()
-    tasks = [
-        async_extend_query_generate(user_intent),
-        async_neo4j_query_generate(user_intent)
-    ]
-    task_result = await asyncio.gather(*tasks)
-    documents_info.extend(res for res in task_result if res is not None)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        tasks = {
+            executor.submit(extend_query_generate, user_intent): 'extend_query_generate',
+            executor.submit(neo4j_search_data, user_intent): 'neo4j_search_data',
+        }
+
+        for future in concurrent.futures.as_completed(tasks):
+            task_name = tasks[future]
+            result = future.result()
+            if result is not None:
+                documents_info.append(result)
     documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
                                          top_k=req.top_k-len(documents_info)))
 
@@ -54,16 +55,21 @@ async def spark_llm_stream_answer(req: QueryRequest):
         yield source
 
 
-async def qwen_llm_stream_answer(req: QueryRequest):
+def qwen_llm_stream_answer(req: QueryRequest):
     user_intent = intent_detect(req.question, req.history)
     documents_info = []
-    loop = asyncio.get_event_loop()
-    tasks = [
-        async_extend_query_generate(user_intent),
-        async_neo4j_query_generate(user_intent)
-    ]
-    task_result = await asyncio.gather(*tasks)
-    documents_info.extend(res for res in task_result if res is not None)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        tasks = {
+            executor.submit(extend_query_generate, user_intent): 'extend_query_generate',
+            executor.submit(neo4j_search_data, user_intent): 'neo4j_search_data',
+        }
+
+        for future in concurrent.futures.as_completed(tasks):
+            task_name = tasks[future]
+            result = future.result()
+            if result is not None:
+                documents_info.append(result)
+
     documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
                                          top_k=req.top_k-len(documents_info)))
 
@@ -133,29 +139,6 @@ def get_query_context(documents_info) -> str:
         logger.error(error)
 
 
-def get_documents_info(req: QueryRequest) -> List[str]:
-    try:
-        history = req.history
-        documents_info = []
-        documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn, top_k=req.top_k))
-        if len(history) >= 2:
-            documents_info.extend(
-                query_generate(
-                    raw_question=history[-2]['content'] + ' ' + req.question,
-                    kb_sn=req.kb_sn, top_k=req.top_k))
-            documents_info.extend(query_generate(raw_question=history[-2]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
-        if len(history) >= 4:
-            documents_info.extend(
-                query_generate(
-                    raw_question=history[-4]['content'] + ' ' + req.question,
-                    kb_sn=req.kb_sn, top_k=req.top_k))
-            documents_info.extend(query_generate(raw_question=history[-4]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
-
-        return documents_info
-    except PostgresQueryException as error:
-        raise LlmRequestException(f'请求大模型返回发生错误') from error
-
-
 def extend_query_generate(raw_question: str, history: List = None):
     prompt = SQL_GENERATE_PROMPT_TEMPLATE
     current_path = os.path.dirname(os.path.realpath(__file__))
@@ -190,43 +173,6 @@ def intent_detect(raw_question: str, history: List = None):
     user_intent = llm_call(raw_question, prompt, history)
     return user_intent
 
-
-async def async_extend_query_generate(user_intent):
-    return await asyncio.get_event_loop().run_in_executor(
-        ThreadPoolExecutor(), extend_query_generate, user_intent
-    )
-
-async def async_neo4j_query_generate(user_intent):
-    return await asyncio.get_event_loop().run_in_executor(
-        ThreadPoolExecutor(), neo4j_search_data, user_intent
-    )
-
-
-async def llm_with_rag_stream_answer(req: QueryRequest):
-    res = ""
-    history = req.history or []
-    user_intent = intent_detect(req.question, history)
-    documents_info = []
-
-    loop = asyncio.get_event_loop()
-
-    tasks = [
-        async_extend_query_generate(user_intent),
-    ]
-    task_result = await asyncio.gather(*tasks)
-    documents_info.extend(res for res in task_result if res is not None)
-
-    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
-                                         top_k=req.top_k-len(documents_info)))
-    query_context = ""
-    index = 1
-    try:
-        for doc in documents_info:
-            query_context += str(index) + ". " + doc.strip() + "\n"
-            index += 1
-        return query_context
-    except Exception as error:
-        logger.error(error)
 
 
 def append_source_info(req: QueryRequest, documents_info):

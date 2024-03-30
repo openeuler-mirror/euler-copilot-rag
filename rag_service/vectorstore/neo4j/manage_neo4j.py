@@ -1,13 +1,14 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
 import json
+import requests
 from typing import List
 
 from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
 from langchain_community.graphs import Neo4jGraph
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_community.document_loaders.markdown import UnstructuredMarkdownLoader
 from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
-import requests
 
 from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS
 from rag_service.llms.qwen import token_check
@@ -36,30 +37,19 @@ def _map_to_base_edge(edge: dict) -> Relationship:
     return Relationship(source=source, target=target, type=edge['type'], properties=edge.get('properties', []))
 
 
-def convert_to_graph_documents(documents: List[Document]) -> List[GraphDocument]:
+def convert_to_graph_documents() -> List[GraphDocument]:
     graph_documents = []
-    for doc in documents:
-        print(doc.page_content.replace('\n', ' '))
-        message = [
-            SystemMessage(
-                content=EXTRACT_ENTITY_SYSTEM_PROMPT
-            ),
-            HumanMessage(
-                content=EXTRACT_HUMAN_PROMPT.replace('{{input}}', doc.page_content)
-            )
-        ]
-        res = llm.invoke(message)
-
-        try:
-            json_result = json.loads(res.content)
-        except Exception as e:
-            print("Load llm result to json error.")
-        if 'nodes' in json_result:
-            nodes = [_map_to_base_node(node) for node in json_result['nodes']]
-        if 'edges' in json_result:
-            rels = [_map_to_base_edge(rel) for rel in json_result['edges']]
-        graph_document = GraphDocument(nodes=nodes, relationships=rels, source=doc)
-        graph_documents.append(graph_document)
+    # res = llm_call(
+    #     question=EXTRACT_HUMAN_PROMPT.replace('{{input}}', doc.page_content),
+    #     prompt=EXTRACT_ENTITY_SYSTEM_PROMPT, history=[])
+    with open('/root/zl/euler-copilot-rag/rag_service/vectorstore/neo4j/组织架构.json', 'r') as file:
+        json_result = json.load(file)
+    if 'nodes' in json_result:
+        nodes = [_map_to_base_node(node) for node in json_result['nodes']]
+    if 'edges' in json_result:
+        rels = [_map_to_base_edge(rel) for rel in json_result['edges']]
+    graph_document = GraphDocument(nodes=nodes, relationships=rels, source=Document(page_content="xxx"))
+    graph_documents.append(graph_document)
     print("convert down")
     return graph_documents
 
@@ -98,7 +88,7 @@ def llm_call(question: str, prompt: str, history: List = None):
         "stream": False,
         "max_tokens": MAX_TOKENS
     }
-    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False, timeout=30)
+    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False, timeout=60)
     if response.status_code == 200:
         answer_info = response.json()
         if 'choices' in answer_info and len(answer_info.get('choices')) > 0:
@@ -114,3 +104,14 @@ def neo4j_search_data(question: str):
         '{{schema}}', graph.schema), history=[])
     response = graph.query(query=cypher, params={})
     return None if response == [] else json.dumps(response, ensure_ascii=False)
+
+
+def neo4j_insert_data():
+    # markdown_loader = UnstructuredMarkdownLoader("/root/zl/euler-copilot-rag/rag_service/vectorstore/neo4j/组织架构.md")
+    # raw_documents = markdown_loader.load()
+    graph_documents = convert_to_graph_documents()
+    add_graph_documents_to_neo4j(graph_documents)
+
+
+if __name__ == "__main__":
+    neo4j_insert_data()

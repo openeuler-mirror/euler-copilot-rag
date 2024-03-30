@@ -22,12 +22,23 @@ logger = get_logger()
 async def get_stream_answer(
         request: Request,
         req: QueryRequest,
-        response: Response):
+        response: Response
+):
+    response.headers["Content-Type"] = "text/event-stream"
+    try:
         return StreamingResponse(
             get_llm_stream_answer(req),
             status_code=status.HTTP_200_OK,
-            headers=response.headers)
-
+            headers=response.headers
+        )
+    except KnowledgeBaseNotExistsException as e:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ErrorResponse(
+                code=ErrorCode.INVALID_KNOWLEDGE_BASE,
+                message=str(e)
+            ).dict()
+        ) from e
 @router.post('/create')
 async def create(
         req: CreateKnowledgeBaseReq,

@@ -68,13 +68,13 @@ try:
 
     原始问题: {{question}}
     上下文: {{ history }}''',
-        'sql_generate_prompt_template': '''你是一个openEuler的数据库专家，请根据数据库的表结构生成用户想要查询的sql语句，sql语句查询结果必须限制在30个。
+        'sql_generate_prompt_template': '''你是一个openEuler的数据库专家，请根据数据库的表结构生成用户想要查询的sql语句，sql语句查询结果必须限制在30个，如果数据库表不满足用户的提问sql请返回空字符串
 
-    输出结果的json格式：
+    必须按照以下json格式输出结果：
     {
-        "sql":""
+        "sql":"" //生成的sql
     }
-
+    
     openEuler常用的版本：
     openEuler-20.03-LTS、openEuler-20.03-LTS-SP1、openEuler-20.03-LTS-SP2、openEuler-20.03-LTS-SP3、openEuler-20.03-LTS-SP4、openEuler-20.03-LTS-Next、 \
     openEuler-21.03、openEuler-21.09、openEuler-22.03-LTS、openEuler-22.03-LTS-SP1、openEuler-22.03-LTS-SP2、openEuler-22.03-LTS-SP3、openEuler-22.03-LTS-Next \
@@ -83,8 +83,8 @@ try:
 
     表结构： {{table}}
 
-    示例： {{example}}''',
-        'intent_detect_prompt_template': '''请根据历史对话简短的总结用户的最新意图'''
+    问题与生成sql示例： {{example}}''',
+        'intent_detect_prompt_template': '''请根据历史对话简短的总结用户想查询什么'''
     }
 except Exception as e:
     logger.error(e)

@@ -112,5 +112,8 @@ def llm_call(question: str, prompt: str, history: List = None):
 def neo4j_search_data(question: str):
     cypher = llm_call(question=question, prompt=GENERATE_CYPHER_SYSTEM_PROMPT.replace(
         '{{schema}}', graph.schema), history=[])
-    response = graph.query(query=cypher, params={})
+    try:
+        response = graph.query(query=cypher, params={})
+    except Exception as ex:
+        return None
     return None if response == [] else json.dumps(response, ensure_ascii=False)

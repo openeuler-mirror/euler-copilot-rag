@@ -37,7 +37,7 @@ class CryptoHub:
 
     @staticmethod
     def query_plaintext_by_config_name(config_name,
-                                       config_file='/root/zl/euler-copilot-rag/encrypted_config.json'):
+                                       config_file='/config/encrypted_config.json'):
         plaintext = ''
         try:
             config_name_sha256 = CryptoHub.generate_str_from_sha256(config_name)

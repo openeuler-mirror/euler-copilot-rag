@@ -51,7 +51,7 @@ async def create_knowledge_base(req: CreateKnowledgeBaseReq, session) -> str:
 
 
 def get_qwen_llm_stream_answer(req: QueryRequest):
-    yield from qwen_llm_stream_answer(req)
+    return qwen_llm_stream_answer(req)
 
 
 def get_spark_llm_stream_answer(req: QueryRequest):

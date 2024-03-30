@@ -54,8 +54,19 @@ async def spark_llm_stream_answer(req: QueryRequest):
         yield source
 
 
-def qwen_llm_stream_answer(req: QueryRequest):
-    documents_info = get_documents_info(req)
+async def qwen_llm_stream_answer(req: QueryRequest):
+    user_intent = intent_detect(req.question, req.history)
+    documents_info = []
+    loop = asyncio.get_event_loop()
+    tasks = [
+        async_extend_query_generate(user_intent),
+        async_neo4j_query_generate(user_intent)
+    ]
+    task_result = await asyncio.gather(*tasks)
+    documents_info.extend(res for res in task_result if res is not None)
+    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
+                                         top_k=req.top_k-len(documents_info)))
+
     query_context = get_query_context(documents_info)
     prompt = QWEN_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
     res = ""

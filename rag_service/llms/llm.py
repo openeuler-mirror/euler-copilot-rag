@@ -19,6 +19,7 @@ from rag_service.models.database.models import yield_session
 from rag_service.query_generator.query_generator import query_generate
 from rag_service.config import INTENT_DETECT_PROMPT_TEMPLATE, LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS, QWEN_PROMPT_TEMPLATE, SPARK_PROMPT_TEMPLATE, SQL_GENERATE_PROMPT_TEMPLATE
 from rag_service.exceptions import LlmAnswerException, LlmRequestException, PostgresQueryException, TokenCheckFailed
+from rag_service.security.cryptohub import CryptoHub
 from rag_service.vectorstore.neo4j.manage_neo4j import neo4j_search_data
 
 logger = get_logger()
@@ -34,6 +35,8 @@ async def spark_llm_stream_answer(req: QueryRequest):
     ]
     task_result = await asyncio.gather(*tasks)
     documents_info.extend(res for res in task_result if res is not None)
+    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
+                                         top_k=req.top_k-len(documents_info)))
 
     query_context = get_query_context(documents_info)
     prompt = SPARK_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
@@ -83,7 +86,8 @@ def llm_call(question: str, prompt: str, history: List = None):
         else:
             raise TokenCheckFailed(f'Token is too long.')
     headers = {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
     }
     data = {
         "model": LLM_MODEL,

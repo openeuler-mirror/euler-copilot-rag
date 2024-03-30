@@ -75,7 +75,7 @@ def gen_params(appid, domain, query, system, history):
             "chat": {
                 "domain": domain,
                 "temperature": LLM_TEMPERATURE,
-                "max_tokens": MAX_TOKENS,
+                "max_tokens": int(MAX_TOKENS),
                 "auditing": "default",
             }
         },

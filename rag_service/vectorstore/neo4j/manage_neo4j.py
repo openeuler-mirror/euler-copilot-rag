@@ -7,14 +7,17 @@ from langchain_core.documents import Document
 from langchain_community.graphs import Neo4jGraph
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
+import requests
 
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS
+from rag_service.llms.qwen import token_check
 from rag_service.security.cryptohub import CryptoHub
-from rag_service.exceptions import Neo4jQueryException
+from rag_service.exceptions import Neo4jQueryException, TokenCheckFailed
 from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, EXTRACT_HUMAN_PROMPT, \
     GENERATE_CYPHER_SYSTEM_PROMPT
 
 
-llm = ChatOpenAI(openai_api_key=CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY'),
+llm = ChatOpenAI(openai_api_key="xxx",
                  openai_api_base=os.getenv("LLM_URL"), model_name="Qwen-72B-Chat-Int4", temperature=0)
 
 NEO4J_URL = CryptoHub.query_plaintext_by_config_name('NEO4J_URL')
@@ -71,20 +74,43 @@ def add_graph_documents_to_neo4j(graph_documents: List[GraphDocument]):
     print("added")
 
 
-def neo4j_search_data(question: str):
-    message = [
-        SystemMessage(
-            content=GENERATE_CYPHER_SYSTEM_PROMPT.replace('{{schema}}', graph.schema)
-        ),
-        HumanMessage(
-            content=question
-        )
+def llm_call(question: str, prompt: str, history: List = None):
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": question}
     ]
-    cypher = llm.invoke(message)
-    response = graph.query(query=cypher.content, params={})
-    neo4j_res = ''
-    for res in response:
-        for v in res.values():
-            if v is not None:
-                neo4j_res += v+'\n'
-    return neo4j_res
+    history = history or []
+    if len(history) > 0:
+        messages[1:1] = history
+    while not token_check(messages):
+        if len(messages) > 2:
+            messages = messages[:1]+messages[2:]
+        else:
+            raise TokenCheckFailed(f'Token is too long.')
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+    }
+    data = {
+        "model": LLM_MODEL,
+        "messages": messages,
+        "temperature": LLM_TEMPERATURE,
+        "stream": False,
+        "max_tokens": MAX_TOKENS
+    }
+    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False, timeout=30)
+    if response.status_code == 200:
+        answer_info = response.json()
+        if 'choices' in answer_info and len(answer_info.get('choices')) > 0:
+            final_ans = answer_info['choices'][0]['message']['content']
+            return final_ans
+        else:
+            return ""
+    else:
+        return ""
+
+def neo4j_search_data(question: str):
+    cypher = llm_call(question=question, prompt=GENERATE_CYPHER_SYSTEM_PROMPT.replace(
+        '{{schema}}', graph.schema), history=[])
+    response = graph.query(query=cypher, params={})
+    return None if response == [] else json.dumps(response, ensure_ascii=False)

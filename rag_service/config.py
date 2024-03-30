@@ -14,7 +14,7 @@ try:
         'sentence_size': '300',
         'default_top_k': '5',
         'llm_model': 'Qwen-72B-Chat-Int4',
-        'llm_temperature': '0',
+        'llm_temperature': '0.01',
         'max_tokens': '4096',
         'qwen_prompt_template': '''你是由openEuler社区构建的大型语言AI助手。请根据给定的用户问题，提供清晰、简洁、准确的答案。你将获得一系列与问题相关的背景信息。\
     如果适用，请使用这些背景信息；如果不适用，请忽略这些背景信息。

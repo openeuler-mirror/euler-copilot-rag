@@ -5,7 +5,7 @@ from threading import Lock
 
 import pytz
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column,String, BigInteger, create_engine
+from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
@@ -143,6 +143,67 @@ class OeCompatibilityOsv(Base):
     checksum = Column(String())
     base_openeuler_version = Column(String())
 
+
+class OeCompatibilitySecurityNotice(Base):
+    __tablename__ = 'oe_compatibility_security_notice'
+    id = Column(String(), primary_key=True,)
+    affected_component = Column(String())
+    affected_product = Column(String())
+    announcement_time = Column(String())
+    cve_id = Column(String())
+    description = Column(String())
+    introduction = Column(String())
+    package_name = Column(String())
+    reference_documents = Column(String())
+    revision_history = Column(String())
+    security_notice_no = Column(String())
+    subject = Column(String())
+    summary = Column(String())
+    type = Column(String())
+    notice_type = Column(String())
+    cvrf = Column(String())
+    package_helper_list = Column(String())
+    package_hotpatch_list = Column(String())
+    package_list = Column(String())
+    reference_list = Column(String())
+    cve_list = Column(String())
+
+
+class OeCompatibilityCveDatabase(Base):
+    __tablename__ = 'oe_compatibility_cve_database'
+    id = Column(String(), primary_key=True,)
+    affected_product = Column(String())
+    announcement_time = Column(String())
+    attack_complexity_nvd = Column(String())
+    attack_complexity_oe = Column(String())
+    attack_vector_nvd = Column(String())
+    attack_vector_oe = Column(String())
+    availability_nvd = Column(String())
+    availability_oe = Column(String())
+    confidentiality_nvd = Column(String())
+    confidentiality_oe = Column(String())
+    cve_id = Column(String())
+    cvsss_core_nvd = Column(String())
+    cvsss_core_oe = Column(String())
+    integrity_nvd = Column(String())
+    integrity_oe = Column(String())
+    national_cyberAwareness_system = Column(String())
+    package_name = Column(String())
+    privileges_required_nvd = Column(String())
+    privileges_required_oe = Column(String())
+    scope_nvd = Column(String())
+    scope_oe = Column(String())
+    status = Column(String())
+    summary = Column(String())
+    type = Column(String())
+    user_interaction_nvd = Column(String())
+    user_interactio_oe = Column(String())
+    update_time = Column(TIMESTAMP())
+    create_time = Column(TIMESTAMP())
+    security_notice_no = Column(String())
+    parser_bean = Column(String())
+    cvrf = Column(String())
+    package_list = Column(String())
 
 class PoStrageDBMeta(type):
     _instances = {}

@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
-from typing import Any, List, Optional
 import requests
 from pydantic import BaseModel, Field
+from typing import Any, List, Optional
 
 from langchain.llms.base import LLM
 from langchain.output_parsers import PydanticOutputParser
@@ -10,6 +10,7 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 
 from rag_service.logger import get_logger
 from rag_service.config import LLM_MODEL, LLM_TEMPERATURE
+from rag_service.models.database.models import yield_session
 from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
 
@@ -78,8 +79,9 @@ class LineListOutputParser(PydanticOutputParser):
 output_parser = LineListOutputParser()
 
 
-def query_generate(raw_question: str, kb_sn: str, top_k: int) -> List[str]:
-    results = pg_search_data(raw_question, kb_sn, top_k)
+def query_generate(raw_question: str, kb_sn: str, top_k: int, session) -> List[str]:
+    with yield_session() as session:
+        results = pg_search_data(raw_question, kb_sn, top_k, session)
     docs = []
     for result in results:
         docs.append(result[0])

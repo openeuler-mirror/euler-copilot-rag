@@ -14,12 +14,12 @@ from sqlalchemy import (
     create_engine,
     func
 )
+from dotenv import load_dotenv
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import TIMESTAMP, UUID
+from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 
-from rag_service.constants import DEFAULT_UPDATE_TIME_INTERVAL_SECOND
 from rag_service.models.enums import (
     VectorizationJobStatus,
     VectorizationJobType,
@@ -27,8 +27,8 @@ from rag_service.models.enums import (
     EmbeddingModel,
     UpdateOriginalDocumentType,
 )
-from rag_service.utils.cryptohub import CryptoHub
-from dotenv import load_dotenv
+from rag_service.security.cryptohub import CryptoHub
+from rag_service.constants import DEFAULT_UPDATE_TIME_INTERVAL_SECOND
 
 # Load the environment variables
 load_dotenv()

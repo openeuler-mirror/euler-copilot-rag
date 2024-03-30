@@ -1,17 +1,32 @@
 aiofiles == 23.1.0
-fastapi == 0.89.1
-langchain == 0.0.351
+concurrent-log-handler==0.9.25
+dagster==1.6.9
+dagster-postgres==0.22.9
+dagster-webserver==1.6.9
+fastapi == 0.110.0
+fastapi-pagination == 0.12.19
+langchain == 0.1.11
+langchain-community==0.0.27
+langchain-core==0.1.30
+langchain-text-splitters==0.0.1
+langsmith==0.1.23
 more-itertools == 10.1.0
-starlette == 0.22.0
+starlette == 0.36.3
 uvicorn == 0.20.0
-urllib3 == 1.26.18
-psycopg2-binary == 2.9.9
-itsdangerous == 2.1.2
+sseclient==0.0.27
+sseclient-py==1.8.0
+urllib3==1.26.18
+psycopg2-binary==2.9.9
+itsdangerous==2.1.2
 python-multipart == 0.0.6
+python-docx==1.1.0
+pandas==2.2.1
+pgvector==0.2.5
+chardet==5.2.0
 pydantic == 1.10.13
+pyopenssl==24.1.0
 python-dotenv == 1.0.0
 cryptography == 42.0.4
-pgvector == 0.2.5
 SQLAlchemy == 2.0.23
 requests == 2.31.0
 websockets == 12.0

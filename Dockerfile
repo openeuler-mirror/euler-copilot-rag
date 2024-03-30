@@ -1,7 +1,6 @@
 FROM openeuler/openeuler:22.03-lts-sp1
 
-COPY . /rag-service/
-
+COPY ./ /rag-service/
 WORKDIR /rag-service
 ENV PYTHONPATH /rag-service
 ENV PATH /home/eulercopilot/.local/bin:$PATH
@@ -9,25 +8,11 @@ ENV PATH /home/eulercopilot/.local/bin:$PATH
 RUN yum makecache &&\
     yum update -y &&\
     yum install -y python3 python3-pip shadow-utils &&\
-    groupadd -g 1001 eulercopilot &&\
-    useradd -u 1001 -g 1001 eulercopilot &&\
-    chown -R eulercopilot:eulercopilot /rag-service &&\
-    yum clean all
+    yum clean all &&\
+    pip3 install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple &&\
+    mkdir /dagster_home && cp /rag-service/dagster.yaml /rag-service/workspace.yaml /rag-service/pyproject.toml /dagster_home &&\
+    mkdir /config && python3 /rag-service/rag_service/utils/encrypt_config.py --in_file /rag-service/rag_service/utils/init/secret.json &&\
+    cp /rag-service/encrypted_config.json /config &&\
+    rm -rf /rag-service/rag_service/utils/init
 
-USER eulercopilot
-
-RUN pip3 install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-RUN mkdir -p ./rag_service/utils/init &&\
-    python3 rag_service/utils/cryptohub.py --in_dir rag_service/utils/init &&\
-    rm -rf ./rag_service/utils/init
-
-RUN chmod -R 750 /home/eulercopilot &&\
-    chmod -R 550 /rag-service &&\
-    chmod -R 550 /rag-service/rag_service/* &&\
-    chmod -R 600 /rag-service/*.crt &&\
-    chmod -R 600 /rag-service/*.key &&\
-    chmod -R 640 /rag-service/.env &&\
-    chmod -R 500 /rag-service/rag_service/utils/cryptohub.py
-
-CMD ["python3", "/rag-service/rag_service/rag_app/app.py"]
+CMD ["/bin/bash", "run.sh"]

@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy import select
 from rag_service.logger import get_logger
 from rag_service.models.database.models import ServiceConfig, yield_session
 logger = get_logger()
@@ -77,7 +76,7 @@ except Exception as e:
 def load_service_config(name: str) -> Optional[str]:
     try:
         with yield_session() as session:
-            result = session.execute(select(ServiceConfig).where(ServiceConfig.name == name))
+            result = session.query(ServiceConfig).filter(ServiceConfig.name == name)
             service_config = result.scalar_one_or_none()
             if service_config is not None:
                 return service_config.value

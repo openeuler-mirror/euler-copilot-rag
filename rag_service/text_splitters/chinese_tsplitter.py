@@ -1,12 +1,13 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import re
 from typing import List
 
 from langchain.text_splitter import CharacterTextSplitter
 
+from rag_service.logger import get_logger
 from rag_service.config import SENTENCE_SIZE
-from rag_service.logger import get_logger, Module
 
-logger = get_logger(module=Module.VECTORIZATION)
+logger = get_logger()
 
 # 最大分句长度
 MAX_SENTENCE_SIZE = SENTENCE_SIZE * 3

@@ -1,9 +1,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-
-import logging
 import os
 import time
+import logging
+from dotenv import load_dotenv
 from logging.handlers import TimedRotatingFileHandler
+load_dotenv()
 
 
 class SizedTimedRotatingFileHandler(TimedRotatingFileHandler):
@@ -34,7 +35,7 @@ class SizedTimedRotatingFileHandler(TimedRotatingFileHandler):
 
 LOG_FORMAT = '[{asctime}][{levelname}][{name}][P{process}][T{thread}][{message}][{funcName}({filename}:{lineno})]'
 
-if os.getenv("RAG_ENV") == "dev":
+if os.getenv("RAG_ENV") == "stdout":
     handlers = {
         "default": {
             "formatter": "default",
@@ -90,7 +91,7 @@ log_config = {
 
 def get_logger():
     logger = logging.getLogger('uvicorn')
-    if os.getenv("RAG_ENV") != "dev" and not logger.handlers:
+    if os.getenv("RAG_ENV") != "stdout" and not logger.handlers:
         logger.setLevel(logging.INFO)
         rotate_handler = SizedTimedRotatingFileHandler(
             filename=f'{LOG_DIR}/app.log', when='MIDNIGHT', backup_count=30, max_bytes=5000000)

@@ -5,3 +5,6 @@ Dockerfile
 .dockerignore
 .vscode
 start.sh
+
+logs
+encrypted_config.json

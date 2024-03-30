@@ -4,7 +4,7 @@
 /.pytest_cache/
 /dist
 poetry.lock
-rag_service/utils/init
+rag_service/security/init
 *venv
 
 .env
@@ -12,3 +12,6 @@ start.sh
 
 *.key
 *.crt
+
+/logs
+encrypted_config.json

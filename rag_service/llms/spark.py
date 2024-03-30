@@ -12,11 +12,12 @@ from wsgiref.handlers import format_date_time
 import websocket
 import websockets
 
-from rag_service.logger import Module, get_logger
-from rag_service.utils.cryptohub import CryptoHub
+from rag_service.logger import get_logger
 from rag_service.exceptions import LlmAnswerException
+from rag_service.security.encrypt_config import CryptoHub
+from rag_service.config import LLM_TEMPERATURE, MAX_TOKENS
 
-logger = get_logger(module=Module.APP)
+logger = get_logger()
 
 
 class Ws_Param(object):
@@ -57,9 +58,7 @@ class Ws_Param(object):
             "host": self.host
         }
         # 拼接鉴权参数，生成url
-        url = self.gpt_url + '?' + urlencode(v)
-        # 此处打印出建立连接时候的url,参考本demo的时候可取消上方打印的注释，比对相同参数时生成的url与自己代码生成的url是否一致
-        return url
+        return self.gpt_url + '?' + urlencode(v)
 
 
 def gen_params(appid, domain, query, system, history):
@@ -75,8 +74,8 @@ def gen_params(appid, domain, query, system, history):
         "parameter": {
             "chat": {
                 "domain": domain,
-                "temperature": 0.5,
-                "max_tokens": 4096,
+                "temperature": LLM_TEMPERATURE,
+                "max_tokens": MAX_TOKENS,
                 "auditing": "default",
             }
         },

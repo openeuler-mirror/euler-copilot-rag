@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 
-import hashlib
 import json
-import os
-import shutil
+import hashlib
 
-from rag_service.security.util import Security
 from rag_service.logger import get_logger
+from rag_service.security.security import Security
+
+logger = get_logger()
 
 
 class CryptoHub:
@@ -37,7 +37,7 @@ class CryptoHub:
 
     @staticmethod
     def query_plaintext_by_config_name(config_name,
-                                       config_file='/config/encrypted_config.json'):
+                                       config_file='/root/zl/euler-copilot-rag/encrypted_config.json'):
         plaintext = ''
         try:
             config_name_sha256 = CryptoHub.generate_str_from_sha256(config_name)
@@ -47,6 +47,5 @@ class CryptoHub:
             encrypted_plaintext = full_config_dict[config_name_sha256]
             plaintext = CryptoHub.decrypt_with_config(encrypted_plaintext)
         except Exception as ex:
-            logger = get_logger()
             logger.error(f"Query plaintext by config name failed due to error: {ex}")
         return plaintext

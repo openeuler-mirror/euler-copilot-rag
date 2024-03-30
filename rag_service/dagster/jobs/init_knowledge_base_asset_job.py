@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from dagster import define_asset_job
 
 from rag_service.dagster.assets.init_knowledge_base_asset import init_knowledge_base_asset

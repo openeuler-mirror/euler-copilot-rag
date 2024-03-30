@@ -1,11 +1,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-
-import logging
 import os
 import time
-from logging.handlers import TimedRotatingFileHandler
+import logging
 from dotenv import load_dotenv
+from logging.handlers import TimedRotatingFileHandler
 load_dotenv()
+
 
 class SizedTimedRotatingFileHandler(TimedRotatingFileHandler):
     def __init__(self, filename, max_bytes=0, backup_count=0, encoding=None,

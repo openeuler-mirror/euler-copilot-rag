@@ -1,16 +1,18 @@
-import collections
-import itertools
-import shutil
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
+import shutil
+import itertools
+import collections
 
-from typing import List, Tuple, Set
+from dotenv import load_dotenv
 from more_itertools import chunked
+from typing import List, Tuple, Set
 from langchain.schema import Document
-from sqlalchemy import select
 from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut, DynamicOutput, RetryPolicy
 
-from rag_service.models.database.models import yield_session
+from rag_service.config import VECTORIZATION_CHUNK_SIZE
 from rag_service.document_loaders.loader import load_file
+from rag_service.models.database.models import yield_session
 from rag_service.models.generic.models import OriginalDocument
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.original_document_fetchers import select_fetcher, Fetcher
@@ -19,12 +21,12 @@ from rag_service.vectorstore.postgresql.manage_pg import pg_insert_data, pg_dele
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
 from rag_service.models.database.models import VectorStore, VectorizationJob, KnowledgeBaseAsset
 from rag_service.utils.dagster_util import parse_asset_partition_key, get_knowledge_base_asset_root_dir
-from rag_service.config import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
 from rag_service.models.database.models import OriginalDocument as OriginalDocumentEntity, KnowledgeBase, \
     UpdatedOriginalDocument
-from dotenv import load_dotenv
+
 load_dotenv()
+
 
 @op(retry_policy=RetryPolicy(max_retries=3))
 def change_update_vectorization_job_status_to_started(context: OpExecutionContext):
@@ -42,8 +44,8 @@ def fetch_updated_original_document_set(
     knowledge_base_asset_dir = get_knowledge_base_asset_root_dir(knowledge_base_serial_number,
                                                                  knowledge_base_asset_name)
     with yield_session() as session:
-        knowledge_base_asset = get_knowledge_base_asset(session, knowledge_base_serial_number,
-                                                        knowledge_base_asset_name)
+        knowledge_base_asset = get_knowledge_base_asset(knowledge_base_serial_number,
+                                                        knowledge_base_asset_name, session)
         # 获取当前资产下的所有文档(vector_stores)
         original_document_sources = []
         for vector_store in knowledge_base_asset.vector_stores:
@@ -64,7 +66,7 @@ def fetch_updated_original_document_set(
         uploaded_original_document_set = set(uploaded_original_document_sources)
         # 原始资产里面, 需要删除和更新的文件集合
         union_deleted_original_document_set = (
-                (deleted_original_document_set | uploaded_original_document_set) & original_document_set
+            (deleted_original_document_set | uploaded_original_document_set) & original_document_set
         )
         # 需要更新的文件集合
         updated_original_document_set = union_deleted_original_document_set & uploaded_original_document_set
@@ -119,7 +121,7 @@ def delete_database_original_documents(
                 OriginalDocumentEntity.source.in_(union_deleted_original_document_set),
                 KnowledgeBase.sn == knowledge_base_serial_number,
                 KnowledgeBaseAsset.name == knowledge_base_asset_name
-            ).all()
+        ).all()
 
         for deleted_original_document_term in deleted_original_document_terms:
             session.delete(deleted_original_document_term)
@@ -195,8 +197,8 @@ def embedding_update_documents(
 
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
     with yield_session() as session:
-        knowledge_base_asset = get_knowledge_base_asset(session, knowledge_base_serial_number,
-                                                        knowledge_base_asset_name)
+        knowledge_base_asset = get_knowledge_base_asset(knowledge_base_serial_number,
+                                                        knowledge_base_asset_name, session)
         vector_stores = knowledge_base_asset.vector_stores
         remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
         # embeddings = list(
@@ -245,13 +247,11 @@ def save_update_original_documents_to_db(
     knowledge_base_serial_number, knowledge_base_asset_name = parse_asset_partition_key(context.partition_key)
     with yield_session() as session:
         vector_store = session.query(VectorStore).join(KnowledgeBaseAsset, KnowledgeBaseAsset.id == VectorStore.kba_id).filter(
-                KnowledgeBaseAsset.name == knowledge_base_asset_name,
-                VectorStore.name == vector_store_name
-            ).one_or_none()
+            KnowledgeBaseAsset.name == knowledge_base_asset_name, VectorStore.name == vector_store_name).one_or_none()
 
         if not vector_store:
-            knowledge_base_asset = get_knowledge_base_asset(session, knowledge_base_serial_number,
-                                                            knowledge_base_asset_name)
+            knowledge_base_asset = get_knowledge_base_asset(knowledge_base_serial_number,
+                                                            knowledge_base_asset_name, session)
             vector_store = VectorStore(name=vector_store_name)
             vector_store.knowledge_base_asset = knowledge_base_asset
         vector_store.knowledge_base_asset.vector_stores.append(vector_store)

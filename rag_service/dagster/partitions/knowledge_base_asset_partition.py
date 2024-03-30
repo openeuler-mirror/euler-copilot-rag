@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from dagster import DynamicPartitionsDefinition, partitioned_config
 
 knowledge_base_asset_partitions_def = DynamicPartitionsDefinition(name="knowledge_base_asset")

@@ -1,105 +1,86 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import io
-import os
 import json
-import requests
+import os
+from typing import List
+
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
-from fastapi import HTTPException
+import requests
 from sqlalchemy import text
 from rag_service.logger import get_logger
-from rag_service.security.cryptohub import CryptoHub
-from rag_service.exceptions import TokenCheckFailed
+from rag_service.llms.qwen import qwen_llm_call, token_check
+from rag_service.llms.spark import spark_llm_call
+
+from rag_service.logger import get_logger
 from rag_service.models.api.models import QueryRequest
-from rag_service.exceptions import ElasitcsearchEmptyKeyException
-from rag_service.query_generator.query_generator import query_generate
 from rag_service.models.database.models import yield_session
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, PROMPT_TEMPLATE, MAX_TOKENS, SQL_GENERATE_PROMPT_TEMPLATE, INTENT_DETECT_PROMPT_TEMPLATE
+from rag_service.query_generator.query_generator import query_generate
+from rag_service.config import INTENT_DETECT_PROMPT_TEMPLATE, LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS, QWEN_PROMPT_TEMPLATE, SPARK_PROMPT_TEMPLATE, SQL_GENERATE_PROMPT_TEMPLATE
+from rag_service.exceptions import LlmAnswerException, LlmRequestException, PostgresQueryException, TokenCheckFailed
+from rag_service.security.cryptohub import CryptoHub
+from rag_service.vectorstore.neo4j.manage_neo4j import neo4j_search_data
 
 logger = get_logger()
 
-llm_prompt_map = {
-    "general_qa": PROMPT_TEMPLATE
-}
 
-
-def token_check(messages: str) -> bool:
-    headers = {
-        "Content-Type": "application/json"
-    }
-
-    content = "\n".join(message['content'] for message in messages)
-    data = {
-        "prompts": [
-            {
-                "model": LLM_MODEL,
-                "prompt": content,
-                "max_tokens": 0
-            }
-        ]
-    }
-
-    response = requests.post(os.getenv("LLM_TOKEN_CHECK_URL"), json=data, headers=headers, stream=False, timeout=30)
-    if response.status_code == 200:
-        check_result = response.json()
-        prompts = check_result['prompts']
-        if len(prompts) > 0:
-            for res in prompts:
-                token_count = res['tokenCount']
-                max_token = res['contextLength']
-                if token_count > max_token:
-                    return False
-        else:
-            logger.error("大模型响应不合规，返回：%s", check_result)
-            return True
-    else:
-        logger.error("大模型调用失败，返回：%s", response.content)
-        return True
-    return True
-
-
-def llm_stream_call(question: str, prompt: str, history: List = None):
-    messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": question}
+async def spark_llm_stream_answer(req: QueryRequest):
+    user_intent = intent_detect(req.question, req.history)
+    documents_info = []
+    loop = asyncio.get_event_loop()
+    tasks = [
+        async_extend_query_generate(user_intent),
+        async_neo4j_query_generate(user_intent)
     ]
-    history = history or []
-    if len(history) > 0:
-        messages[1:1] = history
-    while not token_check(messages):
-        if len(messages) > 2:
-            messages = messages[:1]+messages[2:]
-        else:
-            raise TokenCheckFailed(f'Token is too long.')
-    headers = {
-        "Content-Type": "application/json",
-        "cache-control": "no-cache",
-        "connection": "keep-alive",
-        "x-accel-buffering": "no"
-    }
-    data = {
-        "model": LLM_MODEL,
-        "messages": messages,
-        "temperature": LLM_TEMPERATURE,
-        "stream": True,
-        "max_tokens": MAX_TOKENS
-    }
-    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=True, timeout=30)
-    if response.status_code == 200:
-        for line in response.iter_lines(decode_unicode=True):
-            if line:
-                line = line.strip()
-                if line.lower() == 'data: [done]':
-                    continue
-                try:
-                    info_json = json.loads(line[6:])
-                    part = info_json['choices'][0]['delta'].get('content', "")
-                    yield part
-                except Exception as ex:
-                    logger.error(f"{ex}")
-    else:
-        yield ""
+    task_result = await asyncio.gather(*tasks)
+    documents_info.extend(res for res in task_result if res is not None)
+    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
+                                         top_k=req.top_k-len(documents_info)))
+
+    query_context = get_query_context(documents_info)
+    prompt = SPARK_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
+    res = ""
+    try:
+        answer = spark_llm_call(question=req.question, system=prompt, history=req.history)
+    except LlmAnswerException as error:
+        logger.exception("用户提问：%s，查询资产库：%s，运行失败：%s", req.question, req.kb_sn, error)
+        raise LlmRequestException(f'请求大模型返回发生错误') from error
+    async for part in answer:
+        res += part
+        yield "data: "+json.dumps({"content": part}, ensure_ascii=False)+'\n\n'
+    source_info = append_source_info(req=req, documents_info=documents_info)
+    for source in source_info:
+        yield source
+
+
+async def qwen_llm_stream_answer(req: QueryRequest):
+    user_intent = intent_detect(req.question, req.history)
+    documents_info = []
+    loop = asyncio.get_event_loop()
+    tasks = [
+        async_extend_query_generate(user_intent),
+        async_neo4j_query_generate(user_intent)
+    ]
+    task_result = await asyncio.gather(*tasks)
+    documents_info.extend(res for res in task_result if res is not None)
+    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
+                                         top_k=req.top_k-len(documents_info)))
+
+    query_context = get_query_context(documents_info)
+    prompt = QWEN_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
+    res = ""
+    try:
+        answer = qwen_llm_call(question=req.question, system=prompt, history=req.history)
+    except LlmAnswerException as error:
+        logger.exception("用户提问：%s，查询资产库：%s，运行失败：%s", req.question, req.kb_sn, error)
+        raise LlmRequestException(f'请求大模型返回发生错误') from error
+    for part in answer:
+        res += part
+        yield "data: "+json.dumps({"content": part}, ensure_ascii=False)+'\n\n'
+    source_info = append_source_info(req=req, documents_info=documents_info)
+    for source in source_info:
+        yield source
 
 
 def llm_call(question: str, prompt: str, history: List = None):
@@ -116,7 +97,8 @@ def llm_call(question: str, prompt: str, history: List = None):
         else:
             raise TokenCheckFailed(f'Token is too long.')
     headers = {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
     }
     data = {
         "model": LLM_MODEL,
@@ -137,6 +119,41 @@ def llm_call(question: str, prompt: str, history: List = None):
     else:
         logger.error("大模型调用失败，返回：%s", response.content)
         return ""
+
+
+def get_query_context(documents_info) -> str:
+    query_context = ""
+    index = 1
+    try:
+        for doc in documents_info:
+            query_context += str(index) + ". " + doc.strip() + "\n"
+            index += 1
+        return query_context
+    except Exception as error:
+        logger.error(error)
+
+
+def get_documents_info(req: QueryRequest) -> List[str]:
+    try:
+        history = req.history
+        documents_info = []
+        documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn, top_k=req.top_k))
+        if len(history) >= 2:
+            documents_info.extend(
+                query_generate(
+                    raw_question=history[-2]['content'] + ' ' + req.question,
+                    kb_sn=req.kb_sn, top_k=req.top_k))
+            documents_info.extend(query_generate(raw_question=history[-2]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
+        if len(history) >= 4:
+            documents_info.extend(
+                query_generate(
+                    raw_question=history[-4]['content'] + ' ' + req.question,
+                    kb_sn=req.kb_sn, top_k=req.top_k))
+            documents_info.extend(query_generate(raw_question=history[-4]['content'], kb_sn=req.kb_sn, top_k=req.top_k))
+
+        return documents_info
+    except PostgresQueryException as error:
+        raise LlmRequestException(f'请求大模型返回发生错误') from error
 
 
 def extend_query_generate(raw_question: str, history: List = None):
@@ -179,6 +196,11 @@ async def async_extend_query_generate(user_intent):
         ThreadPoolExecutor(), extend_query_generate, user_intent
     )
 
+async def async_neo4j_query_generate(user_intent):
+    return await asyncio.get_event_loop().run_in_executor(
+        ThreadPoolExecutor(), neo4j_search_data, user_intent
+    )
+
 
 async def llm_with_rag_stream_answer(req: QueryRequest):
     res = ""
@@ -202,28 +224,18 @@ async def llm_with_rag_stream_answer(req: QueryRequest):
         for doc in documents_info:
             query_context += str(index) + ". " + doc.strip() + "\n"
             index += 1
+        return query_context
     except Exception as error:
         logger.error(error)
-    try:
-        prompt = llm_prompt_map["general_qa"]
-        query = prompt.replace('{{ context }}', query_context)
-        answer = llm_stream_call(question=req.question, prompt=query, history=history)
 
-        for part in answer:
-            res += part
-            yield "data: "+json.dumps({"content": part})+'\n\n'
 
-        source_info = io.StringIO()
-        if req.fetch_source:
-            source_info.write("\n检索的到原始片段内容如下: \n")
-            contents = [con for con in documents_info]
-            source_info.write('\n'.join(f'片段{idx}： \n{source}' for idx, source in enumerate(contents, 1)))
+def append_source_info(req: QueryRequest, documents_info):
+    source_info = io.StringIO()
+    if req.fetch_source:
+        source_info.write("\n检索的到原始片段内容如下: \n")
+        contents = [con for con in documents_info]
+        source_info.write('\n'.join(f'片段{idx}： \n{source}' for idx, source in enumerate(contents, 1)))
 
-        for part in source_info.getvalue():
-            yield "data: " + json.dumps({'content': part}) + '\n\n'
-        yield "data: [DONE]"
-    except KeyError as error:
-        raise ElasitcsearchEmptyKeyException(f'Get llm prompt key error') from error
-    except Exception as error:
-        logger.exception("用户提问：%s，查询资产库：%s，运行失败：%s", req.question, req.kb_sn, error)
-        raise HTTPException(status_code=500, detail="结果报错，未获取到任何信息") from error
+    for part in source_info.getvalue():
+        yield "data: " + json.dumps({'content': part}, ensure_ascii=False) + '\n\n'
+    yield "data: [DONE]"

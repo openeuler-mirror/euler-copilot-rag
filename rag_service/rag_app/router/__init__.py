@@ -3,8 +3,8 @@ __all__ = ['routers']
 
 import glob
 import importlib
-from pathlib import Path
 from typing import List
+from pathlib import Path
 
 from fastapi import APIRouter
 

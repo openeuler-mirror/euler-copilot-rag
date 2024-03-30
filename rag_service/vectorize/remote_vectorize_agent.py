@@ -35,7 +35,7 @@ class RemoteRerank:
             documents: List,
             raw_question: str,
             top_k: int
-    ) -> List[List[float]]:
+    ) -> List[str]:
         data = {
             'documents': documents,
             'raw_question': raw_question, 'top_k': top_k

@@ -1,11 +1,11 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import List
 from xml.etree import ElementTree
 
 import docx
 from docx.document import Document
-from docx.text.paragraph import Paragraph
-from langchain.docstore.document import Document as Doc
 from langchain.document_loaders.base import BaseLoader
+from langchain.docstore.document import Document as Doc
 
 from rag_service.logger import get_logger
 
@@ -49,7 +49,6 @@ class DocxLoader(BaseLoader):
             elif element.tag.endswith("p"):
                 # handle paragraph
                 xmlstr = str(element.xml)
-                root = ElementTree.fromstring(xmlstr)
                 if 'pic:pic' in xmlstr and self.do_ocr:
                     pic_texts = ''
                     all_text.extend(pic_texts)

@@ -62,4 +62,4 @@ def delele_knowledge_base(
 def get_llm_stream_answer(
         req: QueryRequest
 ):
-    yield from llm_with_rag_stream_answer(req)
+    return llm_with_rag_stream_answer(req)

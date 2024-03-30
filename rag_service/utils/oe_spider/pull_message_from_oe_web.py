@@ -391,3 +391,103 @@ class PullMeassageFromOeWeb():
                 if type(js["result"]["osvList"][i][key])==list or type(js["result"]["osvList"][i][key])==dict or type(js["result"]["osvList"][i][key])==tuple: 
                     js["result"]["osvList"][i][key]=json.dumps(js["result"]["osvList"][i][key])
             OeMessageManager.add_oe_compatibility_osv(js["result"]["osvList"][i])
+
+    @staticmethod
+    def pull_oe_compatibility_security_notice():
+        url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/securitynotice/findAll'
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        data = {
+            "pages": {
+                "page": 1,
+                "size": 1
+            },
+            "keyword": "",
+            "type": [],
+            "date": [],
+            "affectedProduct": [],
+            "affectedComponent": "",
+            "noticeType": "cve"
+        }
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data
+        )
+        total_num = response.json()["result"]["totalCount"]
+        data = {
+            "pages": {
+                "page": 1,
+                "size": total_num
+            },
+            "keyword": "",
+            "type": [],
+            "date": [],
+            "affectedProduct": [],
+            "affectedComponent": "",
+            "noticeType": "cve"
+        }
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data
+        )
+        js = response.json()
+        OeMessageManager.clear_oe_compatibility_security_notice()
+        for i in range(len(js["result"]["securityNoticeList"])):
+            for key in js["result"]["securityNoticeList"][i]:
+                if type(js["result"]["securityNoticeList"][i][key]) == list or type(
+                        js["result"]["securityNoticeList"][i][key]) == dict or type(
+                        js["result"]["securityNoticeList"][i][key]) == tuple:
+                    js["result"]["securityNoticeList"][i][key] = json.dumps(js["result"]["securityNoticeList"][i][key])
+            OeMessageManager.add_oe_compatibility_security_notice(js["result"]["securityNoticeList"][i])
+
+    @staticmethod
+    def pull_oe_compatibility_cve_database():
+        url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/cvedatabase/findAll'
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        data = {
+            "pages": {
+                "page": 1,
+                "size": 1
+            },
+            "keyword": "",
+            "status": "",
+            "year": "",
+            "score": "",
+            "noticeType": "cve"
+        }
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data
+        )
+        total_num = response.json()["result"]["totalCount"]
+        data = {
+            "pages": {
+                "page": 1,
+                "size": total_num
+            },
+            "keyword": "",
+            "status": "",
+            "year": "",
+            "score": "",
+            "noticeType": "cve"
+        }
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data
+        )
+        js = response.json()
+        OeMessageManager.clear_oe_compatibility_cve_database()
+        for i in range(len(js["result"]["cveDatabaseList"])):
+            for key in js["result"]["cveDatabaseList"][i]:
+                if type(js["result"]["cveDatabaseList"][i][key]) == list or type(
+                        js["result"]["cveDatabaseList"][i][key]) == dict or type(
+                        js["result"]["cveDatabaseList"][i][key]) == tuple:
+                    js["result"]["cveDatabaseList"][i][key] = json.dumps(js["result"]["cveDatabaseList"][i][key])
+            OeMessageManager.add_oe_compatibility_cve_database(js["result"]["cveDatabaseList"][i])

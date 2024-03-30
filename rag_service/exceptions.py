@@ -3,14 +3,6 @@ class ApiRequestValidationError(Exception):
     ...
 
 
-class KnowledgeBaseNotExistsException(Exception):
-    ...
-
-
-class DuplicateKnowledgeBaseAssetException(Exception):
-    ...
-
-
 class KnowledgeBaseAssetNotExistsException(Exception):
     ...
 
@@ -23,15 +15,7 @@ class KnowledgeBaseAssetNotInitializedException(Exception):
     ...
 
 
-class KnowledgeBaseAssetProductValidationError(Exception):
-    ...
-
-
 class KnowledgeBaseExistNonEmptyKnowledgeBaseAsset(Exception):
-    ...
-
-
-class KnowledgeBaseAssetJobIsRunning(Exception):
     ...
 
 
@@ -39,7 +23,7 @@ class KnowledgeBaseNotExistsException(Exception):
     ...
 
 
-class PostgresQueryException(Exception):
+class TokenCheckFailed(Exception):
     ...
 
 
@@ -48,6 +32,10 @@ class LlmRequestException(Exception):
 
 
 class LlmAnswerException(Exception):
+    ...
+
+
+class PostgresQueryException(Exception):
     ...
 
 

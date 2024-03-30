@@ -15,16 +15,11 @@ from rag_service.exceptions import LlmAnswerException, LlmRequestException, Post
 
 logger = get_logger()
 
-llm_prompt_map = {
-    "qwen": QWEN_PROMPT_TEMPLATE,
-    "spark": SPARK_PROMPT_TEMPLATE
-}
-
 
 async def spark_llm_stream_answer(req: QueryRequest):
     documents_info = get_documents_info(req)
     query_context = get_query_context(documents_info)
-    prompt = llm_prompt_map["spark"].replace('{{ context }}', query_context)
+    prompt = SPARK_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
     res = ""
     try:
         answer = spark_llm_call(question=req.question, system=prompt, history=req.history)
@@ -42,7 +37,7 @@ async def spark_llm_stream_answer(req: QueryRequest):
 def qwen_llm_stream_answer(req: QueryRequest):
     documents_info = get_documents_info(req)
     query_context = get_query_context(documents_info)
-    prompt = llm_prompt_map["qwen"].replace('{{ context }}', query_context)
+    prompt = QWEN_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
     res = ""
     try:
         answer = qwen_llm_call(question=req.question, system=prompt, history=req.history)
@@ -55,6 +50,7 @@ def qwen_llm_stream_answer(req: QueryRequest):
     source_info = append_source_info(req=req, documents_info=documents_info)
     for source in source_info:
         yield source
+
 
 def get_documents_info(req: QueryRequest) -> List[str]:
     try:

@@ -11,17 +11,17 @@ from more_itertools import chunked
 from langchain.schema import Document
 from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut, DynamicOutput, RetryPolicy
 
-from rag_service.models.database.models import yield_session
 from rag_service.document_loaders.loader import load_file
 from rag_service.models.enums import VectorizationJobStatus
+from rag_service.models.database.models import yield_session
 from rag_service.models.generic.models import OriginalDocument
-from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.vectorstore.postgresql.manage_pg import pg_insert_data
+from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.original_document_fetchers import select_fetcher, Fetcher
+from rag_service.config import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
 from rag_service.models.database.models import VectorStore, VectorizationJob, KnowledgeBaseAsset
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir, parse_asset_partition_key
-from rag_service.config import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.models.database.models import OriginalDocument as OriginalDocumentEntity, KnowledgeBase
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
 
@@ -105,7 +105,10 @@ def save_to_vector_store(
 
     with yield_session() as session:
         knowledge_base_asset = get_knowledge_base_asset(
-            knowledge_base_serial_number, knowledge_base_asset_name, session)
+            session,
+            knowledge_base_serial_number,
+            knowledge_base_asset_name
+        )
         vector_stores = knowledge_base_asset.vector_stores
 
     vector_store_name = vector_stores[-1].name if vector_stores else uuid.uuid4().hex

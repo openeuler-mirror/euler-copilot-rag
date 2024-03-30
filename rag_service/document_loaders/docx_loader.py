@@ -4,8 +4,8 @@ from xml.etree import ElementTree
 
 import docx
 from docx.document import Document
-from langchain.docstore.document import Document as Doc
 from langchain.document_loaders.base import BaseLoader
+from langchain.docstore.document import Document as Doc
 
 from rag_service.logger import get_logger
 

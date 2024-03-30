@@ -14,6 +14,19 @@ from rag_service.llms.llm import qwen_llm_stream_answer, spark_llm_stream_answer
 from rag_service.exceptions import KnowledgeBaseExistNonEmptyKnowledgeBaseAsset, PostgresQueryException
 from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, RetrievedDocument, QueryRequest
 
+async def create_knowledge_base(
+        req: CreateKnowledgeBaseReq,
+        session
+) -> str:
+    serial_number = f'{req.name}_{uuid.uuid4().hex[:8]}'
+    new_knowledge_base = KnowledgeBase(
+        name=req.name,
+        sn=serial_number,
+        owner=req.owner,
+    )
+    session.add(new_knowledge_base)
+    session.commit()
+    return serial_number
 
 async def create_knowledge_base(req: CreateKnowledgeBaseReq, session) -> str:
     serial_number = f'{req.name}_{uuid.uuid4().hex[:8]}'

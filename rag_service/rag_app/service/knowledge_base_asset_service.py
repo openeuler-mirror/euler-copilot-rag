@@ -103,13 +103,18 @@ def _save_deleted_original_document_to_json(knowledge_base_asset, req):
         json.dump(delete_original_document_dict, file_content)
 
 
-async def init_knowledge_base_asset(req: InitKnowledgeBaseAssetReq, files: List[UploadFile], session) -> None:
-    initialing_knowledge_base_asset = get_running_knowledge_base_asset(req.kb_sn, req.name, session)
+async def init_knowledge_base_asset(
+        req: InitKnowledgeBaseAssetReq,
+        files: List[UploadFile],
+        session
+) -> None:
+    initialing_knowledge_base_asset = get_running_knowledge_base_asset(session, req.kb_sn, req.name)
     if initialing_knowledge_base_asset:
         raise KnowledgeBaseAssetJobIsRunning(f'Knowledge Base asset {req.name} job is running.')
-    knowledge_base_asset = get_knowledge_base_asset(req.kb_sn, req.name, session)
-    _validate_init_knowledge_base_asset(req.name, files, knowledge_base_asset)
-    
+
+    knowledge_base_asset = get_knowledge_base_asset(session, req.kb_sn, req.name)
+    _validate_init_knowledge_base_asset(req.name, req.asset_uri, files, knowledge_base_asset)
+
     await _save_uploaded_files(
         knowledge_base_asset.knowledge_base.sn,
         req.name,

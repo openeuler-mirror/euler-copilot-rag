@@ -2,8 +2,11 @@ FROM openeuler/openeuler:22.03-lts-sp1
 
 COPY ./ /rag-service/
 WORKDIR /rag-service
+
 ENV PYTHONPATH /rag-service
+ENV DAGSTER_HOME /dagster_home
 ENV PATH /home/eulercopilot/.local/bin:$PATH
+ENV DAGSTER_DB_CONNECTION postgresql+psycopg2://postgres:123456@127.0.0.1:5444/postgres
 
 RUN yum makecache &&\
     yum update -y &&\

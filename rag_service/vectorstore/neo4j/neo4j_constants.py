@@ -37,4 +37,27 @@ EXTRACT_HUMAN_PROMPT = """
 GENERATE_CYPHER_SYSTEM_PROMPT = """
 根据以下Neo4j schema，编写一个Cypher查询语句以回答用户的问题。仅返回Cypher查询语句，不包括反引号，不包含其他内容。
 {{schema}}
+
+openEuler常见的组织机构有: openEuler委员会, openEuler顾问专家委员会, openEuler品牌委员会, openEuler技术委员会, openEuler用户委员会
+
+以下是一些示例：
+示例1:
+问题: 顾问专家委员的主席是谁
+Cypher: match (p:人物)-[r:主席]->(po:组织机构 {id:'openEuler委员会'}) return p.id
+
+示例2:
+问题: 执行秘书是谁
+Cypher: match (p:人物)-[r:执行秘书]->() return p.id
+
+示例3:
+问题: 在常务委员会成员里面, 谁在中国科学院软件研究所参加工作
+Cypher: match (p:人物)-[r:就职于]->(po:组织机构 {id:'中国科学院软件研究所'}) return p.id
+
+示例4:
+问题: 运维管理平台包含哪些功能模块
+Cypher: match (n:运维管理平台)-[r:包含]->(p:功能模块) return p.id
+
+示例5:
+问题: PilotGo的日志审计功能模块追踪了那些内容
+Cypher: match (n)-[r:包含]->(f:功能模块)-[r2:追踪]->(f2) where n.id contains 'PilotGo' and f.id contains '日志审计' return f2.id
 """

@@ -7,15 +7,13 @@ from typing import List
 from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
 from langchain_community.graphs import Neo4jGraph
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
 from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
 
 from rag_service.llms.qwen import token_check
 from rag_service.security.cryptohub import CryptoHub
 from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS
 from rag_service.exceptions import Neo4jQueryException, TokenCheckFailed
-from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, EXTRACT_HUMAN_PROMPT, GENERATE_CYPHER_SYSTEM_PROMPT
+from rag_service.vectorstore.neo4j.neo4j_constants import GENERATE_CYPHER_SYSTEM_PROMPT
 
 
 llm = ChatOpenAI(openai_api_key="xxx",
@@ -39,19 +37,7 @@ def _map_to_base_edge(edge: dict) -> Relationship:
 
 def convert_to_graph_documents() -> List[GraphDocument]:
     graph_documents = []
-    # for doc in documents:
-    #     print(doc.page_content.replace('\n', ' '))
-    #     message = [
-    #         SystemMessage(
-    #             content=EXTRACT_ENTITY_SYSTEM_PROMPT
-    #         ),
-    #         HumanMessage(
-    #             content=EXTRACT_HUMAN_PROMPT.replace('{{input}}', doc.page_content)
-    #         )
-    #     ]
-    #     res = llm_call(EXTRACT_HUMAN_PROMPT.replace('{{input}}', doc.page_content), EXTRACT_ENTITY_SYSTEM_PROMPT, [])
-    # try:
-    with open('/root/zl/euler-copilot-rag/rag_service/vectorstore/neo4j/openEuler用户委员会.json', 'r') as file:
+    with open('/root/zl/euler-copilot-rag/rag_service/vectorstore/neo4j/2309-9.json', 'r') as file:
         json_result = json.load(file)
     if 'nodes' in json_result:
         nodes = [_map_to_base_node(node) for node in json_result['nodes']]
@@ -129,6 +115,6 @@ def neo4j_insert_data():
 
 
 if __name__ == "__main__":
-    # neo4j_insert_data()
-    res = neo4j_search_data("你好")
+    neo4j_insert_data()
+    # res = neo4j_search_data("你好")
     # print(res)

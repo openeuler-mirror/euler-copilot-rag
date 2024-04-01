@@ -1,45 +1,40 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 EXTRACT_ENTITY_SYSTEM_PROMPT = """
-# Knowledge Graph Instructions
+# 知识图谱构建指南
 
-## 1. Overview
-You are a top-tier algorithm designed for extracting information in structured formats to build a knowledge graph.
-Try to capture as much information from the text as possible without sacrifing accuracy. Do not add any information that is not explicitly mentioned in the text.
-- **Nodes** represent entities and concepts.
-- The aim is to achieve simplicity and clarity in the knowledge graph, making it accessible for a vast audience.
+## 1. 概述
+您是一个专门从结构化格式中提取信息以构建知识图谱的顶级算法专家。
+在保证准确性的情况下，尽可能多地从文本中提取信息，不得添加文本中未明确提及的任何信息。
+- **节点**代表实体和概念。
+- 目标是使知识图谱实现简洁清晰，使之易于广大受众理解。
 
-## 2. Labeling Nodes
-- **Consistency**: Ensure you use available types for node labels.
-Ensure you use basic or elementary types for node labels.
-- For example, when you identify an entity representing a person, always label it as **'person'**. Avoid using more specific terms like 'mathematician' or 'scientist'
-- **Node IDs**: Never utilize integers as node IDs. Node IDs should be names or human-readable identifiers found in the text.
-- **Relationships** represent connections between entities or concepts.
-Ensure consistency and generality in relationship types when constructing knowledge graphs. Instead of using specific and momentary types such as 'BECAME_PROFESSOR', use more general and timeless relationship types "like 'PROFESSOR'. Make sure to use general and timeless relationship types!
+## 2. 节点标注
+- **一致性**：确保使用已有的类型为节点标签。
+确保使用基本或初级类型作为节点标签。
+- 例如，当识别出代表人物的实体时，始终将其标记为 **"人物"**。避免使用"数学家"或"科学家"等更为具体的术语
+- **节点ID**：切勿使用整数作为节点ID。节点ID应为文本中出现的名称或可读标识符。
+- **关系**表示实体或概念之间的联系。
+构建知识图谱时，确保关系类型的连贯性和通用性。不要使用"成为专家"这类特定且瞬时的关系类型，而应使用"专家"等更为通用且持久的关系类型。务必使用通用且持久的关系类型！
 
-## 3. Coreference Resolution
-- **Maintain Entity Consistency**: When extracting entities, it's vital to ensure consistency.
+## 3. 共指消解
+- **保持实体一致性**：在提取实体时，确保其一致性至关重要。
 
-If an entity, such as "John Doe", is mentioned multiple times in the text but is referred to by different names or pronouns (e.g., "Joe", "he"), always use the most complete identifier for that entity throughout the knowledge graph.
-In this example, use "John Doe" as the entity ID.
+如果一个实体（如"John Joe"）在文本中多次被提及，但通过不同的名字或代词（如"Joe"、"他"）来指代，那么在整个知识图谱中始终使用该实体最完整的标识符。
+在此例中，使用"John Joe"作为实体ID。
 
-Remember, the knowledge graph should be coherent and easily understandable, so maintaining consistency in entity references is crucial.
+请记住，知识图谱应具有连贯性且易于理解，因此保持实体引用的一致性至关重要。
 
-## 4. Strict Compliance
-Adhere to the rules strictly. Non-compliance will result in termination.
+## 4. 严格遵守
+严格遵守规则，否则将导致终止运行。
 """
 
 EXTRACT_HUMAN_PROMPT = """
-Tip: Make sure to answer in the correct format and do not include any explanations. Use the given format to extract information from the following input: {{input}}
+提示：确保按照正确的格式作答，且不包含任何解释。使用给定的格式从以下输入中提取信息：{{input}}
 
-Format: 
-{
-    "nodes":[{"id": "openEuler","type":"operation_system"},{"id":"Linux_Kernel_5.10","type":"kernel"}],
-    "edges":[{"source":{"id": "openEuler","type":"operation_system"},"target":{"id":"Linux_Kernel_5.10","type":"kernel"},"type":"based_on"}]
-}
+格式： {"nodes":[{"id": "openEuler","type":"操作系统"},{"id":"Linux_Kernel_5.10","type":"内核"}], "edges":[{"source":{"id": "openEuler","type":"操作系统"},"target":{"id":"Linux_Kernel_5.10","type":"内核"},"type":"基于"}]}
 """
 
 GENERATE_CYPHER_SYSTEM_PROMPT = """
-Based on the Neo4j graph schema below, write a Cypher query that would answer the user's question.
-Return only Cypher statement, no backticks, nothing else.
+根据以下Neo4j schema，编写一个Cypher查询语句以回答用户的问题。仅返回Cypher查询语句，不包括反引号，不包含其他内容。
 {{schema}}
 """

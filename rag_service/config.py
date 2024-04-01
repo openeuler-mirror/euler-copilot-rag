@@ -72,7 +72,7 @@ try:
 
     原始问题: {{question}}
     上下文: {{ history }}''',
-        'sql_generate_prompt_template': '''你是一个openEuler的数据库专家，请根据数据库的表结构生成用户想要查询的sql语句，sql语句查询结果必须限制在30，如果用户的提问无法生成sql请返回空字符串
+        'sql_generate_prompt_template': '''你是一个openEuler的数据库专家，请根据数据库的表结构生成用户想要查询的sql语句，sql语句查询结果必须限制在100，如果用户的提问无法生成sql请返回空字符串
 
     必须按照以下json格式输出结果：
     {
@@ -104,7 +104,7 @@ try:
             Q：pgvector是向量化数据库吗？
             A：是的，pgvecotr是向量化数据库。
         NOW_QUESTION：openEuler22.03的内核版本
-        USER_ITENT：openEuler22.03的内核版本的内核版本是什么？
+        USER_ITENT：openEuler22.03的内核版本是什么？
 
         ---
 

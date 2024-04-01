@@ -169,7 +169,7 @@ def extend_query_generate(raw_question: str, history: List = None):
         return None
     string_results = [str(item) for item in results]
     joined_results = ', '.join(string_results)
-    return raw_question + ",查询关系型数据库的结果为：" + joined_results
+    return raw_question + ",查询结果为：" + joined_results
 
 
 def intent_detect(raw_question: str, history: List = None):

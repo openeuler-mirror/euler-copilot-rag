@@ -57,6 +57,7 @@ async def spark_llm_stream_answer(req: QueryRequest):
 
 def qwen_llm_stream_answer(req: QueryRequest):
     user_intent = intent_detect(req.question, req.history)
+    logger.info("user_intent:%s", user_intent)
     documents_info = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
         tasks = {
@@ -74,6 +75,7 @@ def qwen_llm_stream_answer(req: QueryRequest):
                                          top_k=req.top_k-len(documents_info)))
 
     query_context = get_query_context(documents_info)
+    logger.info("query_context:%s", query_context)
     prompt = QWEN_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
     res = ""
     try:
@@ -89,11 +91,12 @@ def qwen_llm_stream_answer(req: QueryRequest):
         yield source
 
 
-def llm_call(question: str, prompt: str, history: List = None):
+def llm_call(prompt: str, question: str = None, history: List = None):
     messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": question}
+        {"role": "system", "content": prompt}
     ]
+    if question:
+        messages.append({"role": "user", "content": question})
     history = history or []
     if len(history) > 0:
         messages[1:1] = history
@@ -150,9 +153,10 @@ def extend_query_generate(raw_question: str, history: List = None):
     with open(example_path, 'r') as f:
         example_content = f.read()
         prompt = prompt.replace('{{example}}', example_content)
-    raw_generate_sql = llm_call(raw_question, prompt, history)
+    raw_generate_sql = llm_call(prompt, raw_question, history)
     try:
         generate_sql = json.loads(raw_generate_sql)
+        logger.info("raw_generate_sql:%s", raw_generate_sql)
         if not generate_sql['sql'] or "SELECT" not in generate_sql['sql']:
             return None
         with yield_session() as session:
@@ -169,8 +173,19 @@ def extend_query_generate(raw_question: str, history: List = None):
 
 
 def intent_detect(raw_question: str, history: List = None):
+    if not history:
+        return raw_question
     prompt = INTENT_DETECT_PROMPT_TEMPLATE
-    user_intent = llm_call(raw_question, prompt, history)
+    history_prompt = ""
+    for item in history:
+        if item['role'] == 'user':
+            history_prompt += "Q:"+item["content"]+"\n"
+        if item['role'] == 'assistant':
+            history_prompt += "A:"+item["content"]+"\n"
+    prompt = prompt.replace('{{history}}', history_prompt)
+    prompt = prompt.replace('{{question}}', raw_question)
+    logger.info("user_intent_prompt:%s", prompt)
+    user_intent = llm_call(prompt)
     return user_intent
 
 

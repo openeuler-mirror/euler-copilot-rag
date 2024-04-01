@@ -7,15 +7,15 @@ from typing import List
 from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
 from langchain_community.graphs import Neo4jGraph
-from langchain_community.document_loaders.markdown import UnstructuredMarkdownLoader
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
 from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
 
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS
 from rag_service.llms.qwen import token_check
 from rag_service.security.cryptohub import CryptoHub
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS
 from rag_service.exceptions import Neo4jQueryException, TokenCheckFailed
-from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, EXTRACT_HUMAN_PROMPT, \
-    GENERATE_CYPHER_SYSTEM_PROMPT
+from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, EXTRACT_HUMAN_PROMPT, GENERATE_CYPHER_SYSTEM_PROMPT
 
 
 llm = ChatOpenAI(openai_api_key="xxx",
@@ -39,16 +39,26 @@ def _map_to_base_edge(edge: dict) -> Relationship:
 
 def convert_to_graph_documents() -> List[GraphDocument]:
     graph_documents = []
-    # res = llm_call(
-    #     question=EXTRACT_HUMAN_PROMPT.replace('{{input}}', doc.page_content),
-    #     prompt=EXTRACT_ENTITY_SYSTEM_PROMPT, history=[])
-    with open('/root/zl/euler-copilot-rag/rag_service/vectorstore/neo4j/组织架构.json', 'r') as file:
+    # for doc in documents:
+    #     print(doc.page_content.replace('\n', ' '))
+    #     message = [
+    #         SystemMessage(
+    #             content=EXTRACT_ENTITY_SYSTEM_PROMPT
+    #         ),
+    #         HumanMessage(
+    #             content=EXTRACT_HUMAN_PROMPT.replace('{{input}}', doc.page_content)
+    #         )
+    #     ]
+    #     res = llm_call(EXTRACT_HUMAN_PROMPT.replace('{{input}}', doc.page_content), EXTRACT_ENTITY_SYSTEM_PROMPT, [])
+    # try:
+    with open('/root/zl/euler-copilot-rag/rag_service/vectorstore/neo4j/openEuler用户委员会.json', 'r') as file:
         json_result = json.load(file)
     if 'nodes' in json_result:
         nodes = [_map_to_base_node(node) for node in json_result['nodes']]
     if 'edges' in json_result:
         rels = [_map_to_base_edge(rel) for rel in json_result['edges']]
-    graph_document = GraphDocument(nodes=nodes, relationships=rels, source=Document(page_content="xxx"))
+    graph_document = GraphDocument(nodes=nodes, relationships=rels,
+                                   source=Document(page_content=json.dumps(json_result)))
     graph_documents.append(graph_document)
     print("convert down")
     return graph_documents
@@ -99,22 +109,26 @@ def llm_call(question: str, prompt: str, history: List = None):
     else:
         return ""
 
+
 def neo4j_search_data(question: str):
-    cypher = llm_call(question=question, prompt=GENERATE_CYPHER_SYSTEM_PROMPT.replace(
-        '{{schema}}', graph.schema), history=[])
     try:
-        response = graph.query(query=cypher, params={})
-    except Exception as ex:
+        cypher = llm_call(question=question, prompt=GENERATE_CYPHER_SYSTEM_PROMPT.replace(
+            '{{schema}}', graph.schema), history=[])
+        print(cypher)
+        neo4j_res = graph.query(query=cypher, params={})
+        res = None if neo4j_res == [] else question + ', 查询图数据库的结果为: '+json.dumps(neo4j_res, ensure_ascii=False)
+        print(res)
+    except Exception:
         return None
-    return None if response == [] else json.dumps(response, ensure_ascii=False)
+    return res
 
 
 def neo4j_insert_data():
-    # markdown_loader = UnstructuredMarkdownLoader("/root/zl/euler-copilot-rag/rag_service/vectorstore/neo4j/组织架构.md")
-    # raw_documents = markdown_loader.load()
     graph_documents = convert_to_graph_documents()
     add_graph_documents_to_neo4j(graph_documents)
 
 
 if __name__ == "__main__":
-    neo4j_insert_data()
+    # neo4j_insert_data()
+    res = neo4j_search_data("你好")
+    # print(res)

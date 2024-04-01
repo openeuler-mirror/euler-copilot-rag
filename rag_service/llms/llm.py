@@ -169,6 +169,8 @@ def extend_query_generate(raw_question: str, history: List = None):
 
 
 def intent_detect(raw_question: str, history: List = None):
+    if not history:
+        return raw_question
     prompt = INTENT_DETECT_PROMPT_TEMPLATE
     user_intent = llm_call(raw_question, prompt, history)
     return user_intent

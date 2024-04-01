@@ -88,7 +88,31 @@ try:
     表结构： {{table}}
 
     问题与生成sql示例： {{example}}''',
-        'intent_detect_prompt_template': '''请根据历史对话尽量简短的总结用户的意图'''
+        'intent_detect_prompt_template': '''请根据历史对话输出用户最新的意图
+
+        以下是一些示例：
+
+        示例1：
+        HISTORY：
+            Q：pgvector是向量化数据库吗？
+            A：是的，pgvecotr是向量化数据库。
+        NOW_QUESTION：那chroma呢？
+        USER_ITENT：chroma是向量化数据库吗？
+
+        示例2：
+        HISTORY：
+            Q：pgvector是向量化数据库吗？
+            A：是的，pgvecotr是向量化数据库。
+        NOW_QUESTION：openEuler22.03的内核版本
+        USER_ITENT：openEuler22.03的内核版本的内核版本是什么？
+
+        ---
+
+        HISTORY：
+        {{history}}
+        NOW_QUESTION：{{question}}
+        USER_ITENT：
+        '''
     }
 except Exception as e:
     logger.error(e)

@@ -58,6 +58,8 @@ try:
 
 除了代码、具体名称和引用外，你的答案必须使用与问题相同的语言撰写。
 
+请使用markdown格式返回答案。
+
 以下是一组背景信息：
 
 {{ context }}
@@ -70,7 +72,7 @@ try:
 
     原始问题: {{question}}
     上下文: {{ history }}''',
-        'sql_generate_prompt_template': '''你是一个openEuler的数据库专家，请根据数据库的表结构生成用户想要查询的sql语句，sql语句查询结果必须限制在30个，如果数据库表不满足用户的提问sql请返回空字符串
+        'sql_generate_prompt_template': '''你是一个openEuler的数据库专家，请根据数据库的表结构生成用户想要查询的sql语句，sql语句查询结果必须限制在30，如果用户的提问无法生成sql请返回空字符串
 
     必须按照以下json格式输出结果：
     {
@@ -86,7 +88,7 @@ try:
     表结构： {{table}}
 
     问题与生成sql示例： {{example}}''',
-        'intent_detect_prompt_template': '''请根据历史对话简短的总结用户想查询什么'''
+        'intent_detect_prompt_template': '''请根据历史对话尽量简短的总结用户的意图'''
     }
 except Exception as e:
     logger.error(e)

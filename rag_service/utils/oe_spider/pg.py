@@ -14,23 +14,24 @@ Base = declarative_base()
 
 class OeCompatibilityOverallUnit(Base):
     __tablename__ = 'oe_compatibility_overall_unit'
+    __table_args__ = {'comment': 'openEuler支持的整机'}
     id = Column(BigInteger, primary_key=True)
-    architecture = Column(String())
+    architecture = Column(String(), comment='架构')
     bios_uefi = Column(String())
     certification_addr = Column(String())
     certification_time = Column(String())
     commitid = Column(String())
     computer_type = Column(String())
-    cpu = Column(String())
-    date = Column(String())
+    cpu = Column(String(), comment='CPU')
+    date = Column(String(), comment='日期')
     friendly_link = Column(String())
     hard_disk_drive = Column(String())
-    hardware_factory = Column(String())
-    hardware_model = Column(String())
+    hardware_factory = Column(String(), comment='硬件厂家')
+    hardware_model = Column(String(), comment='硬件型号')
     host_bus_adapter = Column(String())
     lang = Column(String())
     main_board_bodel = Column(String())
-    os_version = Column(String())
+    os_version = Column(String(), comment='openEuler版本')
     ports_bus_types = Column(String())
     product_information = Column(String())
     ram = Column(String())
@@ -39,92 +40,94 @@ class OeCompatibilityOverallUnit(Base):
     compatibility_configuration = Column(String())
     boardCards = Column(String())
 
-
 class OeCompatibilityCard(Base):
     __tablename__ = 'oe_compatibility_card'
+    __table_args__ = {'comment': 'openEuler支持的板卡'}
     id = Column(BigInteger, primary_key=True)
-    architecture = Column(String())
-    board_model = Column(String())
-    chip_model = Column(String())
-    chip_vendor = Column(String())
+    architecture = Column(String(), comment='架构')
+    board_model = Column(String(), comment='板卡型号')
+    chip_model = Column(String(), comment='芯片型号')
+    chip_vendor = Column(String(), comment='芯片厂家')
     device_id = Column(String())
     download_link = Column(String())
     driver_date = Column(String())
-    driver_name = Column(String())
+    driver_name = Column(String(), comment='驱动名称')
     driver_size = Column(String())
     item = Column(String())
     lang = Column(String())
-    os = Column(String())
+    os = Column(String(), comment='openEuler版本')
     sha256 = Column(String())
     ss_id = Column(String())
     sv_id = Column(String())
-    type = Column(String())
+    type = Column(String(), comment='类型')
     vendor_id = Column(String())
-    version = Column(String())
+    version = Column(String(), comment='版本')
 
 
 class OeCompatibilityOpenSourceSoftware(Base):
     __tablename__ = 'oe_compatibility_open_source_software'
+    __table_args__ = {'comment': 'openEuler支持的开源软件'}
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    os = Column(String())
-    arch = Column(String())
-    property = Column(String())
+    os = Column(String(), comment='openEuler版本')
+    arch = Column(String(), comment='架构')
+    property = Column(String(), comment='软件属性')
     result_url = Column(String())
     result_root = Column(String())
     bin = Column(String())
     uninstall = Column(String())
-    license = Column(String())
+    license = Column(String(), comment='开源协议')
     libs = Column(String())
     install = Column(String())
     src_location = Column(String())
     group = Column(String())
     cmds = Column(String())
-    type = Column(String())
+    type = Column(String(), comment='软件类型')
     softwareName = Column(String())
-    category = Column(String())
-    version = Column(String())
+    category = Column(String(), comment='软件名称')
+    version = Column(String(), comment='版本')
     downloadLink = Column(String())
 
 
 class OeCompatibilityCommercialSoftware(Base):
     __tablename__ = 'oe_compatibility_commercial_software'
+    __table_args__ = {'comment': 'openEuler支持的商业软件'}
     id = Column(BigInteger, primary_key=True,)
     data_id = Column(String())
-    type = Column(String())
-    test_organization = Column(String())
-    product_name = Column(String())
-    product_version = Column(String())
-    company_name = Column(String())
+    type = Column(String(), comment='软件类型')
+    test_organization = Column(String(), comment='测试机构')
+    product_name = Column(String(), comment='软件名称')
+    product_version = Column(String(), comment='软件版本')
+    company_name = Column(String(), comment='厂家名称')
     platform_type_and_server_model = Column(String())
     authenticate_link = Column(String())
-    os_name = Column(String())
-    os_version = Column(String())
+    os_version = Column(String(), comment='openEuler版本')
     region = Column(String())
 
 
 class OeCompatibilitySolution(Base):
     __tablename__ = 'oe_compatibility_solution'
+    __table_args__ = {'comment': 'openeuler支持的解决方案'}
     id = Column(String(), primary_key=True,)
-    architecture = Column(String())
+    architecture = Column(String(), comment='架构')
     bios_uefi = Column(String())
-    certification_type = Column(String())
+    certification_type = Column(String(), comment='类型')
     cpu = Column(String())
-    date = Column(String())
+    date = Column(String(), comment='日期')
     driver = Column(String())
     hard_disk_drive = Column(String())
     introduce_link = Column(String())
     lang = Column(String())
     libvirt_version = Column(String())
     network_card = Column(String())
-    os = Column(String())
+    os = Column(String(), comment='openEuler版本')
     ovs_version = Column(String())
-    product = Column(String())
+    product = Column(String(), comment='型号')
     qemu_version = Column(String())
     raid = Column(String())
     ram = Column(String())
-    server_model = Column(String())
-    server_vendor = Column(String())    
-    solution = Column(String())
+    server_model = Column(String(), comment='厂家')
+    server_vendor = Column(String())
+    solution = Column(String(), comment='解决方案')
     stratovirt_version = Column(String())
 
 
@@ -205,6 +208,7 @@ class OeCompatibilityCveDatabase(Base):
     cvrf = Column(String())
     package_list = Column(String())
 
+
 class PoStrageDBMeta(type):
     _instances = {}
     _lock: Lock = Lock()
@@ -220,10 +224,10 @@ class PoStrageDB(metaclass=PoStrageDBMeta):
 
     def __init__(self):
         self.engine = create_engine(
-                f'postgresql+psycopg2://{os.getenv("POSTRAGE_USER")}::{os.getenv("POSTRAGE_PWD")}'
-                f'@{os.getenv("POSTRAGE_HOST")}/{os.getenv("POSTRAGE_DATABASE")}',
-                echo=False,
-                pool_pre_ping=True)
+            f'postgresql+psycopg2://{os.getenv("POSTRAGE_USER")}::{os.getenv("POSTRAGE_PWD")}'
+            f'@{os.getenv("POSTRAGE_HOST")}/{os.getenv("POSTRAGE_DATABASE")}',
+            echo=False,
+            pool_pre_ping=True)
         Base.metadata.create_all(self.engine)
 
     def get_session(self):

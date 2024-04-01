@@ -7,15 +7,17 @@ import pytz
 from pg import PoStrageDB
 from pg import OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution, OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOsv, OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase
 
+
 class OeMessageManager:
     @staticmethod
     def clear_oe_compatibility_overall_unit():
         try:
             with PoStrageDB().get_session() as session:
-                session.query(OeCompatibilityOverallUnit).delete()  
+                session.query(OeCompatibilityOverallUnit).delete()
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def add_oe_compatibility_overall_unit(info):
         oe_compatibility_overall_unit_slice = OeCompatibilityOverallUnit(
@@ -35,7 +37,7 @@ class OeMessageManager:
             host_bus_adapter=info.get("hostBusAdapter", ''),
             lang=info.get("lang", ''),
             main_board_bodel=info.get("mainboardModel", ''),
-            os_version=info.get("osVersion", ''),
+            os_version=info.get("osVersion", '').replace(' ', '-'),
             ports_bus_types=info.get("portsBusTypes", ''),
             product_information=info.get("productInformation", ''),
             ram=info.get("ram", ''),
@@ -49,14 +51,16 @@ class OeMessageManager:
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def clear_oe_compatibility_card():
         try:
             with PoStrageDB().get_session() as session:
-                session.query(OeCompatibilityCard).delete()  
+                session.query(OeCompatibilityCard).delete()
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def add_oe_compatibility_card(info):
         oe_compatibility_card_slice = OeCompatibilityCard(
@@ -72,7 +76,7 @@ class OeMessageManager:
             driver_size=info.get("driverSize", ''),
             item=info.get("item", ''),
             lang=info.get("lang", ''),
-            os=info.get("os", ''),
+            os=info.get("os", '').replace(' ', '-'),
             sha256=info.get("sha256", ''),
             ss_id=info.get("ssID", ''),
             sv_id=info.get("svID", ''),
@@ -86,18 +90,20 @@ class OeMessageManager:
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def clear_oe_compatibility_open_source_software():
         try:
             with PoStrageDB().get_session() as session:
-                session.query(OeCompatibilityOpenSourceSoftware).delete()  
+                session.query(OeCompatibilityOpenSourceSoftware).delete()
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def add_oe_compatibility_open_source_software(info):
         oe_compatibility_open_source_software_slice = OeCompatibilityOpenSourceSoftware(
-            os=info.get("os", ''),
+            os=info.get("os", '').replace(' ', '-'),
             arch=info.get("arch", ''),
             property=info.get("property", ''),
             result_url=info.get("result_url", ''),
@@ -122,14 +128,16 @@ class OeMessageManager:
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def clear_oe_compatibility_commercial_software():
         try:
             with PoStrageDB().get_session() as session:
-                session.query(OeCompatibilityCommercialSoftware).delete()  
+                session.query(OeCompatibilityCommercialSoftware).delete()
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def add_oe_compatibility_commercial_software(info):
         oe_compatibility_commercial_software_slice = OeCompatibilityCommercialSoftware(
@@ -142,8 +150,7 @@ class OeMessageManager:
             company_name=info.get("companyName", ''),
             platform_type_and_server_model=info.get("platformTypeAndServerModel", ''),
             authenticate_link=info.get("authenticateLink", ''),
-            os_name=info.get("osName", ''),
-            os_version=info.get("osVersion", ''),
+            os_version=(info.get("osName", '')+info.get("osVersion", '')).replace(' ', '-'),
             region=info.get("region", '')
         )
         try:
@@ -152,14 +159,16 @@ class OeMessageManager:
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def clear_oe_compatibility_solution():
         try:
             with PoStrageDB().get_session() as session:
-                session.query(OeCompatibilitySolution).delete()  
+                session.query(OeCompatibilitySolution).delete()
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def add_oe_compatibility_solution(info):
         oe_compatibility_solution_slice = OeCompatibilitySolution(
@@ -175,7 +184,7 @@ class OeMessageManager:
             lang=info.get("lang", ''),
             libvirt_version=info.get("libvirtVersion", ''),
             network_card=info.get("networkCard", ''),
-            os=info.get("os", ''),
+            os=info.get("os", '').replace(' ', '-'),
             ovs_version=info.get("OVSVersion", ''),
             product=info.get("product", ''),
             qemu_version=info.get("qemuVersion", ''),
@@ -192,14 +201,16 @@ class OeMessageManager:
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def clear_compatibility_osv():
         try:
             with PoStrageDB().get_session() as session:
-                session.query(OeCompatibilityOsv).delete()  
+                session.query(OeCompatibilityOsv).delete()
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
     def add_oe_compatibility_osv(info):
         oe_compatibility_osv_slice = OeCompatibilityOsv(

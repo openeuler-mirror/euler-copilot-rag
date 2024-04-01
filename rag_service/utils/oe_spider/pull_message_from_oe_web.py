@@ -491,3 +491,6 @@ class PullMeassageFromOeWeb():
                         js["result"]["cveDatabaseList"][i][key]) == tuple:
                     js["result"]["cveDatabaseList"][i][key] = json.dumps(js["result"]["cveDatabaseList"][i][key])
             OeMessageManager.add_oe_compatibility_cve_database(js["result"]["cveDatabaseList"][i])
+
+
+PullMeassageFromOeWeb.pull_oe_compatibility_overall_unit()

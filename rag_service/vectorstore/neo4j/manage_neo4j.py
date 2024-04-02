@@ -11,8 +11,8 @@ from langchain_community.graphs.graph_document import GraphDocument, Node, Relat
 
 from rag_service.llms.qwen import token_check
 from rag_service.security.cryptohub import CryptoHub
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS
 from rag_service.exceptions import Neo4jQueryException, TokenCheckFailed
+from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
 from rag_service.vectorstore.neo4j.neo4j_constants import GENERATE_CYPHER_SYSTEM_PROMPT
 
 
@@ -22,7 +22,7 @@ llm = ChatOpenAI(openai_api_key="xxx",
 NEO4J_URL = CryptoHub.query_plaintext_by_config_name('NEO4J_URL')
 NEO4J_USERNAME = CryptoHub.query_plaintext_by_config_name('NEO4J_USERNAME')
 NEO4J_PASSWORD = CryptoHub.query_plaintext_by_config_name('NEO4J_PASSWORD')
-graph = Neo4jGraph(url=NEO4J_URL, username=NEO4J_USERNAME, password=NEO4J_PASSWORD)
+graph = Neo4jGraph(url=NEO4J_URL, username=NEO4J_USERNAME, password=NEO4J_PASSWORD, database="features")
 
 
 def _map_to_base_node(node: dict) -> Node:
@@ -37,7 +37,7 @@ def _map_to_base_edge(edge: dict) -> Relationship:
 
 def convert_to_graph_documents() -> List[GraphDocument]:
     graph_documents = []
-    with open('/root/zl/euler-copilot-rag/rag_service/vectorstore/neo4j/2309-9.json', 'r') as file:
+    with open('', 'r') as file:
         json_result = json.load(file)
     if 'nodes' in json_result:
         nodes = [_map_to_base_node(node) for node in json_result['nodes']]
@@ -82,7 +82,7 @@ def llm_call(question: str, prompt: str, history: List = None):
         "messages": messages,
         "temperature": LLM_TEMPERATURE,
         "stream": False,
-        "max_tokens": MAX_TOKENS
+        "max_tokens": QWEN_MAX_TOKENS
     }
     response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False, timeout=60)
     if response.status_code == 200:
@@ -100,10 +100,8 @@ def neo4j_search_data(question: str):
     try:
         cypher = llm_call(question=question, prompt=GENERATE_CYPHER_SYSTEM_PROMPT.replace(
             '{{schema}}', graph.schema), history=[])
-        print(cypher)
         neo4j_res = graph.query(query=cypher, params={})
         res = None if neo4j_res == [] else question + ', 查询图数据库的结果为: '+json.dumps(neo4j_res, ensure_ascii=False)
-        print(res)
     except Exception:
         return None
     return res

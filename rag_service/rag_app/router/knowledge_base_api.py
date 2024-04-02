@@ -11,7 +11,7 @@ from rag_service.models.database.models import yield_session
 from rag_service.rag_app.service import knowledge_base_service
 from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
 from rag_service.rag_app.service.knowledge_base_service import get_knowledge_base_list, delele_knowledge_base
-from rag_service.exceptions import KnowledgeBaseNotExistsException, LlmRequestException, PostgresQueryException
+from rag_service.exceptions import DomainCheckFailedException, KnowledgeBaseNotExistsException, LlmRequestException, PostgresQueryException
 from rag_service.exceptions import KnowledgeBaseNotExistsException, KnowledgeBaseExistNonEmptyKnowledgeBaseAsset
 from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, QueryRequest, RetrievedDocument
 from rag_service.rag_app.service.knowledge_base_service import get_qwen_llm_stream_answer, get_spark_llm_stream_answer
@@ -46,6 +46,14 @@ async def get_stream_answer(req: QueryRequest, response: Response):
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             ErrorResponse(
                 code=ErrorCode.INVALID_KNOWLEDGE_BASE,
+                message=str(e)
+            ).dict()
+        ) from e
+    except DomainCheckFailedException as e:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ErrorResponse(
+                code=ErrorCode.OPENEULER_DOMAIN_CHECK_ERROR,
                 message=str(e)
             ).dict()
         ) from e

@@ -3,43 +3,23 @@ import io
 import os
 import json
 import requests
-import concurrent.futures
 from typing import List
 from sqlalchemy import text
-from rag_service.logger import get_logger
-from rag_service.llms.qwen import qwen_llm_call, token_check
-from rag_service.llms.spark import spark_llm_call
 
 from rag_service.logger import get_logger
-from rag_service.models.api.models import QueryRequest
-from rag_service.models.database.models import yield_session
-from rag_service.query_generator.query_generator import query_generate
-from rag_service.config import INTENT_DETECT_PROMPT_TEMPLATE, LLM_MODEL, LLM_TEMPERATURE, MAX_TOKENS, QWEN_PROMPT_TEMPLATE, SPARK_PROMPT_TEMPLATE, SQL_GENERATE_PROMPT_TEMPLATE
-from rag_service.exceptions import LlmAnswerException, LlmRequestException, PostgresQueryException, TokenCheckFailed
+from rag_service.llms.spark import spark_llm_call
 from rag_service.security.cryptohub import CryptoHub
-from rag_service.vectorstore.neo4j.manage_neo4j import neo4j_search_data
+from rag_service.models.api.models import QueryRequest
+from rag_service.llms.qwen import qwen_llm_call, token_check
+from rag_service.models.database.models import yield_session
+from rag_service.exceptions import LlmAnswerException, LlmRequestException, TokenCheckFailed
+from rag_service.config import INTENT_DETECT_PROMPT_TEMPLATE, LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS, \
+    QWEN_PROMPT_TEMPLATE, SPARK_PROMPT_TEMPLATE, SQL_GENERATE_PROMPT_TEMPLATE
 
 logger = get_logger()
 
 
-async def spark_llm_stream_answer(req: QueryRequest):
-    user_intent = intent_detect(req.question, req.history)
-    documents_info = []
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        tasks = {
-            executor.submit(extend_query_generate, user_intent): 'extend_query_generate',
-            executor.submit(neo4j_search_data, user_intent): 'neo4j_search_data',
-        }
-
-        for future in concurrent.futures.as_completed(tasks):
-            task_name = tasks[future]
-            result = future.result()
-            if result is not None:
-                documents_info.append(result)
-    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
-                                         top_k=req.top_k-len(documents_info)))
-
-    query_context = get_query_context(documents_info)
+async def spark_llm_stream_answer(req: QueryRequest, documents_info: List[str], query_context: str):
     prompt = SPARK_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
     res = ""
     try:
@@ -55,27 +35,7 @@ async def spark_llm_stream_answer(req: QueryRequest):
         yield source
 
 
-def qwen_llm_stream_answer(req: QueryRequest):
-    user_intent = intent_detect(req.question, req.history)
-    logger.info("user_intent:%s", user_intent)
-    documents_info = []
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        tasks = {
-            executor.submit(extend_query_generate, user_intent): 'extend_query_generate',
-            executor.submit(neo4j_search_data, user_intent): 'neo4j_search_data',
-        }
-
-        for future in concurrent.futures.as_completed(tasks):
-            task_name = tasks[future]
-            result = future.result()
-            if result is not None:
-                documents_info.append(result)
-
-    documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
-                                         top_k=req.top_k-len(documents_info)))
-
-    query_context = get_query_context(documents_info)
-    logger.info("query_context:%s", query_context)
+def qwen_llm_stream_answer(req: QueryRequest, documents_info: List[str], query_context: str):
     prompt = QWEN_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
     res = ""
     try:
@@ -114,7 +74,7 @@ def llm_call(prompt: str, question: str = None, history: List = None):
         "messages": messages,
         "temperature": LLM_TEMPERATURE,
         "stream": False,
-        "max_tokens": MAX_TOKENS
+        "max_tokens": QWEN_MAX_TOKENS
     }
     response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False, timeout=30)
     if response.status_code == 200:
@@ -156,7 +116,6 @@ def extend_query_generate(raw_question: str, history: List = None):
     raw_generate_sql = llm_call(prompt, raw_question, history)
     try:
         generate_sql = json.loads(raw_generate_sql)
-        logger.info("raw_generate_sql:%s", raw_generate_sql)
         if not generate_sql['sql'] or "SELECT" not in generate_sql['sql']:
             return None
         with yield_session() as session:
@@ -184,10 +143,7 @@ def intent_detect(raw_question: str, history: List = None):
             history_prompt += "A:"+item["content"]+"\n"
     prompt = prompt.replace('{{history}}', history_prompt)
     prompt = prompt.replace('{{question}}', raw_question)
-    logger.info("user_intent_prompt:%s", prompt)
-    user_intent = llm_call(prompt)
-    return user_intent
-
+    return llm_call(prompt)
 
 
 def append_source_info(req: QueryRequest, documents_info):

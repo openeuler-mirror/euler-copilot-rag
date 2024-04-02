@@ -84,6 +84,8 @@ def qwen_llm_call(question: str, system: str, history: List = None):
                     continue
                 try:
                     info_json = json.loads(line[6:])
+                    if info_json['choices'][0].get('finish_reason', "") == 'length':
+                        raise LlmAnswerException(f'请求大模型返回发生错误') from e
                     part = info_json['choices'][0]['delta'].get('content', "")
                     yield part
                 except Exception as e:

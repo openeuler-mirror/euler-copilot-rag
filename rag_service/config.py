@@ -15,7 +15,7 @@ try:
         'default_top_k': '5',
         'llm_model': 'Qwen-72B-Chat-Int4',
         'llm_temperature': '0.01',
-        'max_tokens': '4096',
+        'max_tokens': '16384',
         'qwen_prompt_template': '''你是由openEuler社区构建的大型语言AI助手。请根据给定的用户问题，提供清晰、简洁、准确的答案。你将获得一系列与问题相关的背景信息。\
     如果适用，请使用这些背景信息；如果不适用，请忽略这些背景信息。
 
@@ -72,13 +72,14 @@ try:
 
     原始问题: {{question}}
     上下文: {{ history }}''',
-        'sql_generate_prompt_template': '''你是一个openEuler的数据库专家，请根据数据库的表结构生成用户想要查询的sql语句，sql语句查询结果必须限制在100，如果用户的提问无法生成sql请返回空字符串
+        'sql_generate_prompt_template': '''你是一个openEuler的数据库专家，请根据postgresql数据库的表结构生成用户想要查询的sql语句，查询条件优先使用ILIKE，\
+            查询条件如果包含openEuler版本请参考openEuler常用版本，sql语句查询结果必须限制在30，如果用户的提问无法生成sql请返回空字符串
 
     必须按照以下json格式输出结果：
     {
         "sql":"" //生成的sql
     }
-    
+
     openEuler常用的版本：
     openEuler-20.03-LTS、openEuler-20.03-LTS-SP1、openEuler-20.03-LTS-SP2、openEuler-20.03-LTS-SP3、openEuler-20.03-LTS-SP4、openEuler-20.03-LTS-Next、 \
     openEuler-21.03、openEuler-21.09、openEuler-22.03-LTS、openEuler-22.03-LTS-SP1、openEuler-22.03-LTS-SP2、openEuler-22.03-LTS-SP3、openEuler-22.03-LTS-Next \

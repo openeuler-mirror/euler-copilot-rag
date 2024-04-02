@@ -2,8 +2,11 @@
 from typing import List
 
 import requests
+import urllib3
 
 from rag_service.models.enums import EmbeddingModel
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class RemoteEmbedding:
@@ -21,7 +24,7 @@ class RemoteEmbedding:
             'texts': texts,
             'embedding_model': embedding_model.value
         }
-        return requests.post(self._endpoint, json=data, timeout=30).json()
+        return requests.post(self._endpoint, json=data, timeout=30, verify=False).json()
 
 
 class RemoteRerank:
@@ -40,4 +43,4 @@ class RemoteRerank:
             'documents': documents,
             'raw_question': raw_question, 'top_k': top_k
         }
-        return requests.post(self._endpoint, json=data, timeout=30).json()
+        return requests.post(self._endpoint, json=data, timeout=30, verify=False).json()

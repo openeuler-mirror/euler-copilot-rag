@@ -117,7 +117,7 @@ async def spark_llm_call(question, system, history):
                 code = data['header']['code']
                 if code != 0:
                     logger.error(f'请求错误: {code}, {data}')
-                    break
+                    raise LlmAnswerException(f'请求大模型返回发生错误') from e
                 else:
                     choices = data["payload"]["choices"]
                     status = choices["status"]

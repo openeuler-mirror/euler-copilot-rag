@@ -18,6 +18,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import TIMESTAMP, UUID
+from sqlalchemy import text
 
 from rag_service.constants import DEFAULT_UPDATE_TIME_INTERVAL_SECOND
 from rag_service.models.enums import (
@@ -201,6 +202,8 @@ engine = create_engine(
 
 def create_db_and_tables():
     Base.metadata.create_all(engine)
+    with engine.connect() as connection:
+        connection.execute(text("CREATE EXTENSION vector;"))
 
 
 def yield_session():

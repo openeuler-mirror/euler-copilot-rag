@@ -201,9 +201,9 @@ engine = create_engine(
 
 
 def create_db_and_tables():
-    Base.metadata.create_all(engine)
     with engine.connect() as connection:
         connection.execute(text("CREATE EXTENSION vector;"))
+    Base.metadata.create_all(engine)
 
 
 def yield_session():

@@ -1,4 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import json
+import random
+import time
 import uuid
 import traceback
 import concurrent.futures
@@ -61,7 +64,7 @@ def get_qwen_llm_stream_answer(req: QueryRequest):
     query_context = get_query_context(documents_info=documents_info)
     domain_check_passed = domain_classifier(req=req, query_context=query_context)
     if domain_check_passed:
-        raise DomainCheckFailedException(f"OpenEuler domain check failed")
+        return domain_check_failed_return()
     return qwen_llm_stream_answer(req, documents_info, query_context)
 
 
@@ -69,7 +72,7 @@ def get_spark_llm_stream_answer(req: QueryRequest):
     documents_info = get_rag_document_info(req=req)
     query_context = get_query_context(documents_info=documents_info)
     if domain_classifier(req=req, query_context=query_context):
-        raise DomainCheckFailedException(f"OpenEuler domain check failed")
+        return domain_check_failed_return()
     return spark_llm_stream_answer(req, documents_info, query_context)
 
 
@@ -115,3 +118,16 @@ def get_rag_document_info(req: QueryRequest):
     documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
                                          top_k=req.top_k-len(documents_info)))
     return documents_info
+
+
+def domain_check_failed_return():
+    default_str = '''请注意，本智能助手专注于提供关于Linux和openEuler领域的知识和帮助，\
+对于其他领域的问题无法提供详细的解答。'''
+    index = 0
+    while index < len(default_str):
+        chunk_size = random.randint(1, 3)
+        chunk = default_str[index:index+chunk_size]
+        time.sleep(random.uniform(0.1, 0.25))
+        yield "data: "+json.dumps({"content": chunk}, ensure_ascii=False)+'\n\n'
+        index += chunk_size
+    yield "data: [DONE]"

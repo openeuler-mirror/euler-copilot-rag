@@ -17,6 +17,7 @@ class ErrorCode(IntEnum):
     INVALID_PARAMS = 10
     REQUEST_LLM_ERROR = 11
     POSTGRES_REQUEST_ERROR = 12
+    OPENEULER_DOMAIN_CHECK_ERROR = 13
 
 
 class ErrorResponse(BaseModel):

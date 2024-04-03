@@ -15,7 +15,8 @@ try:
         'default_top_k': '5',
         'llm_model': 'Qwen-72B-Chat-Int4',
         'llm_temperature': '0.01',
-        'max_tokens': '16384',
+        'spark_max_tokens': '8192',
+        'qwen_max_tokens': '16384',
         'qwen_prompt_template': '''你是由openEuler社区构建的大型语言AI助手。请根据给定的用户问题，提供清晰、简洁、准确的答案。你将获得一系列与问题相关的背景信息。\
     如果适用，请使用这些背景信息；如果不适用，请忽略这些背景信息。
 
@@ -113,7 +114,20 @@ try:
         {{history}}
         NOW_QUESTION：{{question}}
         USER_ITENT：
-        '''
+        ''',
+        'domain_classifier_prompt': '''你是由openEuler社区构建的大型语言AI助手。你的任务是结合给定的背景知识判断用户的问题是否属于以下几个领域。
+OS领域通用知识是指:包含Linux常规知识、上游信息和工具链介绍及指导。
+openEuler专业知识: 包含openEuler社区信息、技术原理和使用等介绍。
+openEuler扩展知识: 包含openEuler周边硬件特性知识和ISV、OSV相关信息。
+openEuler应用案例: 包含openEuler技术案例、行业应用案例。
+shell命令生成: 帮助用户生成单挑命令或复杂命令。
+
+背景知识: {{context}}
+
+用户问题: {{question}}
+
+请结合给定的背景知识将用户问题归类到以上五个领域之一，最后仅输出对应的领域名，不要做任何解释。若问题为空或者无法归类到以上任何一个领域，就只输出"其他领域"即可。
+'''
     }
 except Exception as e:
     logger.error(e)
@@ -142,9 +156,11 @@ try:
 except Exception as e:
     logger.error(e)
 LLM_MODEL = load_service_config('llm_model')
-MAX_TOKENS = load_service_config('max_tokens')
+SPARK_MAX_TOKENS = load_service_config('spark_max_tokens')
+QWEN_MAX_TOKENS = load_service_config('qwen_max_tokens')
 QWEN_PROMPT_TEMPLATE = load_service_config('qwen_prompt_template')
 SPARK_PROMPT_TEMPLATE = load_service_config('spark_prompt_template')
 QUERY_GENERATE_PROMPT_TEMPLATE = load_service_config('query_generate_prompt_template')
 SQL_GENERATE_PROMPT_TEMPLATE = load_service_config('sql_generate_prompt_template')
 INTENT_DETECT_PROMPT_TEMPLATE = load_service_config('intent_detect_prompt_template')
+DOMAIN_CLASSIFIER_PROMPT = load_service_config('domain_classifier_prompt')

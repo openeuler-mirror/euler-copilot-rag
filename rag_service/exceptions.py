@@ -53,3 +53,7 @@ class PostgresQueryException(Exception):
 
 class Neo4jQueryException(Exception):
     ...
+
+
+class DomainCheckFailedException(Exception):
+    ...

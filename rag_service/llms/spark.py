@@ -15,7 +15,7 @@ import websockets
 from rag_service.logger import get_logger
 from rag_service.exceptions import LlmAnswerException
 from rag_service.security.encrypt_config import CryptoHub
-from rag_service.config import LLM_TEMPERATURE, MAX_TOKENS
+from rag_service.config import LLM_TEMPERATURE, SPARK_MAX_TOKENS
 
 logger = get_logger()
 
@@ -75,7 +75,7 @@ def gen_params(appid, domain, query, system, history):
             "chat": {
                 "domain": domain,
                 "temperature": LLM_TEMPERATURE,
-                "max_tokens": int(MAX_TOKENS),
+                "max_tokens": int(SPARK_MAX_TOKENS),
                 "auditing": "default",
             }
         },

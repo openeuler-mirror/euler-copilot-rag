@@ -40,7 +40,7 @@ if os.getenv("RAG_ENV") == "stdout":
         "default": {
             "formatter": "default",
             "class": "logging.StreamHandler",
-            "stream": "ext://sys.stderr",
+            "stream": "ext://sys.stdout",
         },
     }
 else:
@@ -91,12 +91,10 @@ log_config = {
 
 def get_logger():
     logger = logging.getLogger('uvicorn')
-    if os.getenv("RAG_ENV") != "stdout" and not logger.handlers:
-        logger.setLevel(logging.INFO)
+    logger.setLevel(logging.INFO)
+    if os.getenv("LOG") != "stdout":
         rotate_handler = SizedTimedRotatingFileHandler(
             filename=f'{LOG_DIR}/app.log', when='MIDNIGHT', backup_count=30, max_bytes=5000000)
-        formatter = logging.Formatter(fmt=LOG_FORMAT, style='{')
-        rotate_handler.setFormatter(formatter)
         logger.addHandler(rotate_handler)
-        logger.propagate = False
+    logger.propagate = False
     return logger

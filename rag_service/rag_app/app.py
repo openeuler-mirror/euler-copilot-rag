@@ -3,7 +3,6 @@ import os
 
 import fastapi
 import uvicorn
-from dotenv import load_dotenv
 from fastapi_pagination import add_pagination
 
 from rag_service.logger import get_logger
@@ -13,9 +12,6 @@ from rag_service.security.cryptohub import CryptoHub
 from rag_service.models.database.models import create_db_and_tables
 
 create_db_and_tables()
-
-# Load the environment variables
-load_dotenv("/config/.env")
 
 app = fastapi.FastAPI(docs_url=None, redoc_url=None)
 add_pagination(app)

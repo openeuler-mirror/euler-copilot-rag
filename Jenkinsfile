@@ -16,7 +16,7 @@ node {
     echo "构建当前分支Docker Image镜像"
     withCredentials([string(credentialsId: "host", variable: "HOST")]) {
         docker.withRegistry("http://${HOST}:30000") {
-            def image = docker.build("${HOST}:30000/euler-copilot-${params.REPO}:${BUILD}")
+            def image = docker.build("${HOST}:30000/euler-copilot-${params.REPO}:${BUILD}", "-f ./deploy/Dockerfile .")
             image.push()
         }
 

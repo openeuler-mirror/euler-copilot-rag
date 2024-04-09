@@ -31,7 +31,7 @@ class OeCompatibilityOverallUnit(Base):
     host_bus_adapter = Column(String())
     lang = Column(String())
     main_board_bodel = Column(String())
-    os_version = Column(String(), comment='openEuler版本')
+    openeuler_version  = Column(String(), comment='openEuler版本')
     ports_bus_types = Column(String())
     product_information = Column(String())
     ram = Column(String())
@@ -55,7 +55,7 @@ class OeCompatibilityCard(Base):
     driver_size = Column(String())
     item = Column(String())
     lang = Column(String())
-    os = Column(String(), comment='openEuler版本')
+    openeuler_version  = Column(String(), comment='openEuler版本')
     sha256 = Column(String())
     ss_id = Column(String())
     sv_id = Column(String())
@@ -68,7 +68,7 @@ class OeCompatibilityOpenSourceSoftware(Base):
     __tablename__ = 'oe_compatibility_open_source_software'
     __table_args__ = {'comment': 'openEuler支持的开源软件'}
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    os = Column(String(), comment='openEuler版本')
+    openeuler_version  = Column(String(), comment='openEuler版本')
     arch = Column(String(), comment='架构')
     property = Column(String(), comment='软件属性')
     result_url = Column(String())
@@ -100,7 +100,7 @@ class OeCompatibilityCommercialSoftware(Base):
     company_name = Column(String(), comment='厂家名称')
     platform_type_and_server_model = Column(String())
     authenticate_link = Column(String())
-    os_version = Column(String(), comment='openEuler版本')
+    openeuler_version  = Column(String(), comment='openEuler版本')
     region = Column(String())
 
 
@@ -119,7 +119,7 @@ class OeCompatibilitySolution(Base):
     lang = Column(String())
     libvirt_version = Column(String())
     network_card = Column(String())
-    os = Column(String(), comment='openEuler版本')
+    openeuler_version  = Column(String(), comment='openEuler版本')
     ovs_version = Column(String())
     product = Column(String(), comment='型号')
     qemu_version = Column(String())
@@ -135,7 +135,7 @@ class OeCompatibilityOsv(Base):
     __tablename__ = 'oe_compatibility_osv'
     id = Column(String(), primary_key=True,)
     arch = Column(String())
-    os_version = Column(String())
+    openeuler_version  = Column(String())
     osv_name = Column(String())
     date = Column(String())
     os_download_link = Column(String())

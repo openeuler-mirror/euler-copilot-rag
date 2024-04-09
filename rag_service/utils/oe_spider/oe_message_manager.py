@@ -37,7 +37,7 @@ class OeMessageManager:
             host_bus_adapter=info.get("hostBusAdapter", ''),
             lang=info.get("lang", ''),
             main_board_bodel=info.get("mainboardModel", ''),
-            os_version=info.get("osVersion", '').replace(' ', '-'),
+            openeuler_version =info.get("osVersion", '').replace(' ', '-'),
             ports_bus_types=info.get("portsBusTypes", ''),
             product_information=info.get("productInformation", ''),
             ram=info.get("ram", ''),
@@ -76,7 +76,7 @@ class OeMessageManager:
             driver_size=info.get("driverSize", ''),
             item=info.get("item", ''),
             lang=info.get("lang", ''),
-            os=info.get("os", '').replace(' ', '-'),
+            openeuler_version =info.get("os", '').replace(' ', '-'),
             sha256=info.get("sha256", ''),
             ss_id=info.get("ssID", ''),
             sv_id=info.get("svID", ''),
@@ -103,7 +103,7 @@ class OeMessageManager:
     @staticmethod
     def add_oe_compatibility_open_source_software(info):
         oe_compatibility_open_source_software_slice = OeCompatibilityOpenSourceSoftware(
-            os=info.get("os", '').replace(' ', '-'),
+            openeuler_version =info.get("os", '').replace(' ', '-'),
             arch=info.get("arch", ''),
             property=info.get("property", ''),
             result_url=info.get("result_url", ''),
@@ -150,7 +150,7 @@ class OeMessageManager:
             company_name=info.get("companyName", ''),
             platform_type_and_server_model=info.get("platformTypeAndServerModel", ''),
             authenticate_link=info.get("authenticateLink", ''),
-            os_version=(info.get("osName", '')+info.get("osVersion", '')).replace(' ', '-'),
+            openeuler_version =(info.get("osName", '')+info.get("osVersion", '')).replace(' ', '-'),
             region=info.get("region", '')
         )
         try:
@@ -184,7 +184,7 @@ class OeMessageManager:
             lang=info.get("lang", ''),
             libvirt_version=info.get("libvirtVersion", ''),
             network_card=info.get("networkCard", ''),
-            os=info.get("os", '').replace(' ', '-'),
+            openeuler_version =info.get("os", '').replace(' ', '-'),
             ovs_version=info.get("OVSVersion", ''),
             product=info.get("product", ''),
             qemu_version=info.get("qemuVersion", ''),
@@ -216,7 +216,7 @@ class OeMessageManager:
         oe_compatibility_osv_slice = OeCompatibilityOsv(
             id=info.get("id", ''),
             arch=info.get("arch", ''),
-            os_version=info.get("osVersion", ''),
+            openeuler_version =info.get("osVersion", ''),
             osv_name=info.get("osvName", ''),
             date=info.get("date", ''),
             os_download_link=info.get("osDownloadLink", ''),

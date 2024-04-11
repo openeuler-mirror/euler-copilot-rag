@@ -35,7 +35,7 @@ class SizedTimedRotatingFileHandler(TimedRotatingFileHandler):
 
 LOG_FORMAT = '[{asctime}][{levelname}][{name}][P{process}][T{thread}][{message}][{funcName}({filename}:{lineno})]'
 
-if os.getenv("RAG_ENV") == "stdout":
+if os.getenv("LOG") == "stdout":
     handlers = {
         "default": {
             "formatter": "default",

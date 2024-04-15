@@ -2,6 +2,7 @@
 import os
 import json
 import requests
+import traceback
 from typing import List
 
 from langchain_openai import ChatOpenAI
@@ -104,29 +105,27 @@ def get_entity_properties(entity: str):
     cypher = NEO4J_PROPERTIES_SQL.replace('{{entity}}', entity)
     try:
         graph_res = graph.query(query=cypher, params={})
+        neo4j_content = ""
+        for k, v in graph_res[0]['props'].items():
+            if k != "id":
+                neo4j_content += k+"是"+v+", "
     except Exception as e:
-        logger.error("Neo4j query error.")
+        logger.error(u"Neo4j query error. {}".format(traceback.format_exc()))
         return None
-    neo4j_content = ""
-    for k, v in graph_res[0]['props'].items():
-        if k != "id":
-            neo4j_content += k+"是"+v+", "
-    return entity+"的"+neo4j_content
-    # return None
+    return neo4j_content
 
 
 def get_entity_relationships(entity: str):
     cypher = NEO4J_RELATIONSHIP_SQL.replace('{{entity}}', entity)
     try:
         graph_res = graph.query(query=cypher, params={})
+        neo4j_content = ""
+        for res in graph_res:
+            neo4j_content += res['output']+' '
     except Exception as e:
-        logger.error("Neo4j query error.")
+        logger.error(u"Neo4j query error. {}".format(traceback.format_exc()))
         return None
-    neo4j_content = ""
-    for res in graph_res:
-        neo4j_content += res['output']+' '
     return neo4j_content
-    # return None
 
 
 def neo4j_search_data(question: str):
@@ -135,16 +134,14 @@ def neo4j_search_data(question: str):
     try:
         entities = json.loads(llm_res)
     except Exception as e:
-        logger.error("Extract entities error.")
+        logger.error(u"Extract entities error. {}".format(traceback.format_exc()))
         return None
     if len(entities) == 0:
-        logger.error("Extract entities empty.")
+        logger.error(u"Extract entities empty. {}".format(traceback.format_exc()))
         return None
-
     # Query entity properties
     entity_properties = get_entity_properties(entity=entities[0])
     # Query entity relationships
     entity_relationships = get_entity_relationships(entity=entities[0])
     # Return more than one documents
-    result = [value for value in (entity_properties, entity_relationships) if value is not None]
-    return result if result else None
+    return f"查询结果为: {entity_properties}, {entity_relationships}"

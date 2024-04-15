@@ -201,16 +201,6 @@ def embedding_update_documents(
                                                         knowledge_base_asset_name, session)
         vector_stores = knowledge_base_asset.vector_stores
         remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
-        # embeddings = list(
-        #     itertools.chain.from_iterable(
-        #         [
-        #             remote_embedding.embedding(
-        #                 [document.page_content for document in chunked_documents],
-        #                 knowledge_base_asset.embedding_model
-        #             ) for chunked_documents in chunked(documents, EMBEDDING_CHUNK_SIZE)
-        #         ]
-        #     )
-        # )
         index = 0
         embeddings = []
         while index < len(documents):

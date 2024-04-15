@@ -29,9 +29,11 @@ EXTRACT_ENTITY_SYSTEM_PROMPT = """
 """
 
 EXTRACT_HUMAN_PROMPT = """
-提示：确保按照正确的格式作答，且不包含任何解释。使用给定的格式从以下输入中提取信息：{{input}}
+使用给定的格式从以下输入中提取信息：{{input}}
 
 格式： {"nodes":[{"id": "openEuler","type":"操作系统"},{"id":"Linux_Kernel_5.10","type":"内核"}], "edges":[{"source":{"id": "openEuler","type":"操作系统"},"target":{"id":"Linux_Kernel_5.10","type":"内核"},"type":"基于"}]}
+
+尽可能使用到输入信息里面的内容生成若干个问答对, 并根据提取到的图数据关系生成对应的cypher查询语句
 """
 
 GENERATE_CYPHER_SYSTEM_PROMPT = """
@@ -60,4 +62,31 @@ Cypher: match (n:运维管理平台)-[r:包含]->(p:功能模块) return p.id
 示例5:
 问题: PilotGo的日志审计功能模块追踪了那些内容
 Cypher: match (n)-[r:包含]->(f:功能模块)-[r2:追踪]->(f2) where n.id contains 'PilotGo' and f.id contains '日志审计' return f2.id
+"""
+
+EXTRACT_ENTITY_SYSTEM_PROMPT = """
+# 实体词提取指南
+
+## 1. 概述
+
+你的任务是从用户输入当中提取实体词
+
+- **实体**: 实体通常指代具有唯一标识的逻辑对象, 或者具有特定意义的事物, 大多数情况下实体词以名词的形式出现
+
+## 2. 完整性
+
+你从文本中提取的实体应当尽可能保证其完整性, 避免出现拆分或者子串的情况出现
+
+例如存在某个实体 "数学老师", 你不能将其拆分为 "数学", "老师" 两个实体, 而是在语义上保持实体的完整性不被破坏
+
+## 3. 返回格式
+
+将提取到的所有实体以数组的形式返回
+"""
+
+NEO4J_PROPERTIES_SQL = """
+match (n {id:'{{entity}}'}) return properties(n) as props
+"""
+NEO4J_RELATIONSHIP_SQL = """
+match (n:Node {id:'{{entity}}'})-[r]->(ne:Node) return n.id + ' - ' + type(r) + ' -> ' + ne.id as output union match (n:Node {id:'{{entity}}'})<-[r]-(ne:Node) return ne.id + ' - ' + type(r) + ' -> ' + n.id as output
 """

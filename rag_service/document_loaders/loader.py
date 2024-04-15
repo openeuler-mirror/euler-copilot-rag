@@ -53,7 +53,7 @@ def load_file(original_document: OriginalDocument, sentence_size=SENTENCE_SIZE) 
             doc.metadata['extended_metadata'] = metadata
         return docs
     except Exception as e:
-        logger.exception('Failed to load %s, exception: %s', original_document, e)
+        logger.error('Failed to load %s, exception: %s', original_document, e)
         return []
 
 

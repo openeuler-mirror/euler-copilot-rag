@@ -17,6 +17,4 @@ start.sh
 encrypted_config.json
 
 # neo4j docs
-rag_service/vectorstore/neo4j/*.json
-rag_service/vectorstore/neo4j/*.txt
-rag_service/vectorstore/neo4j/*.md
+rag_service/vectorstore/neo4j/documents

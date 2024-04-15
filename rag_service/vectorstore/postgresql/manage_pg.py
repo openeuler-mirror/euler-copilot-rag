@@ -14,7 +14,7 @@ from rag_service.utils.serdes import serialize
 from rag_service.exceptions import PostgresQueryException
 from rag_service.models.database.models import yield_session
 from rag_service.models.database.models import VectorizeItems
-from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
+from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding, RemoteEmbeddingAPI
 from rag_service.models.enums import EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 from rag_service.models.database.models import KnowledgeBase, KnowledgeBaseAsset, VectorizationJob
 
@@ -44,6 +44,7 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
             embedding_dicts[asset_term.embedding_model].append(asset_term)
 
         remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
+        # remote_embedding_api = RemoteEmbeddingAPI(endpoint=os.getenv("REMOTE_EMBEDDING_API_ENDPOINT"))
         results = []
         for embedding_name, asset_terms in embedding_dicts.items():
             vectors = []
@@ -52,6 +53,7 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
                 vectors.extend(asset_term.vector_stores)
             index_names = [vector.name for vector in vectors]
             vectors = remote_embedding.embedding([question], embedding_name)[0]
+            # vectors = remote_embedding_api.embedding(question, embedding_name)
             result = get_query(session, question, vectors, index_names, top_k)
             results.extend(result)
     except Exception as e:

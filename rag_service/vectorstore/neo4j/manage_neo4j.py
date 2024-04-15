@@ -9,15 +9,17 @@ from langchain_core.documents import Document
 from langchain_community.graphs import Neo4jGraph
 from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
 
+from rag_service.logger import get_logger
 from rag_service.llms.qwen import token_check
 from rag_service.security.cryptohub import CryptoHub
 from rag_service.exceptions import Neo4jQueryException, TokenCheckFailed
 from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
-from rag_service.vectorstore.neo4j.neo4j_constants import GENERATE_CYPHER_SYSTEM_PROMPT
+from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, NEO4J_PROPERTIES_SQL, NEO4J_RELATIONSHIP_SQL
 
-
-llm = ChatOpenAI(openai_api_key="xxx",
-                 openai_api_base=os.getenv("LLM_URL"), model_name="Qwen-72B-Chat-Int4", temperature=0)
+logger = get_logger()
+llm = ChatOpenAI(openai_api_key=CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY'),
+                 openai_api_base=CryptoHub.query_plaintext_by_config_name('OPENAI_API_BASE'),
+                 model_name="Qwen-72B-Chat-Int4", temperature=0)
 
 NEO4J_URL = CryptoHub.query_plaintext_by_config_name('NEO4J_URL')
 NEO4J_USERNAME = CryptoHub.query_plaintext_by_config_name('NEO4J_USERNAME')
@@ -26,7 +28,7 @@ graph = Neo4jGraph(url=NEO4J_URL, username=NEO4J_USERNAME, password=NEO4J_PASSWO
 
 
 def _map_to_base_node(node: dict) -> Node:
-    return Node(id=node['id'], type=node['type'], properties=node.get('properties', []))
+    return Node(id=node['id'], properties=node.get('properties', []))
 
 
 def _map_to_base_edge(edge: dict) -> Relationship:
@@ -37,16 +39,19 @@ def _map_to_base_edge(edge: dict) -> Relationship:
 
 def convert_to_graph_documents() -> List[GraphDocument]:
     graph_documents = []
-    with open('', 'r') as file:
-        json_result = json.load(file)
-    if 'nodes' in json_result:
-        nodes = [_map_to_base_node(node) for node in json_result['nodes']]
-    if 'edges' in json_result:
-        rels = [_map_to_base_edge(rel) for rel in json_result['edges']]
-    graph_document = GraphDocument(nodes=nodes, relationships=rels,
-                                   source=Document(page_content=json.dumps(json_result)))
-    graph_documents.append(graph_document)
-    print("convert down")
+    dir = ''
+    for filename in os.listdir(dir):
+        if filename.endswith('.json'):
+            file_path = os.path.join(dir, filename)
+            with open(file_path, 'r') as file:
+                json_result = json.load(file)
+                if 'nodes' in json_result:
+                    nodes = [_map_to_base_node(node) for node in json_result['nodes']]
+                if 'edges' in json_result:
+                    rels = [_map_to_base_edge(rel) for rel in json_result['edges']]
+                graph_document = GraphDocument(nodes=nodes, relationships=rels,
+                                               source=Document(page_content=json_result['source']))
+                graph_documents.append(graph_document)
     return graph_documents
 
 
@@ -57,7 +62,6 @@ def add_graph_documents_to_neo4j(graph_documents: List[GraphDocument]):
                                   include_source=True)
     except Exception as e:
         raise Neo4jQueryException(f'Neo4j query exception') from e
-    print("added")
 
 
 def llm_call(question: str, prompt: str, history: List = None):
@@ -75,7 +79,7 @@ def llm_call(question: str, prompt: str, history: List = None):
             raise TokenCheckFailed(f'Token is too long.')
     headers = {
         "Content-Type": "application/json",
-        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+        "Authorization": "Bearer "+CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
     }
     data = {
         "model": LLM_MODEL,
@@ -96,23 +100,51 @@ def llm_call(question: str, prompt: str, history: List = None):
         return ""
 
 
-def neo4j_search_data(question: str):
+def get_entity_properties(entity: str):
+    cypher = NEO4J_PROPERTIES_SQL.replace('{{entity}}', entity)
     try:
-        cypher = llm_call(question=question, prompt=GENERATE_CYPHER_SYSTEM_PROMPT.replace(
-            '{{schema}}', graph.schema), history=[])
-        neo4j_res = graph.query(query=cypher, params={})
-        res = None if neo4j_res == [] else question + ', 查询图数据库的结果为: '+json.dumps(neo4j_res, ensure_ascii=False)
-    except Exception:
+        graph_res = graph.query(query=cypher, params={})
+    except Exception as e:
+        logger.error("Neo4j query error.")
         return None
-    return res
+    neo4j_content = ""
+    for k, v in graph_res[0]['props'].items():
+        if k != "id":
+            neo4j_content += k+"是"+v+", "
+    return entity+"的"+neo4j_content
+    # return None
 
 
-def neo4j_insert_data():
-    graph_documents = convert_to_graph_documents()
-    add_graph_documents_to_neo4j(graph_documents)
+def get_entity_relationships(entity: str):
+    cypher = NEO4J_RELATIONSHIP_SQL.replace('{{entity}}', entity)
+    try:
+        graph_res = graph.query(query=cypher, params={})
+    except Exception as e:
+        logger.error("Neo4j query error.")
+        return None
+    neo4j_content = ""
+    for res in graph_res:
+        neo4j_content += res['output']+' '
+    return neo4j_content
+    # return None
 
 
-if __name__ == "__main__":
-    neo4j_insert_data()
-    # res = neo4j_search_data("你好")
-    # print(res)
+def neo4j_search_data(question: str):
+    # Extract entities from question
+    llm_res = llm_call(question=question, prompt=EXTRACT_ENTITY_SYSTEM_PROMPT, history=[])
+    try:
+        entities = json.loads(llm_res)
+    except Exception as e:
+        logger.error("Extract entities error.")
+        return None
+    if len(entities) == 0:
+        logger.error("Extract entities empty.")
+        return None
+
+    # Query entity properties
+    entity_properties = get_entity_properties(entity=entities[0])
+    # Query entity relationships
+    entity_relationships = get_entity_relationships(entity=entities[0])
+    # Return more than one documents
+    result = [value for value in (entity_properties, entity_relationships) if value is not None]
+    return result if result else None

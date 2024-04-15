@@ -19,11 +19,10 @@ from rag_service.query_generator.query_generator import query_generate
 from rag_service.classifier.domain_classifier import domain_classifier
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
 from rag_service.vectorstore.neo4j.manage_neo4j import neo4j_search_data
+from rag_service.exceptions import KnowledgeBaseExistNonEmptyKnowledgeBaseAsset, PostgresQueryException
 from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, RetrievedDocument, QueryRequest
 from rag_service.llms.llm import extend_query_generate, get_query_context, intent_detect, \
     qwen_llm_stream_answer, spark_llm_stream_answer
-from rag_service.exceptions import DomainCheckFailedException, KnowledgeBaseExistNonEmptyKnowledgeBaseAsset, \
-    PostgresQueryException
 
 logger = get_logger()
 
@@ -62,17 +61,18 @@ async def create_knowledge_base(req: CreateKnowledgeBaseReq, session) -> str:
 def get_qwen_llm_stream_answer(req: QueryRequest):
     documents_info = get_rag_document_info(req=req)
     query_context = get_query_context(documents_info=documents_info)
-    domain_check_passed = domain_classifier(req=req, query_context=query_context)
-    if domain_check_passed:
-        return domain_check_failed_return()
+    # domain_check_passed = domain_classifier(req=req, query_context=query_context)
+    # if domain_check_passed:
+    #     return domain_check_failed_return()
     return qwen_llm_stream_answer(req, documents_info, query_context)
 
 
 def get_spark_llm_stream_answer(req: QueryRequest):
     documents_info = get_rag_document_info(req=req)
     query_context = get_query_context(documents_info=documents_info)
-    if domain_classifier(req=req, query_context=query_context):
-        return domain_check_failed_return()
+    # domain_check_passed = domain_classifier(req=req, query_context=query_context)
+    # if domain_check_passed:
+    #     return domain_check_failed_return()
     return spark_llm_stream_answer(req, documents_info, query_context)
 
 
@@ -113,7 +113,7 @@ def get_rag_document_info(req: QueryRequest):
         for future in concurrent.futures.as_completed(tasks):
             result = future.result()
             if result is not None:
-                documents_info.append(result)
+                documents_info.extend(result)
 
     documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
                                          top_k=req.top_k-len(documents_info)))
@@ -121,8 +121,8 @@ def get_rag_document_info(req: QueryRequest):
 
 
 def domain_check_failed_return():
-    default_str = '''请注意，本智能助手专注于提供关于Linux和openEuler领域的知识和帮助，\
-对于其他领域的问题无法提供详细的解答。'''
+    default_str = '''您好，本智能助手专注于提供提供关于Linux和openEuler领域的知识和帮助，\
+对于其他领域的问题可能无法提供详细的解答。'''
     index = 0
     while index < len(default_str):
         chunk_size = random.randint(1, 3)

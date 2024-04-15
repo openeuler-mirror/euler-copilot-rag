@@ -66,7 +66,7 @@ def qwen_llm_call(question: str, system: str, history: List = None):
         "cache-control": "no-cache",
         "connection": "keep-alive",
         "x-accel-buffering": "no",
-        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+        "Authorization": "Bearer "+CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
     }
     data = {
         "model": LLM_MODEL,
@@ -85,10 +85,11 @@ def qwen_llm_call(question: str, system: str, history: List = None):
                 try:
                     info_json = json.loads(line[6:])
                     if info_json['choices'][0].get('finish_reason', "") == 'length':
-                        raise LlmAnswerException(f'请求大模型返回发生错误') from e
+                        raise LlmAnswerException(f'大模型返回token过长')
                     part = info_json['choices'][0]['delta'].get('content', "")
                     yield part
                 except Exception as e:
                     raise LlmAnswerException(f'请求大模型返回发生错误') from e
     else:
+        logger.error(f"大模型返回非2xx状态码: {response.status_code}")
         yield ""

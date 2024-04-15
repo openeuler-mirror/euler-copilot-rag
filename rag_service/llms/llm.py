@@ -25,7 +25,6 @@ async def spark_llm_stream_answer(req: QueryRequest, documents_info: List[str], 
     try:
         answer = spark_llm_call(question=req.question, system=prompt, history=req.history)
     except LlmAnswerException as error:
-        logger.exception("用户提问：%s，查询资产库：%s，运行失败：%s", req.question, req.kb_sn, error)
         raise LlmRequestException(f'请求大模型返回发生错误') from error
     async for part in answer:
         res += part
@@ -41,7 +40,6 @@ def qwen_llm_stream_answer(req: QueryRequest, documents_info: List[str], query_c
     try:
         answer = qwen_llm_call(question=req.question, system=prompt, history=req.history)
     except LlmAnswerException as error:
-        logger.exception("用户提问：%s，查询资产库：%s，运行失败：%s", req.question, req.kb_sn, error)
         raise LlmRequestException(f'请求大模型返回发生错误') from error
     for part in answer:
         res += part
@@ -67,7 +65,7 @@ def llm_call(prompt: str, question: str = None, history: List = None):
             raise TokenCheckFailed(f'Token is too long.')
     headers = {
         "Content-Type": "application/json",
-        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+        "Authorization": "Bearer "+CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
     }
     data = {
         "model": LLM_MODEL,

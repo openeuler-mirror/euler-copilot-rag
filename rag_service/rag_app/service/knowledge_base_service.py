@@ -113,7 +113,7 @@ def get_rag_document_info(req: QueryRequest):
         for future in concurrent.futures.as_completed(tasks):
             result = future.result()
             if result is not None:
-                documents_info.append(result)
+                documents_info.extend(result)
 
     documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
                                          top_k=req.top_k-len(documents_info)))

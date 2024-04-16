@@ -110,7 +110,6 @@ def get_entity_properties(entity: str):
             if k != "id":
                 neo4j_content += k+"是"+v+", "
     except Exception as e:
-        logger.error(u"Neo4j query error. {}".format(traceback.format_exc()))
         return None
     return neo4j_content
 
@@ -123,15 +122,14 @@ def get_entity_relationships(entity: str):
         for res in graph_res:
             neo4j_content += res['output']+' '
     except Exception as e:
-        logger.error(u"Neo4j query error. {}".format(traceback.format_exc()))
         return None
     return neo4j_content
 
 
 def neo4j_search_data(question: str):
     # Extract entities from question
-    llm_res = llm_call(question=question, prompt=EXTRACT_ENTITY_SYSTEM_PROMPT, history=[])
     try:
+        llm_res = llm_call(question=question, prompt=EXTRACT_ENTITY_SYSTEM_PROMPT, history=[])
         entities = json.loads(llm_res)
     except Exception as e:
         logger.error(u"Extract entities error. {}".format(traceback.format_exc()))

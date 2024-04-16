@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import json
-import random
 import time
 import uuid
+import random
 import traceback
 import concurrent.futures
 from typing import List
@@ -12,13 +12,12 @@ from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 
 from rag_service.logger import get_logger
-from rag_service.models.api.models import QueryRequest
 from rag_service.models.database.models import KnowledgeBase
 from rag_service.utils.db_util import validate_knowledge_base
 from rag_service.query_generator.query_generator import query_generate
-from rag_service.classifier.domain_classifier import domain_classifier
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
 from rag_service.vectorstore.neo4j.manage_neo4j import neo4j_search_data
+from rag_service.models.api.models import QueryRequest, RetrievedDocumentMetadata
 from rag_service.exceptions import KnowledgeBaseExistNonEmptyKnowledgeBaseAsset, PostgresQueryException
 from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, RetrievedDocument, QueryRequest
 from rag_service.llms.llm import extend_query_generate, get_query_context, intent_detect, \
@@ -86,7 +85,12 @@ def get_knowledge_base_list(owner: str, session) -> Page[KnowledgeBaseInfo]:
 
 def get_related_docs(req: QueryRequest, session) -> List[RetrievedDocument]:
     validate_knowledge_base(req.kb_sn, session)
-    return pg_search_data(req.question, req.kb_sn, req.top_k, session)
+    pg_results = pg_search_data(req.question, req.kb_sn, req.top_k, session)
+    results = []
+    for res in pg_results:
+        results.append(RetrievedDocument(text=res[0], metadata=RetrievedDocumentMetadata(
+            source=res[1], mtime=res[2], extended_metadata={})))
+    return results
 
 
 def delele_knowledge_base(kb_sn: str, session):

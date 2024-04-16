@@ -56,12 +56,12 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
             results.extend(result)
     except Exception as e:
         raise PostgresQueryException(f'Postgres query exception') from e
-    return [item[0] for item in results]
+    return results
 
 
 def semantic_search(session, index_names, vectors, top_k):
     results = session.query(
-        VectorizeItems.general_text
+        VectorizeItems.general_text, VectorizeItems.source, VectorizeItems.mtime
     ).filter(
         VectorizeItems.index_name.in_(index_names)
     ).order_by(
@@ -74,7 +74,7 @@ def keyword_search(session, index_names, question, top_k):
     # 将参数作为bindparam添加
     query = text("""
         SELECT 
-            general_text
+            general_text, source, mtime
         FROM 
             vectorize_items, 
             plainto_tsquery(:language, :question) query 

@@ -14,9 +14,10 @@ logger = get_logger()
 
 def query_generate(raw_question: str, kb_sn: str, top_k: int) -> List[str]:
     with yield_session() as session:
-        results = pg_search_data(raw_question, kb_sn, top_k, session)
+        pg_results = pg_search_data(raw_question, kb_sn, top_k, session)
     docs = []
-    for result in results:
+    pg_documents = [item[0] for item in pg_results]
+    for result in pg_documents:
         docs.append(result)
     # ranker语料排序
     remote_rerank = RemoteRerank(os.getenv("REMOTE_RERANKING_ENDPOINT"))

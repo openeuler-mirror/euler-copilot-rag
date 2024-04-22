@@ -29,7 +29,7 @@ CREATE TABLE public.oe_compatibility_card (
 	driver_size varchar NULL,
 	item varchar NULL,
 	lang varchar NULL,
-	os varchar NULL, -- openeEuler版本
+	openeuler_version varchar NULL, -- openeEuler版本
 	sha256 varchar NULL,
 	ss_id varchar NULL,
 	sv_id varchar NULL,
@@ -50,7 +50,7 @@ CREATE TABLE public.oe_compatibility_commercial_software (
 	company_name varchar NULL, -- 厂家名称
 	platform_type_and_server_model varchar NULL,
 	authenticate_link varchar NULL,
-	os_version varchar NULL, -- openEuler版本
+	openeuler_version varchar NULL, -- openEuler版本
 	region varchar NULL,
 	CONSTRAINT oe_compatibility_commercial_software_pkey PRIMARY KEY (id)
 );
@@ -58,7 +58,7 @@ COMMENT ON TABLE public.oe_compatibility_commercial_software IS 'openEuler支持
 
 CREATE TABLE public.oe_compatibility_open_source_software (
 	id bigserial NOT NULL,
-	os varchar NULL, -- openEuler版本
+	openeuler_version varchar NULL, -- openEuler版本
 	arch varchar NULL, -- 架构
 	property varchar NULL, -- 软件属性
 	result_url varchar NULL,
@@ -83,7 +83,7 @@ COMMENT ON TABLE public.oe_compatibility_open_source_software IS 'openEuler支�
 CREATE TABLE public.oe_compatibility_osv (
 	id varchar NOT NULL,
 	arch varchar NULL, -- 架构
-	os_version varchar NULL, -- OS版本
+	os_version varchar NULL, -- 操作系统版本
 	osv_name varchar NULL, -- OS厂商
 	"date" varchar NULL, -- 测评日期
 	os_download_link varchar NULL, -- OS下载地址
@@ -92,7 +92,7 @@ CREATE TABLE public.oe_compatibility_osv (
 	friendly_link varchar NULL,
 	total_result varchar NULL,
 	checksum varchar NULL,
-	base_openeuler_version varchar NULL, -- openEuler版本
+	openeuler_version varchar NULL, -- openEuler版本
 	CONSTRAINT oe_compatibility_osv_pkey PRIMARY KEY (id)
 );
 COMMENT ON TABLE public.oe_compatibility_osv IS 'openEuler支持的OSV';
@@ -114,7 +114,7 @@ CREATE TABLE public.oe_compatibility_overall_unit (
 	host_bus_adapter varchar NULL,
 	lang varchar NULL,
 	main_board_bodel varchar NULL,
-	os_version varchar NULL, -- openEuler版本
+	openeuler_version varchar NULL, -- openEuler版本
 	ports_bus_types varchar NULL,
 	product_information varchar NULL,
 	ram varchar NULL,
@@ -139,7 +139,7 @@ CREATE TABLE public.oe_compatibility_solution (
 	lang varchar NULL,
 	libvirt_version varchar NULL,
 	network_card varchar NULL,
-	os varchar NULL, -- openEuler版本
+	openeuler_version varchar NULL, -- openEuler版本
 	ovs_version varchar NULL,
 	product varchar NULL, -- 型号
 	qemu_version varchar NULL,

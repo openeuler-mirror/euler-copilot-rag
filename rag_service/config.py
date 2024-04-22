@@ -13,7 +13,7 @@ try:
         'embedding_chunk_size': '10000',
         'sentence_size': '300',
         'default_top_k': '5',
-        'llm_model': 'Qwen-72B-Chat-Int4',
+        'llm_model': 'Qwen1.5-32B-chat-GPTQ-Int4',
         'llm_temperature': '0.01',
         'spark_max_tokens': '8192',
         'qwen_max_tokens': '16384',
@@ -90,31 +90,71 @@ try:
     表结构： {{table}}
 
     问题与生成sql示例： {{example}}''',
-        'intent_detect_prompt_template': '''请根据历史对话输出用户最新的意图
 
-        以下是一些示例：
+        'intent_detect_prompt_template': '''
+# 多轮对话上下文理解与问题补全
 
-        示例1：
-        HISTORY：
-            Q：pgvector是向量化数据库吗？
-            A：是的，pgvecotr是向量化数据库。
-        NOW_QUESTION：那chroma呢？
-        USER_ITENT：chroma是向量化数据库吗？
+你是一个具备高级自然语言理解和推理能力的AI助手，你能够基于先前对话的历史信息以及当前用户的简短输入，准确推断出用户的实际意图，并给出相应的回答。
 
-        示例2：
-        HISTORY：
-            Q：pgvector是向量化数据库吗？
-            A：是的，pgvecotr是向量化数据库。
-        NOW_QUESTION：openEuler22.03的内核版本
-        USER_ITENT：openEuler22.03的内核版本是什么？
+用户可能在后续提问中仅提及关注的关键词，省略了与前一轮对话直接关联的完整问题结构。
 
-        ---
+## 目标
 
-        HISTORY：
-        {{history}}
-        NOW_QUESTION：{{question}}
-        USER_ITENT：
-        ''',
+在接收到用户简化的后续提问时，能够有效地捕捉上下文线索，补全用户意图，并提供准确的信息回复。
+
+* 保持连贯性：在多轮对话中维持对先前话题的关注，即使用户提问简短，也能迅速定位到正确的上下文。
+* 精准补全：当用户提问缺乏明确的动词或疑问词时，应能根据已有对话内容，合理推测并添加缺失成分，形成完整的问题表述。
+* 适应性响应：针对用户可能提出的各种简略提问变体（如只提地点、只提动作等），能灵活应对，准确补全并作出相应回答。
+* 避免过度解读：在补全问题时，应避免过度泛化或臆测，确保补全的内容紧密贴合用户实际意图，避免引发误解或提供不相关的信息。
+* 拒绝回答: 不能够直接回复用户的输入，只需要返回补全后的新问题，如果你认为不需要补全则直接返回用户的原始问题。
+
+HISTORY：{{history}}
+NOW_QUESTION：{{question}}
+''',
+
+        # 'intent_detect_prompt_template': '''
+
+
+
+        # 请根据历史对话输出用户最新的意图
+
+        # 以下是一些示例：
+
+        # 示例1：
+        # HISTORY：
+        #     Q：pgvector是向量化数据库吗？
+        #     A：是的，pgvecotr是向量化数据库。
+        # NOW_QUESTION：那chroma呢？
+        # USER_ITENT：chroma是向量化数据库吗？
+
+        # 示例2：
+        # HISTORY：
+        #     Q：pgvector是向量化数据库吗？
+        #     A：是的，pgvecotr是向量化数据库。
+        # NOW_QUESTION：openEuler22.03的内核版本
+        # USER_ITENT：openEuler22.03的内核版本是什么？
+
+        # 示例3:
+        # HISTORY:
+        #     Q: 谁在联通数字科技有限公司工作
+        #     A: 钟忻就职于联通数字科技有限公司
+        # NOW_QUESTION: 谁是社区的执行总监
+        # USER_INTENT: 社区的执行总监是谁
+
+        # 示例3:
+        # HISTORY:
+        #     Q: openEuler用户委员会有多少人
+        #     A: openEuler用户委员会有10个人
+        # NOW_QUESTION: 那技术委员会呢
+        # USER_INTENT: openEuler技术委员会有多少人
+
+        # ---
+
+        # HISTORY：
+        # {{history}}
+        # NOW_QUESTION：{{question}}
+        # USER_ITENT：
+        # ''',
         'domain_classifier_prompt': '''你是由openEuler社区构建的大型语言AI助手。你的任务是结合给定的背景知识判断用户的问题是否属于以下几个领域。
 OS领域通用知识是指:包含Linux常规知识、上游信息和工具链介绍及指导。
 openEuler专业知识: 包含openEuler社区信息、技术原理和使用等介绍。

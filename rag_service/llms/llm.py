@@ -2,6 +2,7 @@
 import io
 import os
 import json
+import time
 import requests
 from typing import List
 from sqlalchemy import text
@@ -9,9 +10,9 @@ from sqlalchemy import text
 from rag_service.logger import get_logger
 from rag_service.llms.spark import spark_llm_call
 from rag_service.security.cryptohub import CryptoHub
-from rag_service.models.api.models import QueryRequest
 from rag_service.llms.qwen import qwen_llm_call, token_check
 from rag_service.models.database.models import yield_session
+from rag_service.models.api.models import LlmAnswer, QueryRequest
 from rag_service.exceptions import LlmAnswerException, LlmRequestException, TokenCheckFailed
 from rag_service.config import INTENT_DETECT_PROMPT_TEMPLATE, LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS, \
     QWEN_PROMPT_TEMPLATE, SPARK_PROMPT_TEMPLATE, SQL_GENERATE_PROMPT_TEMPLATE
@@ -35,6 +36,7 @@ async def spark_llm_stream_answer(req: QueryRequest, documents_info: List[str], 
 
 
 def qwen_llm_stream_answer(req: QueryRequest, documents_info: List[str], query_context: str):
+    fst = time.time()
     prompt = QWEN_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
     res = ""
     try:
@@ -47,7 +49,20 @@ def qwen_llm_stream_answer(req: QueryRequest, documents_info: List[str], query_c
     source_info = append_source_info(req=req, documents_info=documents_info)
     for source in source_info:
         yield source
+    fet = time.time()
+    logger.info(f"finish time: {fet-fst}")
 
+
+def qwen_llm_answer(req: QueryRequest, documents_info: List[str], query_context: str) -> LlmAnswer:
+    prompt = QWEN_PROMPT_TEMPLATE.replace('{{ context }}', query_context)
+    try:
+        answer = llm_call(prompt=prompt, question=req.question, history=req.history)
+    except LlmAnswerException as error:
+        raise LlmRequestException(f'请求大模型返回发生错误') from error
+    if req.fetch_source:
+        source_contents = [con[0] for con in documents_info]
+        sources = [con[1] for con in documents_info]
+    return LlmAnswer(answer=answer, sources=sources, source_contents=source_contents)
 
 def llm_call(prompt: str, question: str = None, history: List = None):
     messages = [
@@ -93,7 +108,7 @@ def get_query_context(documents_info) -> str:
     index = 1
     try:
         for doc in documents_info:
-            query_context += str(index) + ". " + doc.strip() + "\n"
+            query_context += str(index) + ". " + doc[0].strip() + "\n"
             index += 1
         return query_context
     except Exception as error:
@@ -101,6 +116,7 @@ def get_query_context(documents_info) -> str:
 
 
 def extend_query_generate(raw_question: str, history: List = None):
+    st = time.time()
     prompt = SQL_GENERATE_PROMPT_TEMPLATE
     current_path = os.path.dirname(os.path.realpath(__file__))
     table_sql_path = os.path.join(current_path, 'extend_search', 'table.sql')
@@ -126,7 +142,9 @@ def extend_query_generate(raw_question: str, history: List = None):
         return None
     string_results = [str(item) for item in results]
     joined_results = ', '.join(string_results)
-    return raw_question + ",查询结果为：" + joined_results
+    et = time.time()
+    logger.info(f"query generate: {et-st}")
+    return (raw_question + ",查询结果为：" + joined_results, "extend query generate result")
 
 
 def intent_detect(raw_question: str, history: List = None):
@@ -147,9 +165,9 @@ def intent_detect(raw_question: str, history: List = None):
 def append_source_info(req: QueryRequest, documents_info):
     source_info = io.StringIO()
     if req.fetch_source:
-        source_info.write("\n检索的到原始片段内容如下: \n")
+        source_info.write("\n\n检索的到原始片段内容如下: \n\n")
         contents = [con for con in documents_info]
-        source_info.write('\n'.join(f'片段{idx}： \n{source}' for idx, source in enumerate(contents, 1)))
+        source_info.write('\n\n'.join(f'片段{idx}： \n{source}' for idx, source in enumerate(contents, 1)))
 
     for part in source_info.getvalue():
         yield "data: " + json.dumps({'content': part}, ensure_ascii=False) + '\n\n'

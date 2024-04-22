@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
 import json
+import time
 from typing import List
 
 import requests
@@ -75,8 +76,10 @@ def qwen_llm_call(question: str, system: str, history: List = None):
         "stream": True,
         "max_tokens": QWEN_MAX_TOKENS
     }
+    st = time.time()
     response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=True)
     if response.status_code == 200:
+        flag = True
         for line in response.iter_lines(decode_unicode=True):
             if line:
                 line = line.strip()
@@ -87,6 +90,11 @@ def qwen_llm_call(question: str, system: str, history: List = None):
                     if info_json['choices'][0].get('finish_reason', "") == 'length':
                         raise LlmAnswerException(f'大模型返回token过长')
                     part = info_json['choices'][0]['delta'].get('content', "")
+                    if part != "" and flag:
+                        et = time.time()
+                        logger.info(f"first content: {et-st}")
+                        flag = False
+                    logger.info("llm frame: "+part)
                     yield part
                 except Exception as e:
                     raise LlmAnswerException(f'请求大模型返回发生错误') from e

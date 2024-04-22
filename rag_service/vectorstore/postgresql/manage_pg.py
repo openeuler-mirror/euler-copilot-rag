@@ -2,6 +2,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 # -*- coding: UTF-8 -*-
 import os
+import time
 from typing import List, Dict
 from collections import defaultdict
 
@@ -51,8 +52,15 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
             for asset_term in asset_terms:
                 vectors.extend(asset_term.vector_stores)
             index_names = [vector.name for vector in vectors]
+            st = time.time()
             vectors = remote_embedding.embedding([question], embedding_name)[0]
+            et = time.time()
+            logger.info(f"query embedding: {et-st}")
+
+            st = time.time()
             result = get_query(session, question, vectors, index_names, top_k)
+            et = time.time()
+            logger.info(f"pg vector serach: {et-st}")
             results.extend(result)
     except Exception as e:
         raise PostgresQueryException(f'Postgres query exception') from e

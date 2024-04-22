@@ -17,10 +17,10 @@ from rag_service.utils.db_util import validate_knowledge_base
 from rag_service.query_generator.query_generator import query_generate
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
 from rag_service.vectorstore.neo4j.manage_neo4j import neo4j_search_data
-from rag_service.models.api.models import QueryRequest, RetrievedDocumentMetadata
+from rag_service.models.api.models import LlmAnswer, QueryRequest, RetrievedDocumentMetadata
 from rag_service.exceptions import KnowledgeBaseExistNonEmptyKnowledgeBaseAsset, PostgresQueryException
 from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, RetrievedDocument, QueryRequest
-from rag_service.llms.llm import extend_query_generate, get_query_context, intent_detect, \
+from rag_service.llms.llm import extend_query_generate, get_query_context, intent_detect, qwen_llm_answer, \
     qwen_llm_stream_answer, spark_llm_stream_answer
 
 logger = get_logger()
@@ -55,6 +55,12 @@ async def create_knowledge_base(req: CreateKnowledgeBaseReq, session) -> str:
         logger.error(u"Postgres query exception {}".format(traceback.format_exc()))
         raise PostgresQueryException(f'Postgres query exception') from e
     return serial_number
+
+
+def get_qwen_answer(req: QueryRequest) -> LlmAnswer:
+    documents_info = get_rag_document_info(req=req)
+    query_context = get_query_context(documents_info=documents_info)
+    return qwen_llm_answer(req, documents_info, query_context)
 
 
 def get_qwen_llm_stream_answer(req: QueryRequest):
@@ -106,8 +112,14 @@ def delele_knowledge_base(kb_sn: str, session):
 
 
 def get_rag_document_info(req: QueryRequest):
+    logger.info(f"raw question: {req.question}")
+    st = time.time()
     user_intent = intent_detect(req.question, req.history)
+    et = time.time()
+    logger.info(f"user intent: {user_intent}")
+    logger.info(f"query rewrite: {et-st}")
     documents_info = []
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
         tasks = {
             executor.submit(extend_query_generate, user_intent): 'extend_query_generate',
@@ -118,6 +130,7 @@ def get_rag_document_info(req: QueryRequest):
             result = future.result()
             if result is not None:
                 documents_info.append(result)
+    logger.info("Graph rag/Query generate results: {}".format(documents_info))
 
     documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
                                          top_k=req.top_k-len(documents_info)))

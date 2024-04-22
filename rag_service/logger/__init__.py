@@ -33,7 +33,7 @@ class SizedTimedRotatingFileHandler(TimedRotatingFileHandler):
         os.chmod(self.baseFilename, 0o640)
 
 
-LOG_FORMAT = '[{asctime}][{levelname}][{name}][P{process}][T{thread}][{message}][{funcName}({filename}:{lineno})]'
+LOG_FORMAT = '[{correlation_id}][{asctime}][{levelname}][{name}][P{process}][T{thread}][{message}][{funcName}({filename}:{lineno})]'
 
 if os.getenv("LOG") == "stdout":
     handlers = {
@@ -41,6 +41,7 @@ if os.getenv("LOG") == "stdout":
             "formatter": "default",
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",
+            "filters": ["correlation_id"]
         },
     }
 else:
@@ -54,7 +55,8 @@ else:
             'filename': f"{LOG_DIR}/app.log",
             'backup_count': 30,
             'when': 'MIDNIGHT',
-            'max_bytes': 5000000
+            'max_bytes': 5000000,
+            'filters': ['correlation_id']
         }
     }
 
@@ -66,6 +68,13 @@ log_config = {
             '()': 'logging.Formatter',
             'fmt': LOG_FORMAT,
             'style': '{'
+        }
+    },
+    "filters": {
+        "correlation_id": {
+            "()": "asgi_correlation_id.CorrelationIdFilter",
+            "uuid_length": 32,
+            "default_value": "-",
         }
     },
     "handlers": handlers,

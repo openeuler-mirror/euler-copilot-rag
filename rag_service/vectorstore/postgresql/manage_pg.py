@@ -2,6 +2,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 # -*- coding: UTF-8 -*-
 import os
+import time
 from typing import List, Dict
 from collections import defaultdict
 
@@ -14,7 +15,7 @@ from rag_service.utils.serdes import serialize
 from rag_service.exceptions import PostgresQueryException
 from rag_service.models.database.models import yield_session
 from rag_service.models.database.models import VectorizeItems
-from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding, RemoteEmbeddingAPI
+from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.models.enums import EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 from rag_service.models.database.models import KnowledgeBase, KnowledgeBaseAsset, VectorizationJob
 
@@ -44,7 +45,6 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
             embedding_dicts[asset_term.embedding_model].append(asset_term)
 
         remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
-        # remote_embedding_api = RemoteEmbeddingAPI(endpoint=os.getenv("REMOTE_EMBEDDING_API_ENDPOINT"))
         results = []
         for embedding_name, asset_terms in embedding_dicts.items():
             vectors = []
@@ -52,18 +52,24 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
             for asset_term in asset_terms:
                 vectors.extend(asset_term.vector_stores)
             index_names = [vector.name for vector in vectors]
+            st = time.time()
             vectors = remote_embedding.embedding([question], embedding_name)[0]
-            # vectors = remote_embedding_api.embedding(question, embedding_name)
+            et = time.time()
+            logger.info(f"query embedding: {et-st}")
+
+            st = time.time()
             result = get_query(session, question, vectors, index_names, top_k)
+            et = time.time()
+            logger.info(f"pg vector serach: {et-st}")
             results.extend(result)
     except Exception as e:
         raise PostgresQueryException(f'Postgres query exception') from e
-    return [item[0] for item in results]
+    return results
 
 
 def semantic_search(session, index_names, vectors, top_k):
     results = session.query(
-        VectorizeItems.general_text
+        VectorizeItems.general_text, VectorizeItems.source, VectorizeItems.mtime
     ).filter(
         VectorizeItems.index_name.in_(index_names)
     ).order_by(
@@ -76,7 +82,7 @@ def keyword_search(session, index_names, question, top_k):
     # 将参数作为bindparam添加
     query = text("""
         SELECT 
-            general_text
+            general_text, source, mtime
         FROM 
             vectorize_items, 
             plainto_tsquery(:language, :question) query 

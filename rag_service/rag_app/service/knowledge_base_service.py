@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import json
-import random
 import time
 import uuid
+import random
 import traceback
 import concurrent.futures
 from typing import List
@@ -12,16 +12,15 @@ from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 
 from rag_service.logger import get_logger
-from rag_service.models.api.models import QueryRequest
 from rag_service.models.database.models import KnowledgeBase
 from rag_service.utils.db_util import validate_knowledge_base
 from rag_service.query_generator.query_generator import query_generate
-from rag_service.classifier.domain_classifier import domain_classifier
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
 from rag_service.vectorstore.neo4j.manage_neo4j import neo4j_search_data
+from rag_service.models.api.models import LlmAnswer, QueryRequest, RetrievedDocumentMetadata
 from rag_service.exceptions import KnowledgeBaseExistNonEmptyKnowledgeBaseAsset, PostgresQueryException
 from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, RetrievedDocument, QueryRequest
-from rag_service.llms.llm import extend_query_generate, get_query_context, intent_detect, \
+from rag_service.llms.llm import extend_query_generate, get_query_context, intent_detect, qwen_llm_answer, \
     qwen_llm_stream_answer, spark_llm_stream_answer
 
 logger = get_logger()
@@ -58,6 +57,12 @@ async def create_knowledge_base(req: CreateKnowledgeBaseReq, session) -> str:
     return serial_number
 
 
+def get_qwen_answer(req: QueryRequest) -> LlmAnswer:
+    documents_info = get_rag_document_info(req=req)
+    query_context = get_query_context(documents_info=documents_info)
+    return qwen_llm_answer(req, documents_info, query_context)
+
+
 def get_qwen_llm_stream_answer(req: QueryRequest):
     documents_info = get_rag_document_info(req=req)
     query_context = get_query_context(documents_info=documents_info)
@@ -86,7 +91,12 @@ def get_knowledge_base_list(owner: str, session) -> Page[KnowledgeBaseInfo]:
 
 def get_related_docs(req: QueryRequest, session) -> List[RetrievedDocument]:
     validate_knowledge_base(req.kb_sn, session)
-    return pg_search_data(req.question, req.kb_sn, req.top_k, session)
+    pg_results = pg_search_data(req.question, req.kb_sn, req.top_k, session)
+    results = []
+    for res in pg_results:
+        results.append(RetrievedDocument(text=res[0], metadata=RetrievedDocumentMetadata(
+            source=res[1], mtime=res[2], extended_metadata={})))
+    return results
 
 
 def delele_knowledge_base(kb_sn: str, session):
@@ -102,8 +112,14 @@ def delele_knowledge_base(kb_sn: str, session):
 
 
 def get_rag_document_info(req: QueryRequest):
+    logger.info(f"raw question: {req.question}")
+    st = time.time()
     user_intent = intent_detect(req.question, req.history)
+    et = time.time()
+    logger.info(f"user intent: {user_intent}")
+    logger.info(f"query rewrite: {et-st}")
     documents_info = []
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
         tasks = {
             executor.submit(extend_query_generate, user_intent): 'extend_query_generate',
@@ -113,7 +129,8 @@ def get_rag_document_info(req: QueryRequest):
         for future in concurrent.futures.as_completed(tasks):
             result = future.result()
             if result is not None:
-                documents_info.extend(result)
+                documents_info.append(result)
+    logger.info("Graph rag/Query generate results: {}".format(documents_info))
 
     documents_info.extend(query_generate(raw_question=req.question, kb_sn=req.kb_sn,
                                          top_k=req.top_k-len(documents_info)))

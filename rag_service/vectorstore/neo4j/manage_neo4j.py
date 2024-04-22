@@ -1,7 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
 import json
+import time
 import requests
+import traceback
 from typing import List
 
 from langchain_openai import ChatOpenAI
@@ -14,7 +16,7 @@ from rag_service.llms.qwen import token_check
 from rag_service.security.cryptohub import CryptoHub
 from rag_service.exceptions import Neo4jQueryException, TokenCheckFailed
 from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
-from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, NEO4J_PROPERTIES_SQL, NEO4J_RELATIONSHIP_SQL
+from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, NEO4J_EDGE_SQL, NEO4J_ENTITY_SQL, NEO4J_RELATIONSHIP_SQL
 
 logger = get_logger()
 llm = ChatOpenAI(openai_api_key=CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY'),
@@ -43,6 +45,7 @@ def convert_to_graph_documents() -> List[GraphDocument]:
     for filename in os.listdir(dir):
         if filename.endswith('.json'):
             file_path = os.path.join(dir, filename)
+            print(f"start json: {file_path}")
             with open(file_path, 'r') as file:
                 json_result = json.load(file)
                 if 'nodes' in json_result:
@@ -52,6 +55,7 @@ def convert_to_graph_documents() -> List[GraphDocument]:
                 graph_document = GraphDocument(nodes=nodes, relationships=rels,
                                                source=Document(page_content=json_result['source']))
                 graph_documents.append(graph_document)
+                print(f"end json: {file_path}")
     return graph_documents
 
 
@@ -101,50 +105,77 @@ def llm_call(question: str, prompt: str, history: List = None):
 
 
 def get_entity_properties(entity: str):
-    cypher = NEO4J_PROPERTIES_SQL.replace('{{entity}}', entity)
+    cypher = NEO4J_ENTITY_SQL.replace('{{entity}}', entity)
     try:
         graph_res = graph.query(query=cypher, params={})
-    except Exception as e:
-        logger.error("Neo4j query error.")
+        neo4j_content = ""
+        for k, v in graph_res[0]['props'].items():
+            if k != "id":
+                neo4j_content += k+"是"+v+"; "
+    except Exception:
         return None
-    neo4j_content = ""
-    for k, v in graph_res[0]['props'].items():
-        if k != "id":
-            neo4j_content += k+"是"+v+", "
-    return entity+"的"+neo4j_content
-    # return None
+    return neo4j_content if neo4j_content != "" else None
+
+
+def get_edge_properties(entity: str):
+    cypher = NEO4J_EDGE_SQL.replace('{{entity}}', entity)
+    try:
+        graph_res = graph.query(query=cypher, params={})
+        neo4j_content = ""
+        for res in graph_res:
+            for value in res.values():
+                neo4j_content += value+"; "
+    except Exception:
+        return None
+    return neo4j_content if neo4j_content != "" else None
 
 
 def get_entity_relationships(entity: str):
     cypher = NEO4J_RELATIONSHIP_SQL.replace('{{entity}}', entity)
     try:
         graph_res = graph.query(query=cypher, params={})
-    except Exception as e:
-        logger.error("Neo4j query error.")
+        neo4j_content = ""
+        for res in graph_res:
+            neo4j_content += res['output']+'; '
+    except Exception:
         return None
-    neo4j_content = ""
-    for res in graph_res:
-        neo4j_content += res['output']+' '
-    return neo4j_content
-    # return None
+    return neo4j_content if neo4j_content != "" else None
 
 
 def neo4j_search_data(question: str):
     # Extract entities from question
-    llm_res = llm_call(question=question, prompt=EXTRACT_ENTITY_SYSTEM_PROMPT, history=[])
     try:
+        st = time.time()
+        llm_res = llm_call(question=question, prompt=EXTRACT_ENTITY_SYSTEM_PROMPT, history=[])
+        et = time.time()
+        logger.info(f"neo4j entity extract: {et-st}")
         entities = json.loads(llm_res)
-    except Exception as e:
-        logger.error("Extract entities error.")
+        logger.info(f"获取到的实体词: {entities}")
+    except Exception:
+        logger.error(u"Extract entities error. {}".format(traceback.format_exc()))
         return None
     if len(entities) == 0:
-        logger.error("Extract entities empty.")
+        logger.info("Extract entities empty.")
         return None
-
-    # Query entity properties
-    entity_properties = get_entity_properties(entity=entities[0])
-    # Query entity relationships
-    entity_relationships = get_entity_relationships(entity=entities[0])
-    # Return more than one documents
-    result = [value for value in (entity_properties, entity_relationships) if value is not None]
-    return result if result else None
+    st = time.time()
+    entity_properties_content = ""
+    edge_contet = ""
+    entity_relationships_content = ""
+    for entity in entities:
+        # Query entity properties
+        entity_properties = get_entity_properties(entity=entity)
+        if entity_properties is not None:
+            entity_properties_content += entity_properties+"; "
+        # Query edge
+        edge = get_edge_properties(entity=entity)
+        if edge is not None:
+            edge_contet += edge+"; "
+        # Query entity relationships
+        entity_relationships = get_entity_relationships(entity=entity)
+        if entity_relationships is not None:
+            entity_relationships_content += entity_relationships+"; "
+    et = time.time()
+    logger.info(f"neo4j search: {et-st}")
+    if entity_properties_content == "" and edge_contet == "" and entity_relationships_content == "":
+        return None
+    return (f"查询结果为: {entity_properties_content}, {edge_contet}, {entity_relationships_content}", "neo4j query result")

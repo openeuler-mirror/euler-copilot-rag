@@ -5,19 +5,27 @@ from fastapi_pagination import Page
 from fastapi import APIRouter, Depends, status, Response, HTTPException
 
 from rag_service.logger import get_logger
-from rag_service.models.api.models import QueryRequest
 from fastapi.responses import StreamingResponse, HTMLResponse
 from rag_service.models.database.models import yield_session
 from rag_service.rag_app.service import knowledge_base_service
+from rag_service.models.api.models import LlmAnswer, QueryRequest
 from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
-from rag_service.rag_app.service.knowledge_base_service import get_knowledge_base_list, delele_knowledge_base
-from rag_service.exceptions import DomainCheckFailedException, KnowledgeBaseNotExistsException, LlmRequestException, PostgresQueryException
 from rag_service.exceptions import KnowledgeBaseNotExistsException, KnowledgeBaseExistNonEmptyKnowledgeBaseAsset
 from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, QueryRequest, RetrievedDocument
 from rag_service.rag_app.service.knowledge_base_service import get_qwen_llm_stream_answer, get_spark_llm_stream_answer
+from rag_service.rag_app.service.knowledge_base_service import get_knowledge_base_list, \
+    delele_knowledge_base, get_qwen_answer
+from rag_service.exceptions import DomainCheckFailedException, KnowledgeBaseNotExistsException, \
+    LlmRequestException, PostgresQueryException
 
 router = APIRouter(prefix='/kb', tags=['Knowledge Base'])
 logger = get_logger()
+
+
+@router.post('/get_answer')
+def get_answer(req: QueryRequest, response: Response) -> LlmAnswer:
+    response.headers['Content-Type'] = 'application/json'
+    return get_qwen_answer(req)
 
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)

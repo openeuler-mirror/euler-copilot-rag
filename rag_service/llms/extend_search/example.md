@@ -1,13 +1,13 @@
 Q：查询openeuler各版本对应的内核版本
 A：
 {
-    "sql":"SELECT openeuler_version, kernel_version FROM public.kernel_version LIMIT 30;"
+    "sql":"SELECT DISTINCT openeuler_version, kernel_version FROM public.kernel_version LIMIT 30;"
 }
 
 Q：openeuler有多少个版本
 A：
 {
-    "sql":"SELECT COUNT(DISTINCT openeuler_version) FROM public.kernel_version LIMIT 30;"
+    "sql":"SELECT DISTINCT COUNT(DISTINCT openeuler_version) FROM public.kernel_version LIMIT 30;"
 }
 
 Q：OSV中，操作系统1060e基于什么openeuler版本

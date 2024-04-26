@@ -33,13 +33,20 @@ def _configure_router():
 def main():
     configure()
     try:
-        uvicorn.run(app, host=os.getenv("UVICORN_IP"), port=int(os.getenv("UVICORN_PORT")),
-                    log_config=log_config,
-                    proxy_headers=True, forwarded_allow_ips='*',
-                    ssl_certfile=os.getenv("SSL_CERTFILE"),
-                    ssl_keyfile=os.getenv("SSL_KEYFILE"),
-                    ssl_keyfile_password=CryptoHub.query_plaintext_by_config_name("SSL_KEY_PWD")
-                    )
+        ssl_enable = os.getenv("SSL_ENABLE")
+        if ssl_enable:
+            uvicorn.run(app, host=os.getenv("UVICORN_IP"), port=int(os.getenv("UVICORN_PORT")),
+                        log_config=log_config,
+                        proxy_headers=True, forwarded_allow_ips='*',
+                        ssl_certfile=os.getenv("SSL_CERTFILE"),
+                        ssl_keyfile=os.getenv("SSL_KEYFILE"),
+                        ssl_keyfile_password=CryptoHub.query_plaintext_by_config_name("SSL_KEY_PWD")
+                        )
+        else:
+            uvicorn.run(app, host=os.getenv("UVICORN_IP"), port=int(os.getenv("UVICORN_PORT")),
+                        log_config=log_config,
+                        proxy_headers=True, forwarded_allow_ips='*'
+                        )
     except Exception as e:
         logger.error(e)
 

@@ -3,10 +3,10 @@
 import os
 from threading import Lock
 
-import pytz
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+from rag_service.security.config import config
 
 
 Base = declarative_base()
@@ -224,8 +224,8 @@ class PoStrageDB(metaclass=PoStrageDBMeta):
 
     def __init__(self):
         self.engine = create_engine(
-            f'postgresql+psycopg2://{os.getenv("POSTRAGE_USER")}::{os.getenv("POSTRAGE_PWD")}'
-            f'@{os.getenv("POSTRAGE_HOST")}/{os.getenv("POSTRAGE_DATABASE")}',
+            f'postgresql+psycopg2://{config["POSTRAGE_USER"]}::{config["POSTRAGE_PWD"]}'
+            f'@{config["POSTRAGE_HOST"]}/{config["POSTRAGE_DATABASE"]}',
             echo=False,
             pool_pre_ping=True)
         Base.metadata.create_all(self.engine)

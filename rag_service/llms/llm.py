@@ -14,8 +14,9 @@ from rag_service.llms.qwen import qwen_llm_call, token_check
 from rag_service.models.database.models import yield_session
 from rag_service.models.api.models import LlmAnswer, QueryRequest
 from rag_service.exceptions import LlmAnswerException, LlmRequestException, TokenCheckFailed
-from rag_service.config import INTENT_DETECT_PROMPT_TEMPLATE, LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS, \
+from rag_service.constants import INTENT_DETECT_PROMPT_TEMPLATE, LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS, \
     QWEN_PROMPT_TEMPLATE, SPARK_PROMPT_TEMPLATE, SQL_GENERATE_PROMPT_TEMPLATE
+from rag_service.security.config import config
 
 logger = get_logger()
 
@@ -80,7 +81,7 @@ def llm_call(prompt: str, question: str = None, history: List = None):
             raise TokenCheckFailed(f'Token is too long.')
     headers = {
         "Content-Type": "application/json",
-        "Authorization": "Bearer "+CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+        "Authorization": "Bearer "+config['OPENAI_APP_KEY']
     }
     data = {
         "model": LLM_MODEL,
@@ -89,7 +90,7 @@ def llm_call(prompt: str, question: str = None, history: List = None):
         "stream": False,
         "max_tokens": QWEN_MAX_TOKENS
     }
-    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False, timeout=30)
+    response = requests.post(config["LLM_URL"], json=data, headers=headers, stream=False, timeout=30)
     if response.status_code == 200:
         answer_info = response.json()
         if 'choices' in answer_info and len(answer_info.get('choices')) > 0:

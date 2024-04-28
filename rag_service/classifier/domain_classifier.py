@@ -4,7 +4,7 @@ import re
 from rag_service.logger import get_logger
 from rag_service.llms.llm import llm_call
 from rag_service.models.api.models import QueryRequest
-from rag_service.config import DOMAIN_CLASSIFIER_PROMPT
+from rag_service.constants import DOMAIN_CLASSIFIER_PROMPT
 
 logger = get_logger()
 

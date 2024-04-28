@@ -1,5 +1,4 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import os
 from typing import List
 
 
@@ -7,12 +6,13 @@ from rag_service.logger import get_logger
 from rag_service.models.database.models import yield_session
 from rag_service.vectorize.remote_vectorize_agent import RemoteRerank
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
+from rag_service.security.config import config
 
 
 logger = get_logger()
 
 
-def query_generate(raw_question: str, kb_sn: str, top_k: int) -> List[str]:
+def query_generate(raw_question: str, kb_sn: str, top_k: int) -> List[tuple]:
     with yield_session() as session:
         pg_results = pg_search_data(raw_question, kb_sn, top_k, session)
     docs = []
@@ -22,7 +22,7 @@ def query_generate(raw_question: str, kb_sn: str, top_k: int) -> List[str]:
         docs.append(result[0])
         docs_index[result[0]] = result
     # ranker语料排序
-    remote_rerank = RemoteRerank(os.getenv("REMOTE_RERANKING_ENDPOINT"))
+    remote_rerank = RemoteRerank(config["REMOTE_RERANKING_ENDPOINT"])
     rerank_res = remote_rerank.rerank(documents=docs, raw_question=raw_question, top_k=top_k)
     final_res = [docs_index[doc] for doc in rerank_res]
     return final_res

@@ -9,7 +9,8 @@ import requests
 from rag_service.logger import get_logger
 from rag_service.security.encrypt_config import CryptoHub
 from rag_service.exceptions import TokenCheckFailed, LlmAnswerException
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
+from rag_service.constants import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
+from rag_service.security.config import config
 
 logger = get_logger()
 
@@ -30,7 +31,7 @@ def token_check(messages: str) -> bool:
         ]
     }
 
-    response = requests.post(os.getenv("LLM_TOKEN_CHECK_URL"), json=data, headers=headers, stream=False)
+    response = requests.post(config["LLM_TOKEN_CHECK_URL"], json=data, headers=headers, stream=False)
     if response.status_code == 200:
         check_result = response.json()
         prompts = check_result['prompts']
@@ -67,7 +68,7 @@ def qwen_llm_call(question: str, system: str, history: List = None):
         "cache-control": "no-cache",
         "connection": "keep-alive",
         "x-accel-buffering": "no",
-        "Authorization": "Bearer "+CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+        "Authorization": "Bearer "+config['OPENAI_APP_KEY']
     }
     data = {
         "model": LLM_MODEL,
@@ -77,7 +78,7 @@ def qwen_llm_call(question: str, system: str, history: List = None):
         "max_tokens": QWEN_MAX_TOKENS
     }
     st = time.time()
-    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=True)
+    response = requests.post(config["LLM_URL"], json=data, headers=headers, stream=True)
     if response.status_code == 200:
         flag = True
         for line in response.iter_lines(decode_unicode=True):

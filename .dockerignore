@@ -3,7 +3,6 @@
 **/*.pyc
 Dockerfile
 .dockerignore
-.vscode
 start.sh
 
 logs

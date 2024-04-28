@@ -10,7 +10,7 @@ from langchain.document_loaders import TextLoader, UnstructuredWordDocumentLoade
     UnstructuredPowerPointLoader, UnstructuredPDFLoader
 
 from rag_service.logger import get_logger
-from rag_service.config import SENTENCE_SIZE
+from rag_service.constants import SENTENCE_SIZE
 from rag_service.models.generic.models import OriginalDocument
 from rag_service.document_loaders.docx_loader import DocxLoader
 from rag_service.document_loaders.excel_loader import ExcelLoader

@@ -6,7 +6,7 @@ from typing import Optional, Type, Dict, Any, List
 from fastapi import Form
 from pydantic import BaseModel, Field
 
-from rag_service.config import DEFAULT_TOP_K
+from rag_service.constants import DEFAULT_TOP_K
 from rag_service.models.generic.models import VectorizationConfig
 from rag_service.models.enums import AssetType, EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 

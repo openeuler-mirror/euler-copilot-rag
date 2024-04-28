@@ -2,9 +2,10 @@
 import os
 import time
 import logging
-from dotenv import load_dotenv
+
 from logging.handlers import TimedRotatingFileHandler
-load_dotenv()
+
+from rag_service.security.config import config
 
 
 class SizedTimedRotatingFileHandler(TimedRotatingFileHandler):
@@ -35,7 +36,7 @@ class SizedTimedRotatingFileHandler(TimedRotatingFileHandler):
 
 LOG_FORMAT = '[{correlation_id}][{asctime}][{levelname}][{name}][P{process}][T{thread}][{message}][{funcName}({filename}:{lineno})]'
 
-if os.getenv("LOG") == "stdout":
+if config["LOG"] == "stdout":
     handlers = {
         "default": {
             "formatter": "default",
@@ -101,7 +102,7 @@ log_config = {
 def get_logger():
     logger = logging.getLogger('uvicorn')
     logger.setLevel(logging.INFO)
-    if os.getenv("LOG") != "stdout":
+    if config["LOG"] != "stdout":
         rotate_handler = SizedTimedRotatingFileHandler(
             filename=f'{LOG_DIR}/app.log', when='MIDNIGHT', backup_count=30, max_bytes=5000000)
         logger.addHandler(rotate_handler)

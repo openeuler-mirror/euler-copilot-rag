@@ -15,17 +15,18 @@ from rag_service.logger import get_logger
 from rag_service.llms.qwen import token_check
 from rag_service.security.cryptohub import CryptoHub
 from rag_service.exceptions import Neo4jQueryException, TokenCheckFailed
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
+from rag_service.constants import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
 from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, NEO4J_EDGE_SQL, NEO4J_ENTITY_SQL, NEO4J_RELATIONSHIP_SQL
+from rag_service.security.config import config
 
 logger = get_logger()
-llm = ChatOpenAI(openai_api_key=CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY'),
-                 openai_api_base=CryptoHub.query_plaintext_by_config_name('OPENAI_API_BASE'),
+llm = ChatOpenAI(openai_api_key=config['OPENAI_APP_KEY'],
+                 openai_api_base=config['OPENAI_API_BASE'],
                  model_name="Qwen-72B-Chat-Int4", temperature=0)
 
-NEO4J_URL = CryptoHub.query_plaintext_by_config_name('NEO4J_URL')
-NEO4J_USERNAME = CryptoHub.query_plaintext_by_config_name('NEO4J_USERNAME')
-NEO4J_PASSWORD = CryptoHub.query_plaintext_by_config_name('NEO4J_PASSWORD')
+NEO4J_URL = config['NEO4J_URL']
+NEO4J_USERNAME = config['NEO4J_USERNAME']
+NEO4J_PASSWORD = config['NEO4J_PASSWORD']
 graph = Neo4jGraph(url=NEO4J_URL, username=NEO4J_USERNAME, password=NEO4J_PASSWORD, database="features")
 
 
@@ -83,7 +84,7 @@ def llm_call(question: str, prompt: str, history: List = None):
             raise TokenCheckFailed(f'Token is too long.')
     headers = {
         "Content-Type": "application/json",
-        "Authorization": "Bearer "+CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+        "Authorization": "Bearer "+config['OPENAI_APP_KEY']
     }
     data = {
         "model": LLM_MODEL,
@@ -92,7 +93,7 @@ def llm_call(question: str, prompt: str, history: List = None):
         "stream": False,
         "max_tokens": QWEN_MAX_TOKENS
     }
-    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=False, timeout=60)
+    response = requests.post(config["LLM_URL"], json=data, headers=headers, stream=False, timeout=60)
     if response.status_code == 200:
         answer_info = response.json()
         if 'choices' in answer_info and len(answer_info.get('choices')) > 0:

@@ -14,8 +14,8 @@ import websockets
 
 from rag_service.logger import get_logger
 from rag_service.exceptions import LlmAnswerException
-from rag_service.security.encrypt_config import CryptoHub
-from rag_service.config import LLM_TEMPERATURE, SPARK_MAX_TOKENS
+from rag_service.constants import LLM_TEMPERATURE, SPARK_MAX_TOKENS
+from rag_service.security.config import config
 
 logger = get_logger()
 
@@ -98,11 +98,11 @@ async def spark_llm_call(question, system, history):
     websocket_data_queue = asyncio.Queue()
 
     async def websocket_handler(query, system, history):
-        spark_app_id = CryptoHub.query_plaintext_by_config_name('SPARK_APP_ID')
-        spark_app_key = CryptoHub.query_plaintext_by_config_name('SPARK_APP_KEY')
-        spark_app_secret = CryptoHub.query_plaintext_by_config_name('SPARK_APP_SECRET')
-        spark_gpt_url = CryptoHub.query_plaintext_by_config_name('SPARK_GPT_URL')
-        spark_domain = CryptoHub.query_plaintext_by_config_name('SPARK_APP_DOMAIN')
+        spark_app_id = config['SPARK_APP_ID']
+        spark_app_key = config['SPARK_APP_KEY']
+        spark_app_secret = config['SPARK_APP_SECRET']
+        spark_gpt_url = config['SPARK_GPT_URL']
+        spark_domain = config['SPARK_APP_DOMAIN']
 
         wsParam = Ws_Param(spark_app_id, spark_app_key, spark_app_secret, spark_gpt_url)
         websocket.enableTrace(False)

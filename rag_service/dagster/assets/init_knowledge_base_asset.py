@@ -5,7 +5,6 @@ import shutil
 import itertools
 
 from uuid import UUID
-from dotenv import load_dotenv
 from typing import List, Tuple
 from more_itertools import chunked
 from langchain.schema import Document
@@ -18,14 +17,13 @@ from rag_service.models.generic.models import OriginalDocument
 from rag_service.vectorstore.postgresql.manage_pg import pg_insert_data
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.original_document_fetchers import select_fetcher, Fetcher
-from rag_service.config import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
+from rag_service.constants import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
 from rag_service.models.database.models import VectorStore, VectorizationJob, KnowledgeBaseAsset
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir, parse_asset_partition_key
 from rag_service.models.database.models import OriginalDocument as OriginalDocumentEntity, KnowledgeBase
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
-
-load_dotenv()
+from rag_service.security.config import config
 
 
 @op(retry_policy=RetryPolicy(max_retries=3))
@@ -81,7 +79,7 @@ def embedding_documents(
                 KnowledgeBaseAsset.name == knowledge_base_asset_name
         ).one()
 
-    remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
+    remote_embedding = RemoteEmbedding(config["REMOTE_EMBEDDING_ENDPOINT"])
     embeddings = list(
         itertools.chain.from_iterable(
             [

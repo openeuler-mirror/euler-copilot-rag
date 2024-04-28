@@ -7,7 +7,6 @@ from typing import List
 import requests
 
 from rag_service.logger import get_logger
-from rag_service.security.encrypt_config import CryptoHub
 from rag_service.exceptions import TokenCheckFailed, LlmAnswerException
 from rag_service.constants import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
 from rag_service.security.config import config

@@ -7,6 +7,9 @@ ENV PYTHONPATH /rag-service
 ENV DAGSTER_HOME /dagster_home
 ENV DAGSTER_DB_CONNECTION postgresql+psycopg2://postgres:123456@127.0.0.1:5444/postgres
 
-RUN mkdir /dagster_home && cp /rag-service/dagster.yaml /rag-service/workspace.yaml /rag-service/pyproject.toml /dagster_home
+USER root
+RUN mkdir /dagster_home && cp /rag-service/dagster.yaml /rag-service/workspace.yaml /dagster_home && \
+    chown -R 1001:1001 /dagster_home && chmod -R 750 /dagster_home
 
+USER eulercopilot
 CMD ["/bin/bash", "run.sh"]

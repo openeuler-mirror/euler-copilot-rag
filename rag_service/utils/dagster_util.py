@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Tuple
 
-from rag_service.config import DATA_DIR
+from rag_service.constants import DATA_DIR
 from rag_service.models.database.models import KnowledgeBaseAsset
 
 

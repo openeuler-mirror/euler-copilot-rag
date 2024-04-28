@@ -5,7 +5,7 @@ import requests
 import urllib3
 
 from rag_service.models.enums import EmbeddingModel
-from rag_service.security.cryptohub import CryptoHub
+from rag_service.security.config import config
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -41,7 +41,7 @@ class RemoteEmbeddingAPI:
     ) -> List[float]:
         header = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer "+CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+            "Authorization": "Bearer "+config['OPENAI_APP_KEY']
         }
         data = {
             'input': text,

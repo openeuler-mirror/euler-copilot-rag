@@ -1,16 +1,14 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import os
 import shutil
 import itertools
 import collections
 
-from dotenv import load_dotenv
 from more_itertools import chunked
 from typing import List, Tuple, Set
 from langchain.schema import Document
 from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut, DynamicOutput, RetryPolicy
 
-from rag_service.config import VECTORIZATION_CHUNK_SIZE
+from rag_service.constants import VECTORIZATION_CHUNK_SIZE
 from rag_service.document_loaders.loader import load_file
 from rag_service.models.database.models import yield_session
 from rag_service.models.generic.models import OriginalDocument
@@ -24,8 +22,7 @@ from rag_service.utils.dagster_util import parse_asset_partition_key, get_knowle
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
 from rag_service.models.database.models import OriginalDocument as OriginalDocumentEntity, KnowledgeBase, \
     UpdatedOriginalDocument
-
-load_dotenv()
+from rag_service.security.config import config
 
 
 @op(retry_policy=RetryPolicy(max_retries=3))
@@ -200,7 +197,7 @@ def embedding_update_documents(
         knowledge_base_asset = get_knowledge_base_asset(knowledge_base_serial_number,
                                                         knowledge_base_asset_name, session)
         vector_stores = knowledge_base_asset.vector_stores
-        remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
+        remote_embedding = RemoteEmbedding(config["REMOTE_EMBEDDING_ENDPOINT"])
         index = 0
         embeddings = []
         while index < len(documents):

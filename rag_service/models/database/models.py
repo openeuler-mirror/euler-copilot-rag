@@ -14,7 +14,6 @@ from sqlalchemy import (
     create_engine,
     func
 )
-from dotenv import load_dotenv
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.types import TIMESTAMP, UUID
 from sqlalchemy.orm import relationship, sessionmaker
@@ -27,11 +26,8 @@ from rag_service.models.enums import (
     EmbeddingModel,
     UpdateOriginalDocumentType,
 )
-from rag_service.security.cryptohub import CryptoHub
+from rag_service.security.config import config
 from rag_service.constants import DEFAULT_UPDATE_TIME_INTERVAL_SECOND
-
-# Load the environment variables
-load_dotenv()
 
 Base = declarative_base()
 
@@ -191,7 +187,7 @@ class VectorizeItems(Base):
 
 
 engine = create_engine(
-    CryptoHub.query_plaintext_by_config_name('DB_CONNECTION'),
+    config['DB_CONNECTION'],
     pool_size=20,   # 连接池的基本大小
     max_overflow=80,  # 在连接池已满时允许的最大连接数
     pool_recycle=300,

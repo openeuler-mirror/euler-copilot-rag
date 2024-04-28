@@ -5,7 +5,7 @@ from typing import List
 from langchain.text_splitter import CharacterTextSplitter
 
 from rag_service.logger import get_logger
-from rag_service.config import SENTENCE_SIZE
+from rag_service.constants import SENTENCE_SIZE
 
 logger = get_logger()
 

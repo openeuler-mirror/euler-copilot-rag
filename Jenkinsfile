@@ -2,6 +2,7 @@ node {
     properties([
         parameters([
             string(name: "REPO", defaultValue: "rag", description: "当前项目名")
+            string(name: "ACTIVE_BRANCH", defaultValue: "master", description: "活跃开发分支名")
         ])
     ])
 
@@ -32,21 +33,20 @@ node {
 
         remote.allowAnyHosts = true
 
-        def PORT = sh(returnStdout: true, script: "echo \$((( RANDOM % 1000 ) + 8000))").trim()
-        def IP_RANGE = sh(returnStdout: true, script: "echo 172.\$(((RANDOM % 256))).\$(((RANDOM % 256)))").trim()
-        def BUILD_HASH = sh(returnStdout: true, script: "echo ${BUILD} | md5sum | cut -c 1-12").trim()
-        echo "本次构建ID为：${BUILD}，构建哈希为${BUILD_HASH}，分配的IP段为：${IP_RANGE}.0/24，分配的Web访问端口号为：${PORT}"
-        
-        // 临时使用Docker方案，后续切换至K8s
-        stage("Re-run docker-compose") {
+        stage("CD") {
+            sshCommand remote: remote, command: "sh -c \"docker rmi ${HOST}/euler-copilot-${params.REPO}:${BUILD} || true\";"
             sshCommand remote: remote, command: "sh -c \"docker rmi euler-copilot-${params.REPO}:${BUILD} || true\";"
+            sshCommand remote: remote, command: "sh -c \"docker image prune -f || true\";";
+            sshCommand remote: remote, command: "sh -c \"docker builder prune -f || true\";";
             
-            echo "正在创建配置文件..."
-            sshCommand remote: remote, command: "cd /home/compose; sed -e \'s/branchname/${BUILD}/g\' docker-compose.example.yml | sed -e \'s/8080:8080/${PORT}:8080/g\' | sed -e \'s/172.168.0/${IP_RANGE}/g\' | sed -e \'s/branchhash/${BUILD_HASH}/g\' > compose/docker-compose_${params.REPO}_${BUILD}.yml;"
-            echo "构建结束，请使用命令：\"cd /home/compose/compose; docker-compose -f docker-compose_${params.REPO}_${BUILD}.yml up -d;\" 启动所有容器"
-            echo "测试结束后，使用命令 \"cd /home/compose/compose; docker-compose -f docker-compose_${params.REPO}_${BUILD}.yml down --rmi all; rm -f docker-compose_${params.REPO}_${BUILD}.yml;\" 清理现场"
-            
-            sshCommand remote: remote, command: "docker image prune -f;"
+            if (BUILD != params.ACTIVE_BRANCH) {
+                echo "不是活跃开发分支的Commit行为，不自动部署"
+            }
+            else {
+                echo "正在重新部署"
+                sshCommand remote: remote, command: "sh -c \"k3s kubectl -n euler-copilot scale deployment rag-deploy --replicas=0\";"
+                sshCommand remote: remote, command: "sh -c \"k3s kubectl -n euler-copilot scale deployment rag-deploy --replicas=1\";"
+            }
         }
     }
 }

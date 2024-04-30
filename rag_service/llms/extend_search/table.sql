@@ -157,8 +157,8 @@ CREATE TABLE public.oe_compatibility_oepkgs (
 	summary varchar(800) NULL,
 	repotype varchar(30) NULL,
 	openeuler_version varchar(200) NULL, -- openEuler版本
-	rpmpackurl varchar(300) NULL, -- 软件包地址
-	srcrpmpackurl varchar(300) NULL, -- 软件包源码地址
+	rpmpackurl varchar(300) NULL, -- 软件包下载链接
+	srcrpmpackurl varchar(300) NULL, -- 软件包源码下载链接
 	"name" varchar(100) NULL, -- 软件包名
 	arch varchar(20) NULL, -- 架构
 	id varchar(30) NULL,

@@ -19,7 +19,7 @@ class RemoteEmbedding:
     def embedding(
             self,
             texts: List[str],
-            embedding_model: EmbeddingModel = EmbeddingModel.BGE_LARGE_ZH
+            embedding_model: EmbeddingModel = EmbeddingModel.BGE_MIXED_MODEL
     ) -> List[List[float]]:
         data = {
             'texts': texts,

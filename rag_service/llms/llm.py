@@ -62,7 +62,8 @@ def qwen_llm_answer(req: QueryRequest, documents_info: List[str], query_context:
     if req.fetch_source:
         source_contents = [con[0] for con in documents_info]
         sources = [con[1] for con in documents_info]
-    return LlmAnswer(answer=answer, sources=sources, source_contents=source_contents)
+        return LlmAnswer(answer=answer, sources=sources, source_contents=source_contents)
+    return LlmAnswer(answer=answer, sources=[], source_contents=[])
 
 def llm_call(prompt: str, question: str = None, history: List = None):
     messages = [

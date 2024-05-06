@@ -101,7 +101,7 @@ class InitKnowledgeBaseAssetReq(BaseModel):
     name: str
     kb_sn: str
     asset_uri: Optional[str] = None
-    embedding_model: Optional[EmbeddingModel] = EmbeddingModel.BGE_LARGE_ZH
+    embedding_model: Optional[EmbeddingModel] = EmbeddingModel.BGE_MIXED_MODEL
     vectorization_config: Optional[str] = VectorizationConfig().json()
 
 

@@ -69,15 +69,15 @@ QUERY_GENERATE_PROMPT_TEMPLATE = '''你是openEuler的AI语言模型助手。你
     原始问题: {{question}}
     上下文: {{ history }}'''
 
-SQL_GENERATE_PROMPT_TEMPLATE = '''你是一个openEuler的数据库专家，请根据postgresql数据库的表结构生成用户想要查询的sql语句，查询条件优先使用ILIKE，\
-            查询条件如果包含openEuler版本请参考openEuler常用版本，sql语句查询结果必须去重并且限制在30，如果用户的提问无法生成sql请返回空字符串
+SQL_GENERATE_PROMPT_TEMPLATE = '''你是一个openEuler的数据库专家，请根据postgresql数据库的表结构生成用户想要查询的sql语句，查询条件必须使用ILIKE进行不区分大小写的查询，必须使用模糊查询\
+            查询条件如果包含openEuler版本请参考openEuler常用版本进行查询，sql语句查询结果必须去重并且限制在30，如果用户的提问无法生成sql请返回空字符串
 
     必须按照以下json格式输出结果：
     {
         "sql":"" //生成的sql
     }
 
-    openEuler常用的版本：
+    openEuler常用版本：
     openEuler-20.03-LTS、openEuler-20.03-LTS-SP1、openEuler-20.03-LTS-SP2、openEuler-20.03-LTS-SP3、openEuler-20.03-LTS-SP4、openEuler-20.03-LTS-Next、 \
     openEuler-21.03、openEuler-21.09、openEuler-22.03-LTS、openEuler-22.03-LTS-SP1、openEuler-22.03-LTS-SP2、openEuler-22.03-LTS-SP3、openEuler-22.03-LTS-Next \
     openEuler-22.03-LTS-LoongArch、sync-pr1314-openEuler-22.03-LTS-SP3-to-openEuler-22.03-LTS-Next、openEuler-22.09、openEuler-22.09-HeXin \

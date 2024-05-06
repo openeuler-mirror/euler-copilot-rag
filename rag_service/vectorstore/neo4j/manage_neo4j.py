@@ -150,19 +150,25 @@ def neo4j_search_data(question: str):
         llm_res = llm_call(question=question, prompt=EXTRACT_ENTITY_SYSTEM_PROMPT, history=[])
         et = time.time()
         logger.info(f"neo4j entity extract: {et-st}")
-        entities = json.loads(llm_res)
-        logger.info(f"获取到的实体词: {entities}")
+        raw_entities = json.loads(llm_res)
+        filter_entities = []
+        logger.info(f"获取到的实体词: {raw_entities}")
+        for entity in raw_entities:
+            if str.lower(entity) == "openeuler":
+                continue
+            filter_entities.append(entity)
+        logger.info(f"过滤后的实体词: {filter_entities}")
     except Exception:
         logger.error(u"Extract entities error. {}".format(traceback.format_exc()))
         return None
-    if len(entities) == 0:
+    if len(filter_entities) == 0:
         logger.info("Extract entities empty.")
         return None
     st = time.time()
     entity_properties_content = ""
     edge_contet = ""
     entity_relationships_content = ""
-    for entity in entities:
+    for entity in filter_entities:
         # Query entity properties
         entity_properties = get_entity_properties(entity=entity)
         if entity_properties is not None:

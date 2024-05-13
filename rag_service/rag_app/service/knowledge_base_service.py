@@ -12,6 +12,7 @@ from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 
 from rag_service.logger import get_logger
+from rag_service.security.config import config
 from rag_service.models.database.models import KnowledgeBase
 from rag_service.utils.db_util import validate_knowledge_base
 from rag_service.query_generator.query_generator import query_generate
@@ -122,9 +123,10 @@ def get_rag_document_info(req: QueryRequest):
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         tasks = {
-            executor.submit(extend_query_generate, user_intent): 'extend_query_generate',
-            executor.submit(neo4j_search_data, user_intent): 'neo4j_search_data',
+            executor.submit(extend_query_generate, user_intent): 'extend_query_generate'
         }
+        if config["GRAPH_RAG_ENABLE"]:
+            tasks[executor.submit(neo4j_search_data, user_intent)] = 'neo4j_search_data'
 
         for future in concurrent.futures.as_completed(tasks):
             result = future.result()

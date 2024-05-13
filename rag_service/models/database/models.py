@@ -16,8 +16,7 @@ from sqlalchemy import (
 )
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.types import TIMESTAMP, UUID
-from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 
 from rag_service.models.enums import (
     VectorizationJobStatus,

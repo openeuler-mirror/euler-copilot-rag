@@ -13,21 +13,22 @@ from langchain_community.graphs.graph_document import GraphDocument, Node, Relat
 
 from rag_service.logger import get_logger
 from rag_service.llms.qwen import token_check
-from rag_service.security.cryptohub import CryptoHub
+from rag_service.security.config import config
 from rag_service.exceptions import Neo4jQueryException, TokenCheckFailed
 from rag_service.constants import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
-from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, NEO4J_EDGE_SQL, NEO4J_ENTITY_SQL, NEO4J_RELATIONSHIP_SQL
-from rag_service.security.config import config
+from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, NEO4J_EDGE_SQL, \
+    NEO4J_ENTITY_SQL, NEO4J_RELATIONSHIP_SQL
 
 logger = get_logger()
 llm = ChatOpenAI(openai_api_key=config['OPENAI_APP_KEY'],
                  openai_api_base=config['OPENAI_API_BASE'],
                  model_name="Qwen-72B-Chat-Int4", temperature=0)
 
-NEO4J_URL = config['NEO4J_URL']
-NEO4J_USERNAME = config['NEO4J_USERNAME']
-NEO4J_PASSWORD = config['NEO4J_PASSWORD']
-graph = Neo4jGraph(url=NEO4J_URL, username=NEO4J_USERNAME, password=NEO4J_PASSWORD, database="features")
+if config["GRAPH_RAG_ENABLE"]:
+    NEO4J_URL = config['NEO4J_URL']
+    NEO4J_USERNAME = config['NEO4J_USERNAME']
+    NEO4J_PASSWORD = config['NEO4J_PASSWORD']
+    graph = Neo4jGraph(url=NEO4J_URL, username=NEO4J_USERNAME, password=NEO4J_PASSWORD, database="features")
 
 
 def _map_to_base_node(node: dict) -> Node:

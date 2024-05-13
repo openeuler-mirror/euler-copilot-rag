@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 
-DATA_DIR = str(Path(os.sep).absolute() / 'vector_data')
+DATA_DIR = str('/tmp/vector_data')
 VECTORIZATION_CHUNK_SIZE = 100
 EMBEDDING_CHUNK_SIZE = 10000
 SENTENCE_SIZE = 300
@@ -11,7 +11,7 @@ DEFAULT_TOP_K = 5
 LLM_TEMPERATURE = 0.01
 LLM_MODEL = 'Qwen1.5-32B-chat-GPTQ-Int4'
 SPARK_MAX_TOKENS = 8192
-QWEN_MAX_TOKENS = 16384
+QWEN_MAX_TOKENS = 8192
 
 QWEN_PROMPT_TEMPLATE = '''你是由openEuler社区构建的大型语言AI助手。请根据给定的用户问题，提供清晰、简洁、准确的答案。你将获得一系列与问题相关的背景信息。\
     如果适用，请使用这些背景信息；如果不适用，请忽略这些背景信息。

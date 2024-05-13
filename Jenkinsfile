@@ -1,7 +1,7 @@
 node {
     properties([
         parameters([
-            string(name: "REPO", defaultValue: "rag", description: "当前项目名")
+            string(name: "REPO", defaultValue: "rag", description: "当前项目名"),
             string(name: "ACTIVE_BRANCH", defaultValue: "master", description: "活跃开发分支名")
         ])
     ])

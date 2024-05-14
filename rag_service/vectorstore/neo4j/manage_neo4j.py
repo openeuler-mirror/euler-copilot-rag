@@ -6,7 +6,6 @@ import requests
 import traceback
 from typing import List
 
-from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
 from langchain_community.graphs import Neo4jGraph
 from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
@@ -20,9 +19,6 @@ from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_
     NEO4J_ENTITY_SQL, NEO4J_RELATIONSHIP_SQL
 
 logger = get_logger()
-llm = ChatOpenAI(openai_api_key=config['OPENAI_APP_KEY'],
-                 openai_api_base=config['OPENAI_API_BASE'],
-                 model_name="Qwen-72B-Chat-Int4", temperature=0)
 
 if config["GRAPH_RAG_ENABLE"]:
     NEO4J_URL = config['NEO4J_URL']
@@ -85,7 +81,7 @@ def llm_call(question: str, prompt: str, history: List = None):
             raise TokenCheckFailed(f'Token is too long.')
     headers = {
         "Content-Type": "application/json",
-        "Authorization": "Bearer "+config['OPENAI_APP_KEY']
+        "Authorization": "Bearer "+config['LLM_KEY']
     }
     data = {
         "model": LLM_MODEL,

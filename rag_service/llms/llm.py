@@ -82,7 +82,7 @@ def llm_call(prompt: str, question: str = None, history: List = None):
             raise TokenCheckFailed(f'Token is too long.')
     headers = {
         "Content-Type": "application/json",
-        "Authorization": "Bearer "+config['OPENAI_APP_KEY']
+        "Authorization": "Bearer "+config['LLM_KEY']
     }
     data = {
         "model": LLM_MODEL,
@@ -171,6 +171,9 @@ def append_source_info(req: QueryRequest, documents_info):
         contents = [con for con in documents_info]
         source_info.write('\n\n'.join(f'片段{idx}： \n{source}' for idx, source in enumerate(contents, 1)))
 
-    for part in source_info.getvalue():
-        yield "data: " + json.dumps({'content': part}, ensure_ascii=False) + '\n\n'
+    chunk_size = 8
+    source_info_content = source_info.getvalue()
+    for i in range(0, len(source_info_content), chunk_size):
+        chunk = source_info_content[i:i+chunk_size]
+        yield "data: " + json.dumps({'content': chunk}, ensure_ascii=False) + '\n\n'
     yield "data: [DONE]"

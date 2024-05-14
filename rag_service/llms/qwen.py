@@ -67,7 +67,7 @@ def qwen_llm_call(question: str, system: str, history: List = None):
         "cache-control": "no-cache",
         "connection": "keep-alive",
         "x-accel-buffering": "no",
-        "Authorization": "Bearer "+config['OPENAI_APP_KEY']
+        "Authorization": "Bearer "+config['LLM_KEY']
     }
     data = {
         "model": LLM_MODEL,
@@ -94,7 +94,6 @@ def qwen_llm_call(question: str, system: str, history: List = None):
                         et = time.time()
                         logger.info(f"first content: {et-st}")
                         flag = False
-                    logger.info("llm frame: "+part)
                     yield part
                 except Exception as e:
                     raise LlmAnswerException(f'请求大模型返回发生错误') from e

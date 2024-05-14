@@ -224,8 +224,8 @@ class PoStrageDB(metaclass=PoStrageDBMeta):
 
     def __init__(self):
         self.engine = create_engine(
-            f'postgresql+psycopg2://{config["POSTRAGE_USER"]}::{config["POSTRAGE_PWD"]}'
-            f'@{config["POSTRAGE_HOST"]}/{config["POSTRAGE_DATABASE"]}',
+            f'postgresql+psycopg2://{config["POSTGRES_USER"]}::{config["POSTGRES_PWD"]}'
+            f'@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}',
             echo=False,
             pool_pre_ping=True)
         Base.metadata.create_all(self.engine)

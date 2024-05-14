@@ -41,7 +41,7 @@ class RemoteEmbeddingAPI:
     ) -> List[float]:
         header = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer "+config['OPENAI_APP_KEY']
+            "Authorization": "Bearer "+config['LLM_KEY']
         }
         data = {
             'input': text,

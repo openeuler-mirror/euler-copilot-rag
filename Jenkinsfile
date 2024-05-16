@@ -1,52 +1,41 @@
 node {
-    properties([
-        parameters([
-            string(name: "REPO", defaultValue: "rag", description: "当前项目名"),
-            string(name: "ACTIVE_BRANCH", defaultValue: "master", description: "活跃开发分支名")
-        ])
-    ])
-
     echo "拉取代码仓库"
     checkout scm
     
-    def BUILD = env.BRANCH_NAME
-    if (env.CHANGE_ID) {
-        BUILD = env.BRANCH_NAME + "-" + env.CHANGE_ID
-    }
+    def REPO = scm.getUserRemoteConfigs()[0].getUrl().tokenize('/').last().split("\\.")[0]
+    def BRANCH = scm.branches[0].name.split("/")[1]
+    def BUILD = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
     
-    echo "构建当前分支Docker Image镜像"
     withCredentials([string(credentialsId: "host", variable: "HOST")]) {
-        docker.withRegistry("http://${HOST}:30000") {
-            def image = docker.build("${HOST}:30000/euler-copilot-${params.REPO}:${BUILD}", "-f ./deploy/Dockerfile .")
+        echo "构建当前分支Docker Image镜像"
+        sh "sed -i 's|rag_base|${HOST}:30000/rag-baseimg|g' Dockerfile"
+        docker.withRegistry("http://${HOST}:30000", "dockerAuth") {
+            def image = docker.build("${HOST}:30000/${REPO}:${BUILD}", "-f Dockerfile .")
             image.push()
+            image.push("${BRANCH}")
         }
 
         def remote = [:]
         remote.name = "machine"
         remote.host = "${HOST}"
-        withCredentials([string(credentialsId: "ssh-username", variable: "USERNAME")]) {
-            remote.user = USERNAME
+        withCredentials([usernamePassword(credentialsId: "ssh", usernameVariable: 'sshUser', passwordVariable: 'sshPass')]) {
+            remote.user = sshUser
+            remote.password = sshPass
         }
-        withCredentials([string(credentialsId: "ssh-password", variable: "PASSWD")]) {
-            remote.password = PASSWD
-        }
-
         remote.allowAnyHosts = true
-
-        stage("CD") {
-            sshCommand remote: remote, command: "sh -c \"docker rmi ${HOST}/euler-copilot-${params.REPO}:${BUILD} || true\";"
-            sshCommand remote: remote, command: "sh -c \"docker rmi euler-copilot-${params.REPO}:${BUILD} || true\";"
-            sshCommand remote: remote, command: "sh -c \"docker image prune -f || true\";";
-            sshCommand remote: remote, command: "sh -c \"docker builder prune -f || true\";";
+        
+        echo "清除构建缓存"
+        sshCommand remote: remote, command: "sh -c \"docker rmi ${HOST}:30000/${REPO}:${BUILD} || true\";"
+        sshCommand remote: remote, command: "sh -c \"docker rmi ${REPO}:${BUILD} || true\";"
+        sshCommand remote: remote, command: "sh -c \"docker rmi ${REPO}:${BRANCH} || true\";"
+        sshCommand remote: remote, command: "sh -c \"docker image prune -f || true\";";
+        sshCommand remote: remote, command: "sh -c \"docker builder prune -f || true\";";
+        sshCommand remote: remote, command: "sh -c \"k3s crictl rmi --prune || true\";";
             
-            if (BUILD != params.ACTIVE_BRANCH) {
-                echo "不是活跃开发分支的Commit行为，不自动部署"
-            }
-            else {
-                echo "正在重新部署"
-                sshCommand remote: remote, command: "sh -c \"k3s kubectl -n euler-copilot scale deployment rag-deploy --replicas=0\";"
-                sshCommand remote: remote, command: "sh -c \"k3s kubectl -n euler-copilot scale deployment rag-deploy --replicas=1\";"
-            }
+        echo "重新部署"
+        withCredentials([usernamePassword(credentialsId: "dockerAuth", usernameVariable: 'dockerUser', passwordVariable: 'dockerPass')]) {
+            sshCommand remote: remote, command: "sh -c \"cd /home/registry/registry-cli; python3 ./registry.py -l ${dockerUser}:${dockerPass} -r http://${HOST}:30000 --delete --keep-tags 'master' '0001' '330-feature' '430-feature' 'local_deploy' || true\";"
         }
+        sshCommand remote: remote, command: "sh -c \"kubectl -n euler-copilot set image deployment/rag-deploy rag=${HOST}:30000/${REPO}:${BUILD}\";"
     }
 }

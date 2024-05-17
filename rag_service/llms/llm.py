@@ -8,13 +8,15 @@ import requests
 from fastapi import HTTPException
 
 from rag_service.logger import get_logger
-from rag_service.security.cryptohub import CryptoHub
 from rag_service.exceptions import TokenCheckFailed
 from rag_service.models.api.models import QueryRequest
 from rag_service.exceptions import ElasitcsearchEmptyKeyException
 from rag_service.session.session_manager import get_session_manager
 from rag_service.query_generator.query_generator import query_generate
-from rag_service.config import LLM_MODEL, LLM_TEMPERATURE, PROMPT_TEMPLATE, MAX_TOKENS
+
+from rag_service.constants import INTENT_DETECT_PROMPT_TEMPLATE, LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS, \
+    QWEN_PROMPT_TEMPLATE, SPARK_PROMPT_TEMPLATE, SQL_GENERATE_PROMPT_TEMPLATE
+from rag_service.security.config import config
 
 logger = get_logger()
 session_manager = get_session_manager()
@@ -40,7 +42,7 @@ def token_check(messages: str) -> bool:
         ]
     }
 
-    response = requests.post(os.getenv("LLM_TOKEN_CHECK_URL"), json=data, headers=headers, stream=False, timeout=30)
+    response = requests.post(config["LLM_TOKEN_CHECK_URL"], json=data, headers=headers, stream=False, timeout=30)
     if response.status_code == 200:
         check_result = response.json()
         prompts = check_result['prompts']
@@ -77,7 +79,7 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         "cache-control": "no-cache",
         "connection": "keep-alive",
         "x-accel-buffering": "no",
-        "Authorization": CryptoHub.query_plaintext_by_config_name('OPENAI_APP_KEY')
+        "Authorization": config['OPENAI_APP_KEY']
     }
     data = {
         "model": LLM_MODEL,
@@ -86,7 +88,7 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         "stream": True,
         "max_tokens": MAX_TOKENS
     }
-    response = requests.post(os.getenv("LLM_URL"), json=data, headers=headers, stream=True, timeout=30)
+    response = requests.post(config["LLM_URL"], json=data, headers=headers, stream=True, timeout=30)
     if response.status_code == 200:
         for line in response.iter_lines(decode_unicode=True):
             if line:

@@ -28,11 +28,8 @@ from rag_service.models.enums import (
     EmbeddingModel,
     UpdateOriginalDocumentType,
 )
-from rag_service.security.cryptohub import CryptoHub
-from dotenv import load_dotenv
+from rag_service.security.config import config
 
-# Load the environment variables
-load_dotenv()
 
 Base = declarative_base()
 
@@ -192,7 +189,7 @@ class VectorizeItems(Base):
 
 
 engine = create_engine(
-    CryptoHub.query_plaintext_by_config_name('DB_CONNECTION'),
+    config['DB_CONNECTION'],
     pool_size=20,   # 连接池的基本大小
     max_overflow=80,  # 在连接池已满时允许的最大连接数
     pool_recycle=300,

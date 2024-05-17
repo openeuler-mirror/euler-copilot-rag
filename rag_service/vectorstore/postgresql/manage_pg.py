@@ -14,6 +14,7 @@ from rag_service.models.database.models import VectorizeItems
 from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.models.enums import EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 from rag_service.models.database.models import KnowledgeBase, KnowledgeBaseAsset, VectorizationJob
+from rag_service.security.config import config
 
 logger = get_logger()
 
@@ -41,7 +42,7 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int):
             for asset_term in assets:
                 embedding_dicts[asset_term.embedding_model].append(asset_term)
 
-            remote_embedding = RemoteEmbedding(os.getenv("REMOTE_EMBEDDING_ENDPOINT"))
+            remote_embedding = RemoteEmbedding(config["REMOTE_EMBEDDING_ENDPOINT"])
             results = []
             for embedding_name, asset_terms in embedding_dicts.items():
                 vectors = []

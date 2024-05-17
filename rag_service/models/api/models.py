@@ -3,7 +3,7 @@ from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
-from rag_service.config import DEFAULT_TOP_K
+from rag_service.constants import DEFAULT_TOP_K
 
 
 class QueryRequest(BaseModel):

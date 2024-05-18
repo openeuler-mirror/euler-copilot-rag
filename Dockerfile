@@ -25,4 +25,4 @@ RUN pip3 install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghu
 RUN chmod -R 750 /home/eulercopilot &&\
     chmod -R 550 /rag-service
 
-CMD ["python3", "/rag-service/rag_service/rag_app/app.py"]
+CMD ["python3", "/rag-service/rag_service/rag_app/app.py"] 

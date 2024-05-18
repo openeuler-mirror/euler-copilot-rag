@@ -9,9 +9,9 @@ SENTENCE_SIZE = 300
 DEFAULT_TOP_K = 5
 LLM_TEMPERATURE = 0.01
 LLM_MODEL = 'Qwen1.5-32B-chat-GPTQ-Int4'
-QWEN_MAX_TOKENS = 16384
+MAX_TOKENS = 16384
 
-QWEN_PROMPT_TEMPLATE = '''你是由openEuler社区构建的大型语言AI助手。请根据给定的用户问题，提供清晰、简洁、准确的答案。你将获得一系列与问题相关的背景信息。\
+PROMPT_TEMPLATE = '''你是由openEuler社区构建的大型语言AI助手。请根据给定的用户问题，提供清晰、简洁、准确的答案。你将获得一系列与问题相关的背景信息。\
     如果适用，请使用这些背景信息；如果不适用，请忽略这些背景信息。
 
     你的答案必须是正确的、准确的，并且要以专家的身份，使用无偏见和专业的语气撰写。不要提供与问题无关的信息，也不要重复。

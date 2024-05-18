@@ -6,13 +6,17 @@ WORKDIR /rag-service
 ENV PYTHONPATH /rag-service
 ENV PATH /home/eulercopilot/.local/bin:$PATH
 
-RUN yum makecache &&\
+RUN sed -i 's|repo.openeuler.org|mirrors.nju.edu.cn/openeuler|g' /etc/yum.repos.d/openEuler.repo && \
+    sed -i '/metalink/d' /etc/yum.repos.d/openEuler.repo && \
+    sed -i '/metadata_expire/d' /etc/yum.repos.d/openEuler.repo && \
     yum update -y &&\
     yum install -y python3 python3-pip shadow-utils &&\
     groupadd -g 1001 eulercopilot &&\
     useradd -u 1001 -g 1001 eulercopilot &&\
     chown -R eulercopilot:eulercopilot /rag-service &&\
-    yum clean all
+    yum clean all && \
+    sed -i 's/umask 002/umask 027/g' /etc/bashrc && \
+    sed -i 's/umask 022/umask 027/g' /etc/bashrc
 
 USER eulercopilot
 

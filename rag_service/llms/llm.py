@@ -1,6 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import io
-import os
 import json
 from typing import List
 
@@ -14,8 +13,7 @@ from rag_service.exceptions import ElasitcsearchEmptyKeyException
 from rag_service.session.session_manager import get_session_manager
 from rag_service.query_generator.query_generator import query_generate
 
-from rag_service.constants import INTENT_DETECT_PROMPT_TEMPLATE, LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS, \
-    QWEN_PROMPT_TEMPLATE, SPARK_PROMPT_TEMPLATE, SQL_GENERATE_PROMPT_TEMPLATE
+from rag_service.constants import LLM_MODEL, LLM_TEMPERATURE, PROMPT_TEMPLATE, MAX_TOKENS
 from rag_service.security.config import config
 
 logger = get_logger()

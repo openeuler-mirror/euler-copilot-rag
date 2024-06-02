@@ -19,10 +19,16 @@ RUN sed -i 's|repo.openeuler.org|mirrors.nju.edu.cn/openeuler|g' /etc/yum.repos.
     sed -i 's/umask 022/umask 027/g' /etc/bashrc
 
 USER eulercopilot
-
 RUN pip3 install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
+USER root
+RUN yum remove -y python3-pip gdb-gdbserver && \
+    sh -c "find /usr /etc \( -name *yum* -o -name *dnf* -o -name *vi* \) -exec rm -rf {} + || true" && \
+    sh -c "find /usr /etc \( -name ps -o -name top \) -exec rm -rf {} + || true" && \
+    sh -c "rm -f /usr/bin/find /usr/bin/oldfind || true"
+
+USER eulercopilot
 RUN chmod -R 750 /home/eulercopilot &&\
     chmod -R 550 /rag-service
 
-CMD ["python3", "/rag-service/rag_service/rag_app/app.py"] 
+CMD bash -c "python3 /rag-service/rag_service/rag_app/app.py"

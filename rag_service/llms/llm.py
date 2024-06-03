@@ -77,7 +77,7 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         "cache-control": "no-cache",
         "connection": "keep-alive",
         "x-accel-buffering": "no",
-        "Authorization": config['OPENAI_APP_KEY']
+        "Authorization": "Bearer " + config['OPENAI_APP_KEY']
     }
     data = {
         "model": LLM_MODEL,

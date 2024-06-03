@@ -189,7 +189,7 @@ class VectorizeItems(Base):
 
 
 engine = create_engine(
-    config['DB_CONNECTION'],
+    f'postgresql+psycopg2://{config["POSTGRES_USER"]}:{config["POSTGRES_PWD"]}@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}',
     pool_size=20,   # 连接池的基本大小
     max_overflow=80,  # 在连接池已满时允许的最大连接数
     pool_recycle=300,

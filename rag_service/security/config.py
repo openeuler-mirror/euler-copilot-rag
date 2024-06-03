@@ -22,11 +22,10 @@ class ConfigModel(BaseModel):
     OPENAI_APP_KEY: str = Field(description="OpenAI应用密钥")
     OPENAI_API_BASE: str = Field(description="OpenAI API基础URL")
 
-    POSTRAGE_HOST: str = Field(description="PostgreSQL数据库主机地址")
-    POSTRAGE_DATABASE: str = Field(description="PostgreSQL数据库名")
-    POSTRAGE_USER: str = Field(description="PostgreSQL数据库用户名")
-    POSTRAGE_PWD: str = Field(description="PostgreSQL数据库密码")
-    DB_CONNECTION: str = Field(description="数据库连接字符串")
+    POSTGRES_HOST: str = Field(description="PostgreSQL数据库主机地址")
+    POSTGRES_DATABASE: str = Field(description="PostgreSQL数据库名")
+    POSTGRES_USER: str = Field(description="PostgreSQL数据库用户名")
+    POSTGRES_PWD: str = Field(description="PostgreSQL数据库密码")
 
 
 class Config:

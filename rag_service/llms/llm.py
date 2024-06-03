@@ -87,6 +87,7 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         "max_tokens": MAX_TOKENS
     }
     response = requests.post(config["LLM_URL"], json=data, headers=headers, stream=True, timeout=30)
+    print(response.text)
     if response.status_code == 200:
         for line in response.iter_lines(decode_unicode=True):
             if line:

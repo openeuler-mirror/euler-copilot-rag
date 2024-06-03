@@ -10,7 +10,7 @@ RUN sed -i 's|repo.openeuler.org|mirrors.nju.edu.cn/openeuler|g' /etc/yum.repos.
     sed -i '/metalink/d' /etc/yum.repos.d/openEuler.repo && \
     sed -i '/metadata_expire/d' /etc/yum.repos.d/openEuler.repo && \
     yum update -y &&\
-    yum install -y python3 python3-pip shadow-utils &&\
+    yum install -y python3 python3-pip shadow-utils findutils &&\
     groupadd -g 1001 eulercopilot &&\
     useradd -u 1001 -g 1001 eulercopilot &&\
     chown -R eulercopilot:eulercopilot /rag-service &&\

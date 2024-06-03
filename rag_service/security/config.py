@@ -26,6 +26,8 @@ class ConfigModel(BaseModel):
     POSTGRES_DATABASE: str = Field(description="PostgreSQL数据库名")
     POSTGRES_USER: str = Field(description="PostgreSQL数据库用户名")
     POSTGRES_PWD: str = Field(description="PostgreSQL数据库密码")
+    
+    LOG: str = Field(description="日志模式")
 
 
 class Config:

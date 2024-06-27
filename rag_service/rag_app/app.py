@@ -1,6 +1,4 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import os
-
 import fastapi
 import uvicorn
 from fastapi_pagination import add_pagination
@@ -9,7 +7,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from rag_service.logger import get_logger
 from rag_service.logger import log_config
 from rag_service.rag_app.router import routers
-from rag_service.models.database.models import create_db_and_tables
+from rag_service.models.database import create_db_and_tables
 from rag_service.security.config import config
 
 create_db_and_tables()

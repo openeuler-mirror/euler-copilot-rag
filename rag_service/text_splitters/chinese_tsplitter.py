@@ -83,11 +83,11 @@ class ChineseTextSplitter(CharacterTextSplitter):
         """
         按长度 max_sentence_size 切分子句
         """
-        sub_sents = []
+        sub_sentences = []
         while sentence:
             # 边界
             if len(sentence) <= self.max_sentence_size:
-                sub_sents.append(sentence)
+                sub_sentences.append(sentence)
                 break
             # 从句子阈值处往左找到最近的分隔符
             idx = search_from_backward(sentence, self.max_sentence_size)
@@ -96,12 +96,12 @@ class ChineseTextSplitter(CharacterTextSplitter):
                 idx = search_from_forward(sentence, self.max_sentence_size)
                 if idx == -1:
                     # 整个句子都没有找到分隔符
-                    sub_sents.append(sentence)
+                    sub_sentences.append(sentence)
                     break
             # 原句中拆出子句
-            sub_sents.append(sentence[:idx + 1])
+            sub_sentences.append(sentence[:idx + 1])
             sentence = sentence[idx + 1:]
-        return sub_sents
+        return sub_sentences
 
     def group_sentences(self, sentences):
         """

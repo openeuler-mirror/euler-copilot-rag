@@ -3,9 +3,10 @@ import traceback
 from rag_service.logger import get_logger
 from rag_service.models.enums import VectorizationJobStatus, VectorizationJobType
 from rag_service.exceptions import KnowledgeBaseNotExistsException, PostgresQueryException
-from rag_service.models.database.models import VectorizationJob, KnowledgeBaseAsset, KnowledgeBase
+from rag_service.models.database import VectorizationJob, KnowledgeBaseAsset, KnowledgeBase
 
 logger = get_logger()
+
 
 def change_vectorization_job_status(
         session,
@@ -66,8 +67,10 @@ def get_knowledge_base_asset_not_init(
         kb_sn: str,
         asset_name: str
 ):
-    knowledge_base_asset_not_init = session.query(KnowledgeBaseAsset).join(KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id).filter(
-        kb_sn == KnowledgeBase.sn, asset_name == KnowledgeBaseAsset.name, KnowledgeBaseAsset.vectorization_jobs == None).one_or_none()
+    knowledge_base_asset_not_init = session.query(KnowledgeBaseAsset).join(KnowledgeBase,
+                                                                           KnowledgeBase.id == KnowledgeBaseAsset.kb_id).filter(
+        kb_sn == KnowledgeBase.sn, asset_name == KnowledgeBaseAsset.name,
+        KnowledgeBaseAsset.vectorization_jobs is None).one_or_none()
     return knowledge_base_asset_not_init
 
 
@@ -75,10 +78,10 @@ def get_running_knowledge_base_asset(kb_sn: str, asset_name: str, session):
     try:
         running_knowledge_base_asset = session.query(KnowledgeBaseAsset).join(
             KnowledgeBase, KnowledgeBase.id == KnowledgeBaseAsset.kb_id).join(
-                VectorizationJob, VectorizationJob.kba_id == KnowledgeBaseAsset.id).filter(
-                KnowledgeBase.sn == kb_sn,
-                KnowledgeBaseAsset.name == asset_name,
-                VectorizationJob.status.notin_(VectorizationJobStatus.types_not_running())
+            VectorizationJob, VectorizationJob.kba_id == KnowledgeBaseAsset.id).filter(
+            KnowledgeBase.sn == kb_sn,
+            KnowledgeBaseAsset.name == asset_name,
+            VectorizationJob.status.notin_(VectorizationJobStatus.types_not_running())
         ).one_or_none()
         return running_knowledge_base_asset
     except Exception as e:

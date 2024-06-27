@@ -7,7 +7,7 @@ from fastapi import Form
 from pydantic import BaseModel, Field
 
 from rag_service.constants import DEFAULT_TOP_K
-from rag_service.models.generic.models import VectorizationConfig
+from rag_service.models.generic import VectorizationConfig
 from rag_service.models.enums import AssetType, EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 
 
@@ -29,6 +29,7 @@ def as_form(cls: Type[BaseModel]):
 
 class CreateKnowledgeBaseReq(BaseModel):
     name: str
+    sn: str
     owner: str
 
 
@@ -48,13 +49,29 @@ class LlmTestRequest(BaseModel):
     llm_model: Optional[str]
 
 
+class EmbeddingRequest(BaseModel):
+    texts: List[str]
+    embedding_model: str
+
+
+class EmbeddingRequestSparkOline(BaseModel):
+    texts: List[str]
+    embedding_method: str
+
+
+class RerankingRequest(BaseModel):
+    documents: List
+    raw_question: str
+    top_k: int
+
+
 class QueryRequest(BaseModel):
     question: str
     kb_sn: str
     top_k: int = Field(DEFAULT_TOP_K, ge=3, le=10)
     fetch_source: bool = False
-    llm_model: Optional[str] = "qwen"
     history: Optional[List] = []
+    model_name: Optional[str] = "spark"
 
 
 class AssetInfo(BaseModel):

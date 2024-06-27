@@ -34,6 +34,10 @@ class EmbeddingModel(Enum):
     BGE_MIXED_MODEL = 'bge-mixed-model'
 
 
+class RerankerModel(Enum):
+    BGE_RERANKER_LARGE = 'bge-reranker-large'
+
+
 class UpdateOriginalDocumentType(Enum):
     DELETE = 'DELETE'
     UPDATE = 'UPDATE'

@@ -2,17 +2,45 @@ import requests
 import json
 
 from oe_message_manager import OeMessageManager
-class PullMeassageFromOeWeb():
+
+
+class PullMessageFromOeWeb:
     @staticmethod
     def pull_oe_compatibility_overall_unit():
-        url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/hardwarecomp/findAll'
-        headers = {  
+        url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/hardwarecomp/findAll'
+        headers = {
             'Content-Type': 'application/json'
         }
-        data={
+        data = {
+            "pages": {
+                "page": 1,
+                "size": 10
+            },
+            "architecture": "",
+            "keyword": "",
+            "cpu": "",
+            "os": "",
+            "testOrganization": "",
+            "type": "",
+            "cardType": "",
+            "lang": "zh",
+            "dataSource": "assessment",
+            "solution": "",
+            "certificationType": ""
+        }
+
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data
+        )
+        results=[]
+        total_num = response.json()["result"]["totalCount"]
+        for i in range(total_num//10+(total_num % 10 != 0)):
+            data = {
                 "pages": {
-                    "page": 1,
-                    "size": 1
+                    "page": i+1,
+                    "size": 10
                 },
                 "architecture": "",
                 "keyword": "",
@@ -22,52 +50,32 @@ class PullMeassageFromOeWeb():
                 "type": "",
                 "cardType": "",
                 "lang": "zh",
-                "dataSource": "",
+                "dataSource": "assessment",
                 "solution": "",
                 "certificationType": ""
             }
-        response=requests.post(
-            url, 
-            headers=headers, 
-            json=data
-        )
-        total_num=response.json()["result"]["totalCount"]
-        data={
-                "pages": {
-                    "page": 1,
-                    "size": total_num
-                },
-                "architecture": "",
-                "keyword": "",
-                "cpu": "",
-                "os": "",
-                "testOrganization": "",
-                "type": "",
-                "cardType": "",
-                "lang": "zh",
-                "dataSource": "",
-                "solution": "",
-                "certificationType": ""
-            }
-        response=requests.post(
-            url, 
-            headers=headers, 
-            json=data
-        )
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data
+            )
+            results += response.json()["result"]["hardwareCompList"]
         OeMessageManager.clear_oe_compatibility_overall_unit()
-        js=response.json()
-        for i in range(len(js["result"]["hardwareCompList"])):
-            for key in js["result"]["hardwareCompList"][i]:
-                if type(js["result"]["hardwareCompList"][i][key])==list or type(js["result"]["hardwareCompList"][i][key])==dict or type(js["result"]["hardwareCompList"][i][key])==tuple: 
-                    js["result"]["hardwareCompList"][i][key]=json.dumps(js["result"]["hardwareCompList"][i][key])
-            OeMessageManager.add_oe_compatibility_overall_unit(js["result"]["hardwareCompList"][i])
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(
+                        results[i][key]) == dict or type(
+                        results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_compatibility_overall_unit(results[i])
+
     @staticmethod
     def pull_oe_compatibility_card():
-        url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/drivercomp/findAll'
-        headers = {  
+        url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/drivercomp/findAll'
+        headers = {
             'Content-Type': 'application/json'
         }
-        data={
+        data = {
             "pages": {
                 "page": 1,
                 "size": 10
@@ -84,16 +92,18 @@ class PullMeassageFromOeWeb():
             "solution": "",
             "certificationType": ""
         }
-        response=requests.post(
-            url, 
-            headers=headers, 
+        response = requests.post(
+            url,
+            headers=headers,
             json=data
         )
-        total_num=response.json()["result"]["totalCount"]
-        data={
+        results=[]
+        total_num = response.json()["result"]["totalCount"]
+        for i in range(total_num//10+(total_num % 10 != 0)):
+            data = {
                 "pages": {
-                    "page": 1,
-                    "size": total_num
+                    "page": i+1,
+                    "size": 10
                 },
                 "architecture": "",
                 "keyword": "",
@@ -107,59 +117,51 @@ class PullMeassageFromOeWeb():
                 "solution": "",
                 "certificationType": ""
             }
-        response=requests.post(
-            url, 
-            headers=headers, 
-            json=data
-        )
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data
+            )
+            results += response.json()["result"]["driverCompList"]
         OeMessageManager.clear_oe_compatibility_card()
-        js=response.json()
-        for i in range(len(js["result"]["driverCompList"])):
-            for key in js["result"]["driverCompList"][i]:
-                if type(js["result"]["driverCompList"][i][key])==list or type(js["result"]["driverCompList"][i][key])==dict or type(js["result"]["driverCompList"][i][key])==tuple: 
-                    js["result"]["driverCompList"][i][key]=json.dumps(js["result"]["driverCompList"][i][key])
-            OeMessageManager.add_oe_compatibility_card(js["result"]["driverCompList"][i])
-    @staticmethod
-    def pull_oe_compatibility_open_source_software():
-        url='https://www.openeuler.org/compatibility/api/web_backend/compat_software_info'
-        headers = {  
-            'Content-Type': 'application/json'
-        }
-        data={
-                "page_size":1,
-                "page_num":1
-            }
-        response=requests.get(
-            url, 
-            headers=headers, 
-            data=data
-        )
-        total_num=response.json()["total"]
-        data={
-                "page_size":1,
-                "page_num":total_num
-            }
-        response=requests.get(
-            url, 
-            headers=headers, 
-            data=data
-        )
-        OeMessageManager.clear_oe_compatibility_open_source_software()
-        js=response.json()
-        for i in range(len(js["info"])):
-            for key in js["info"][i]:
-                if type(js["info"][i][key])==list or type(js["info"][i][key])==dict or type(js["info"][i][key])==tuple: 
-                    js["info"][i][key]=json.dumps(js["info"][i][key])
-            OeMessageManager.add_oe_compatibility_open_source_software(js["info"][i])
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(
+                        results[i][key]) == dict or type(
+                        results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_compatibility_card(results[i])
+
     @staticmethod
     def pull_oe_compatibility_commercial_software():
-        url='https://www.openeuler.org/certification/software/communityChecklist'
-        headers = {  
+        url = 'https://www.openeuler.org/certification/software/communityChecklist'
+        headers = {
             'Content-Type': 'application/json'
         }
-        data={
-                "pageSize": 1,
-                "pageNo": 1,
+        data = {
+            "pageSize": 1,
+            "pageNo": 1,
+            "testOrganization": "",
+            "osName": "",
+            "keyword": "",
+            "dataSource": [
+                "assessment"
+            ],
+            "productType": [
+                "软件"
+            ]
+        }
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data
+        )
+        results=[]
+        total_num = response.json()["result"]["totalNum"]
+        for i in range(total_num//10+(total_num % 10 != 0)):
+            data = {
+                "pageSize": i+1,
+                "pageNo": 10,
                 "testOrganization": "",
                 "osName": "",
                 "keyword": "",
@@ -170,76 +172,63 @@ class PullMeassageFromOeWeb():
                     "软件"
                 ]
             }
-        response=requests.post(
-            url, 
-            headers=headers, 
-            json=data
-        )
-        total_num=response.json()["result"]["totalNum"]
-        data={
-                "pageSize": total_num,
-                "pageNo": 1,
-                "testOrganization": "",
-                "osName": "",
-                "keyword": "",
-                "dataSource": [
-                    "assessment"
-                ],
-                "productType": [
-                    "软件"
-                ]
-            }
-        response=requests.post(
-            url, 
-            headers=headers, 
-            json=data
-        )
-        js=response.json()
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data
+            )
+            results+= response.json()["result"]["data"]
         OeMessageManager.clear_oe_compatibility_commercial_software()
-        for i in range(len(js["result"]["data"])):
-            for key in js["result"]["data"][i]:
-                if type(js["result"]["data"][i][key])==list or type(js["result"]["data"][i][key])==dict or type(js["result"]["data"][i][key])==tuple: 
-                    js["result"]["data"][i][key]=json.dumps(js["result"]["data"][i][key])
-            OeMessageManager.add_oe_compatibility_commercial_software(js["result"]["data"][i])
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(results[i][key]) == dict or type(
+                        results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_compatibility_commercial_software(results[i])
+
     @staticmethod
     def pull_oe_compatibility_open_source_software():
-        url='https://www.openeuler.org/compatibility/api/web_backend/compat_software_info'
-        headers = {  
+        url = 'https://www.openeuler.org/compatibility/api/web_backend/compat_software_info'
+        headers = {
             'Content-Type': 'application/json'
         }
-        data={
-                "page_size":1,
-                "page_num":1
-            }
-        response=requests.get(
-            url, 
-            headers=headers, 
+        data = {
+            "page_size": 1,
+            "page_num": 1
+        }
+        response = requests.get(
+            url,
+            headers=headers,
             data=data
         )
-        total_num=response.json()["total"]
-        data={
-                "page_size":1,
-                "page_num":total_num
+        results=[]
+        total_num = response.json()["total"]
+        for i in range(total_num//10+(total_num % 10 != 0)):
+            data = {
+                "page_size": i+1,
+                "page_num": 10
             }
-        response=requests.get(
-            url, 
-            headers=headers, 
-            data=data
-        )
+            response = requests.get(
+                url,
+                headers=headers,
+                data=data
+            )
+            results += response.json()["info"]
         OeMessageManager.clear_oe_compatibility_open_source_software()
-        js=response.json()
-        for i in range(len(js["info"])):
-            for key in js["info"][i]:
-                if type(js["info"][i][key])==list or type(js["info"][i][key])==dict or type(js["info"][i][key])==tuple: 
-                    js["info"][i][key]=json.dumps(js["info"][i][key])
-            OeMessageManager.add_oe_compatibility_open_source_software(js["info"][i])
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(results[i][key]) == dict or type(
+                        results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_compatibility_open_source_software(results[i])
+
     @staticmethod
     def pull_oe_compatibility_solution():
-        url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/solutioncomp/findAll'
-        headers = {  
+        url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/solutioncomp/findAll'
+        headers = {
             'Content-Type': 'application/json'
         }
-        data={
+        data = {
             "pages": {
                 "page": 1,
                 "size": 1
@@ -256,106 +245,53 @@ class PullMeassageFromOeWeb():
             "solution": "",
             "certificationType": ""
         }
-        response=requests.post(
-            url, 
-            headers=headers, 
+        response = requests.post(
+            url,
+            headers=headers,
             json=data
         )
-        total_num=response.json()["result"]["totalCount"]
-        data={
-            "pages": {
-                "page": 1,
-                "size": total_num
-            },
-            "architecture": "",
-            "keyword": "",
-            "cpu": "",
-            "os": "",
-            "testOrganization": "",
-            "type": "",
-            "cardType": "",
-            "lang": "zh",
-            "dataSource": "assessment",
-            "solution": "",
-            "certificationType": ""
-        }
-        response=requests.post(
-            url, 
-            headers=headers, 
-            json=data
-        )
-        js=response.json()
-        OeMessageManager.clear_oe_compatibility_commercial_software()
-        for i in range(len(js["result"]["solutionCompList"])):
-            for key in js["result"]["solutionCompList"][i]:
-                if type(js["result"]["solutionCompList"][i][key])==list or type(js["result"]["solutionCompList"][i][key])==dict or type(js["result"]["solutionCompList"][i][key])==tuple: 
-                    js["result"]["solutionCompList"][i][key]=json.dumps(js["result"]["solutionCompList"][i][key])
-            OeMessageManager.add_oe_compatibility_commercial_software(js["result"]["solutionCompList"][i])
-    @staticmethod
-    def pull_oe_compatibility_solution():
-        url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/solutioncomp/findAll'
-        headers = {  
-            'Content-Type': 'application/json'
-        }
-        data={
-            "pages": {
-                "page": 1,
-                "size": 1
-            },
-            "architecture": "",
-            "keyword": "",
-            "cpu": "",
-            "os": "",
-            "testOrganization": "",
-            "type": "",
-            "cardType": "",
-            "lang": "zh",
-            "dataSource": "assessment",
-            "solution": "",
-            "certificationType": ""
-        }
-        response=requests.post(
-            url, 
-            headers=headers, 
-            json=data
-        )
-        total_num=response.json()["result"]["totalCount"]
-        data={
-            "pages": {
-                "page": 1,
-                "size": total_num
-            },
-            "architecture": "",
-            "keyword": "",
-            "cpu": "",
-            "os": "",
-            "testOrganization": "",
-            "type": "",
-            "cardType": "",
-            "lang": "zh",
-            "dataSource": "assessment",
-            "solution": "",
-            "certificationType": ""
-        }
-        response=requests.post(
-            url, 
-            headers=headers, 
-            json=data
-        )
-        js=response.json()
+        results = []
+        total_num = response.json()["result"]["totalCount"]
+        for i in range(total_num//10+(total_num % 10 != 0)):
+            data = {
+                "pages": {
+                    "page": i+1,
+                    "size": total_num
+                },
+                "architecture": "",
+                "keyword": "",
+                "cpu": "",
+                "os": "",
+                "testOrganization": "",
+                "type": "",
+                "cardType": "",
+                "lang": "zh",
+                "dataSource": "assessment",
+                "solution": "",
+                "certificationType": ""
+            }
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data
+            )
+            results += response.json()["result"]["solutionCompList"]
         OeMessageManager.clear_oe_compatibility_solution()
-        for i in range(len(js["result"]["solutionCompList"])):
-            for key in js["result"]["solutionCompList"][i]:
-                if type(js["result"]["solutionCompList"][i][key])==list or type(js["result"]["solutionCompList"][i][key])==dict or type(js["result"]["solutionCompList"][i][key])==tuple: 
-                    js["result"]["solutionCompList"][i][key]=json.dumps(js["result"]["solutionCompList"][i][key])
-            OeMessageManager.add_oe_compatibility_solution(js["result"]["solutionCompList"][i])
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(
+                        results[i][key]) == dict or type(
+                        results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_compatibility_solution(results[i])
+
     @staticmethod
     def pull_oe_compatibility_osv():
-        url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/osv/findAll'
-        headers = {  
+        url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/osv/findAll'
+        headers = {
             'Content-Type': 'application/json'
         }
-        data={
+        data = {
             "pages": {
                 "page": 1,
                 "size": 10
@@ -364,33 +300,36 @@ class PullMeassageFromOeWeb():
             "type": "",
             "osvName": ""
         }
-        response=requests.post(
-            url, 
-            headers=headers, 
+        response = requests.post(
+            url,
+            headers=headers,
             json=data
         )
-        total_num=response.json()["result"]["totalCount"]
-        data={
-            "pages": {
-                "page": 1,
-                "size": total_num
-            },
-            "keyword": "",
-            "type": "",
-            "osvName": ""
-        }
-        response=requests.post(
-            url, 
-            headers=headers, 
-            json=data
-        )
-        js=response.json()
+        results = []
+        total_num = response.json()["result"]["totalCount"]
+        for i in range(total_num//10+(total_num % 10 != 0)):
+            data = {
+                "pages": {
+                    "page": i+1,
+                    "size": 10
+                },
+                "keyword": "",
+                "type": "",
+                "osvName": ""
+            }
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data
+            )
+            results += response.json()["result"]["osvList"]
         OeMessageManager.clear_compatibility_osv()
-        for i in range(len(js["result"]["osvList"])):
-            for key in js["result"]["osvList"][i]:
-                if type(js["result"]["osvList"][i][key])==list or type(js["result"]["osvList"][i][key])==dict or type(js["result"]["osvList"][i][key])==tuple: 
-                    js["result"]["osvList"][i][key]=json.dumps(js["result"]["osvList"][i][key])
-            OeMessageManager.add_oe_compatibility_osv(js["result"]["osvList"][i])
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(
+                        results[i][key]) == dict or type(results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_compatibility_osv(results[i])
 
     @staticmethod
     def pull_oe_compatibility_security_notice():
@@ -415,33 +354,35 @@ class PullMeassageFromOeWeb():
             headers=headers,
             json=data
         )
+        results = []
         total_num = response.json()["result"]["totalCount"]
-        data = {
-            "pages": {
-                "page": 1,
-                "size": total_num
-            },
-            "keyword": "",
-            "type": [],
-            "date": [],
-            "affectedProduct": [],
-            "affectedComponent": "",
-            "noticeType": "cve"
-        }
-        response = requests.post(
-            url,
-            headers=headers,
-            json=data
-        )
-        js = response.json()
+        for i in range(total_num//10+(total_num % 10 != 0)):
+            data = {
+                "pages": {
+                    "page": i+1,
+                    "size": 10
+                },
+                "keyword": "",
+                "type": [],
+                "date": [],
+                "affectedProduct": [],
+                "affectedComponent": "",
+                "noticeType": "cve"
+            }
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data
+            )
+            results += response.json()["result"]["securityNoticeList"]
         OeMessageManager.clear_oe_compatibility_security_notice()
-        for i in range(len(js["result"]["securityNoticeList"])):
-            for key in js["result"]["securityNoticeList"][i]:
-                if type(js["result"]["securityNoticeList"][i][key]) == list or type(
-                        js["result"]["securityNoticeList"][i][key]) == dict or type(
-                        js["result"]["securityNoticeList"][i][key]) == tuple:
-                    js["result"]["securityNoticeList"][i][key] = json.dumps(js["result"]["securityNoticeList"][i][key])
-            OeMessageManager.add_oe_compatibility_security_notice(js["result"]["securityNoticeList"][i])
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(
+                    results[i][key]) == dict or type(
+                        results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_compatibility_security_notice(results[i])
 
     @staticmethod
     def pull_oe_compatibility_cve_database():
@@ -465,32 +406,58 @@ class PullMeassageFromOeWeb():
             headers=headers,
             json=data
         )
-        total_num = response.json()["result"]["totalCount"]
-        data = {
-            "pages": {
-                "page": 1,
-                "size": total_num
-            },
-            "keyword": "",
-            "status": "",
-            "year": "",
-            "score": "",
-            "noticeType": "cve"
-        }
-        response = requests.post(
-            url,
-            headers=headers,
-            json=data
-        )
         js = response.json()
+        results = []
+        total_num = response.json()["result"]["totalCount"]
+        for i in range(total_num//10+(total_num % 10 != 0)):
+            data = {
+                "pages": {
+                    "page": i+1,
+                    "size": 10
+                },
+                "keyword": "",
+                "status": "",
+                "year": "",
+                "score": "",
+                "noticeType": "cve"
+            }
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data
+            )
+            results += response.json()["result"]["cveDatabaseList"]
         OeMessageManager.clear_oe_compatibility_cve_database()
-        for i in range(len(js["result"]["cveDatabaseList"])):
-            for key in js["result"]["cveDatabaseList"][i]:
-                if type(js["result"]["cveDatabaseList"][i][key]) == list or type(
-                        js["result"]["cveDatabaseList"][i][key]) == dict or type(
-                        js["result"]["cveDatabaseList"][i][key]) == tuple:
-                    js["result"]["cveDatabaseList"][i][key] = json.dumps(js["result"]["cveDatabaseList"][i][key])
-            OeMessageManager.add_oe_compatibility_cve_database(js["result"]["cveDatabaseList"][i])
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(
+                    results[i][key]) == dict or type(
+                        results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_compatibility_cve_database(results[i])
+    @staticmethod
+    def oe_organize_message_handler():
+        f=open('rag_service/utils/oe_spider/organize.txt','r',encoding='utf-8')
+        lines=f.readlines()
+        st=0
+        en=0
+        filed_list=['role','name','personal_message']
+        OeMessageManager.clear_oe_community_organization_structure()
+        while st<len(lines):
+            while en<len(lines) and lines[en]!='\n':
+                en+=1
+            lines[st]=lines[st].replace('\n','')
+            committee_name=lines[st]
+            for i in range(st+1,en):
+                data=lines[i].replace('\n','').split(' ')
+                info={'committee_name':committee_name}
+                for j in range(min(len(filed_list),len(data))):
+                    data[j]=data[j].replace('\n','')
+                    if j==2:
+                        data[j]=data[j].replace('_',' ')
+                    info[filed_list[j]]=data[j]
+                OeMessageManager.add_oe_community_organization_structure(info)
+            st=en+1
+            en=st
 
-
-PullMeassageFromOeWeb.pull_oe_compatibility_overall_unit()
+PullMessageFromOeWeb.oe_organize_message_handler()

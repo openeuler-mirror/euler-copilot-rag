@@ -1,5 +1,4 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import traceback
 from typing import List
 
 from fastapi_pagination import Page
@@ -15,12 +14,12 @@ from rag_service.exceptions import (
     PostgresQueryException
 )
 from rag_service.logger import get_logger
-from rag_service.models.database.models import yield_session
+from rag_service.models.database import yield_session
 from rag_service.rag_app.service import knowledge_base_asset_service
 from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
 from rag_service.rag_app.service.knowledge_base_asset_service import get_kb_asset_list, \
     get_kb_asset_original_documents, delete_knowledge_base_asset
-from rag_service.models.api.models import CreateKnowledgeBaseAssetReq, InitKnowledgeBaseAssetReq, AssetInfo, \
+from rag_service.models.api import CreateKnowledgeBaseAssetReq, InitKnowledgeBaseAssetReq, AssetInfo, \
     OriginalDocumentInfo, UpdateKnowledgeBaseAssetReq
 
 router = APIRouter(prefix='/kba', tags=['Knowledge Base Asset'])
@@ -33,7 +32,7 @@ async def create(
         session=Depends(yield_session)
 ) -> str:
     try:
-        await knowledge_base_asset_service.create_knowledge_base_asset(req, session)
+        knowledge_base_asset_service.create_knowledge_base_asset(req, session)
     except (KnowledgeBaseNotExistsException, DuplicateKnowledgeBaseAssetException) as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
     except PostgresQueryException as e:

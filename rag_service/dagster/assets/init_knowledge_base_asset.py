@@ -1,5 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import os
+import asyncio
 import uuid
 import shutil
 import itertools
@@ -12,18 +12,19 @@ from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut
 
 from rag_service.document_loaders.loader import load_file
 from rag_service.models.enums import VectorizationJobStatus
-from rag_service.models.database.models import yield_session
-from rag_service.models.generic.models import OriginalDocument
+from rag_service.security.config import config
+from rag_service.models.database import yield_session
+from rag_service.models.generic import OriginalDocument
 from rag_service.vectorstore.postgresql.manage_pg import pg_insert_data
-from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
 from rag_service.original_document_fetchers import select_fetcher, Fetcher
 from rag_service.constants import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
-from rag_service.models.database.models import VectorStore, VectorizationJob, KnowledgeBaseAsset
+from rag_service.models.database import VectorStore, VectorizationJob, KnowledgeBaseAsset
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir, parse_asset_partition_key
-from rag_service.models.database.models import OriginalDocument as OriginalDocumentEntity, KnowledgeBase
+from rag_service.models.database import OriginalDocument as OriginalDocumentEntity, KnowledgeBase
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
-from rag_service.security.config import config
+from rag_service.rag_app.service.vectorize_service import vectorize_embedding
+from rag_service.rag_app.service.spark_embedding_online import SparkEmbeddingOnline
 
 
 @op(retry_policy=RetryPolicy(max_retries=3))
@@ -78,18 +79,21 @@ def embedding_documents(
                 KnowledgeBase.sn == knowledge_base_serial_number,
                 KnowledgeBaseAsset.name == knowledge_base_asset_name
         ).one()
-
-    remote_embedding = RemoteEmbedding(config["REMOTE_EMBEDDING_ENDPOINT"])
-    embeddings = list(
-        itertools.chain.from_iterable(
-            [
-                remote_embedding.embedding(
-                    [document.page_content for document in chunked_documents],
-                    knowledge_base_asset.embedding_model
-                ) for chunked_documents in chunked(documents, EMBEDDING_CHUNK_SIZE)
-            ]
+    if config['EMBEDDING_METHOD'] == "offline":
+        embeddings = list(
+            itertools.chain.from_iterable(
+                [
+                    vectorize_embedding(
+                        [document.page_content for document in chunked_documents],
+                        knowledge_base_asset.embedding_model
+                    ) for chunked_documents in chunked(documents, EMBEDDING_CHUNK_SIZE)
+                ]
+            )
         )
-    )
+    elif config['EMBEDDING_METHOD'] == "online":
+        embeddings = SparkEmbeddingOnline.embedding_by_spark_online(
+                [document.page_content for document in documents],
+                config['EMBEDDING_METHOD_ONLINE'])
     return original_documents, documents, embeddings
 
 

@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Generator, List, Tuple
 
 from rag_service.models.enums import AssetType
-from rag_service.models.generic.models import OriginalDocument
-from rag_service.models.database.models import KnowledgeBaseAsset
+from rag_service.models.generic import OriginalDocument
+from rag_service.models.database import KnowledgeBaseAsset
 from rag_service.original_document_fetchers.base import BaseFetcher
 from rag_service.constants import DELETE_ORIGINAL_DOCUMENT_METADATA, DELETE_ORIGINAL_DOCUMENT_METADATA_KEY
 

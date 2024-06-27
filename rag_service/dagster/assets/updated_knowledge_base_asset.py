@@ -8,21 +8,22 @@ from typing import List, Tuple, Set
 from langchain.schema import Document
 from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut, DynamicOutput, RetryPolicy
 
+from rag_service.security.config import config
 from rag_service.constants import VECTORIZATION_CHUNK_SIZE
 from rag_service.document_loaders.loader import load_file
-from rag_service.models.database.models import yield_session
-from rag_service.models.generic.models import OriginalDocument
-from rag_service.vectorize.remote_vectorize_agent import RemoteEmbedding
+from rag_service.models.database import yield_session
+from rag_service.models.generic import OriginalDocument
 from rag_service.original_document_fetchers import select_fetcher, Fetcher
 from rag_service.models.enums import VectorizationJobStatus, UpdateOriginalDocumentType
-from rag_service.vectorstore.postgresql.manage_pg import pg_insert_data, pg_delete_data
+from rag_service.rag_app.service.spark_embedding_online import SparkEmbeddingOnline
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
-from rag_service.models.database.models import VectorStore, VectorizationJob, KnowledgeBaseAsset
+from rag_service.models.database import VectorStore, VectorizationJob, KnowledgeBaseAsset
+from rag_service.vectorstore.postgresql.manage_pg import pg_create_and_insert_data, pg_delete_data
 from rag_service.utils.dagster_util import parse_asset_partition_key, get_knowledge_base_asset_root_dir
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
-from rag_service.models.database.models import OriginalDocument as OriginalDocumentEntity, KnowledgeBase, \
+from rag_service.models.database import OriginalDocument as OriginalDocumentEntity, KnowledgeBase, \
     UpdatedOriginalDocument
-from rag_service.security.config import config
+from rag_service.rag_app.service.vectorize_service import vectorize_embedding
 
 
 @op(retry_policy=RetryPolicy(max_retries=3))
@@ -197,15 +198,18 @@ def embedding_update_documents(
         knowledge_base_asset = get_knowledge_base_asset(knowledge_base_serial_number,
                                                         knowledge_base_asset_name, session)
         vector_stores = knowledge_base_asset.vector_stores
-        remote_embedding = RemoteEmbedding(config["REMOTE_EMBEDDING_ENDPOINT"])
         index = 0
         embeddings = []
         while index < len(documents):
             try:
-                tmp = remote_embedding.embedding(
-                    [documents[index].page_content],
-                    knowledge_base_asset.embedding_model
-                )
+                if config['EMBEDDING_METHOD'] == "offline":
+                    tmp = vectorize_embedding(
+                        [documents[index].page_content],
+                        knowledge_base_asset.embedding_model
+                    )
+                elif config['EMBEDDING_METHOD'] == "online":
+                    tmp = SparkEmbeddingOnline.embedding_by_spark_online(
+                        [documents[index].page_content], config["SPARK_QUERY_EMDEDDING"])
                 embeddings.extend(tmp)
                 index += 1
             except:
@@ -221,7 +225,7 @@ def save_update_to_vector_store(
         ins: Tuple[List[OriginalDocument], List[Document], List[List[float]], str]
 ) -> Tuple[List[OriginalDocument], str]:
     updated_original_documents, documents, embeddings, vector_store_name = ins
-    pg_insert_data(documents, embeddings, vector_store_name)
+    pg_create_and_insert_data(documents, embeddings, vector_store_name)
     return updated_original_documents, vector_store_name
 
 

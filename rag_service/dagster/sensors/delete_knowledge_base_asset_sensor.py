@@ -4,8 +4,8 @@ from typing import List
 from dagster import sensor, DefaultSensorStatus, SensorResult, RunRequest, SkipReason
 
 from rag_service.models.enums import VectorizationJobStatus
-from rag_service.models.database.models import yield_session
-from rag_service.models.database.models import VectorizationJob
+from rag_service.models.database import yield_session
+from rag_service.models.database import VectorizationJob
 from rag_service.utils.dagster_util import generate_asset_partition_key
 from rag_service.utils.db_util import change_vectorization_job_status, get_deleted_pending_jobs
 from rag_service.dagster.jobs.delete_knowledge_base_asset_job import delete_knowledge_base_asset_job, \

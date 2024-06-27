@@ -177,12 +177,37 @@ class VectorizeItems(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     general_text = Column(String())
-    general_text_vector = Column(Vector(1024))
+    general_text_vector = Column(Vector())
     source = Column(String())
     uri = Column(String())
     mtime = Column(DateTime, default=datetime.datetime.now)
     extended_metadata = Column(String())
     index_name = Column(String())
+
+
+def create_vectorize_items(_INDEX_NAME: str, dim: int):
+    # 生成一个SQL ORM基类
+    base_model = declarative_base()
+
+    class vectorize_items(base_model):
+        __tablename__ = _INDEX_NAME
+        id = Column(Integer, primary_key=True, autoincrement=True)
+        general_text = Column(String())
+        general_text_vector = Column(Vector(dim))
+        source = Column(String())
+        uri = Column(String())
+        mtime = Column(DateTime, default=datetime.datetime.now)
+        extended_metadata = Column(String())
+        index_name = Column(String())
+
+    try:
+        if not engine.dialect.has_table(engine.connect(), _INDEX_NAME):
+            base_model.metadata.create_all(engine)
+    except Exception as e:
+        raise e
+
+    return vectorize_items
+
 
 engine = create_engine(
     f'postgresql+psycopg2://{config["POSTGRES_USER"]}:{config["POSTGRES_PWD"]}@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}',

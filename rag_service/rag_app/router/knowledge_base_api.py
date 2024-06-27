@@ -6,17 +6,15 @@ from fastapi import APIRouter, Depends, status, Response, HTTPException
 
 from rag_service.logger import get_logger
 from fastapi.responses import StreamingResponse, HTMLResponse
-from rag_service.models.database.models import yield_session
-from rag_service.rag_app.service import knowledge_base_service
-from rag_service.models.api.models import LlmAnswer, QueryRequest
+from rag_service.models.database import yield_session
+from rag_service.models.api import QueryRequest, LlmAnswer, KnowledgeBaseInfo, RetrievedDocument, CreateKnowledgeBaseReq
 from rag_service.rag_app.error_response import ErrorResponse, ErrorCode
-from rag_service.exceptions import KnowledgeBaseNotExistsException, KnowledgeBaseExistNonEmptyKnowledgeBaseAsset
-from rag_service.models.api.models import CreateKnowledgeBaseReq, KnowledgeBaseInfo, QueryRequest, RetrievedDocument
-from rag_service.rag_app.service.knowledge_base_service import get_qwen_llm_stream_answer, get_spark_llm_stream_answer
+from rag_service.exceptions import KnowledgeBaseExistNonEmptyKnowledgeBaseAsset
+from rag_service.models.api import CreateKnowledgeBaseReq, KnowledgeBaseInfo, QueryRequest, RetrievedDocument
 from rag_service.rag_app.service.knowledge_base_service import get_knowledge_base_list, \
-    delele_knowledge_base, get_qwen_answer
+    delete_knowledge_base, create_knowledge_base, get_related_docs, get_llm_stream_answer, get_llm_answer
 from rag_service.exceptions import DomainCheckFailedException, KnowledgeBaseNotExistsException, \
-    LlmRequestException, PostgresQueryException
+    LlmRequestException, PostgresQueryException, KnowledgeBaseExistNonEmptyKnowledgeBaseAsset
 
 router = APIRouter(prefix='/kb', tags=['Knowledge Base'])
 logger = get_logger()
@@ -25,17 +23,14 @@ logger = get_logger()
 @router.post('/get_answer')
 def get_answer(req: QueryRequest, response: Response) -> LlmAnswer:
     response.headers['Content-Type'] = 'application/json'
-    return get_qwen_answer(req)
+    return get_llm_answer(req)
 
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)
 async def get_stream_answer(req: QueryRequest, response: Response):
     response.headers["Content-Type"] = "text/event-stream"
     try:
-        if req.llm_model == "qwen":
-            res = get_qwen_llm_stream_answer(req)
-        elif req.llm_model == "spark":
-            res = get_spark_llm_stream_answer(req)
+        res = get_llm_stream_answer(req)
         return StreamingResponse(
             res,
             status_code=status.HTTP_200_OK,
@@ -73,7 +68,7 @@ async def create(
         session=Depends(yield_session)
 ) -> str:
     try:
-        return await knowledge_base_service.create_knowledge_base(req, session)
+        return await create_knowledge_base(req, session)
     except PostgresQueryException as e:
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -90,7 +85,7 @@ def get_related_docs(
         session=Depends(yield_session)
 ) -> List[RetrievedDocument]:
     try:
-        return knowledge_base_service.get_related_docs(req, session)
+        return get_related_docs(req, session)
     except KnowledgeBaseNotExistsException as e:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -124,7 +119,7 @@ def delete_kb(
         session=Depends(yield_session)
 ):
     try:
-        delele_knowledge_base(kb_sn, session)
+        delete_knowledge_base(kb_sn, session)
         return f"deleted {kb_sn} knowledge base."
     except KnowledgeBaseExistNonEmptyKnowledgeBaseAsset as e:
         logger.error(f"deleted {kb_sn} knowledge base error was {e}.")

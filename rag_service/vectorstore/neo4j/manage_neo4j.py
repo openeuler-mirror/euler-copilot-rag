@@ -2,7 +2,6 @@
 import os
 import json
 import time
-import requests
 import traceback
 from typing import List
 
@@ -11,10 +10,10 @@ from langchain_community.graphs import Neo4jGraph
 from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
 
 from rag_service.logger import get_logger
-from rag_service.llms.qwen import token_check
+from rag_service.llms.llm import select_llm
 from rag_service.security.config import config
-from rag_service.exceptions import Neo4jQueryException, TokenCheckFailed
-from rag_service.constants import LLM_MODEL, LLM_TEMPERATURE, QWEN_MAX_TOKENS
+from rag_service.models.api import QueryRequest
+from rag_service.exceptions import Neo4jQueryException
 from rag_service.vectorstore.neo4j.neo4j_constants import EXTRACT_ENTITY_SYSTEM_PROMPT, NEO4J_EDGE_SQL, \
     NEO4J_ENTITY_SQL, NEO4J_RELATIONSHIP_SQL
 
@@ -66,42 +65,6 @@ def add_graph_documents_to_neo4j(graph_documents: List[GraphDocument]):
         raise Neo4jQueryException(f'Neo4j query exception') from e
 
 
-def llm_call(question: str, prompt: str, history: List = None):
-    messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": question}
-    ]
-    history = history or []
-    if len(history) > 0:
-        messages[1:1] = history
-    while not token_check(messages):
-        if len(messages) > 2:
-            messages = messages[:1]+messages[2:]
-        else:
-            raise TokenCheckFailed(f'Token is too long.')
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer "+config['LLM_KEY']
-    }
-    data = {
-        "model": LLM_MODEL,
-        "messages": messages,
-        "temperature": LLM_TEMPERATURE,
-        "stream": False,
-        "max_tokens": QWEN_MAX_TOKENS
-    }
-    response = requests.post(config["LLM_URL"], json=data, headers=headers, stream=False, timeout=60)
-    if response.status_code == 200:
-        answer_info = response.json()
-        if 'choices' in answer_info and len(answer_info.get('choices')) > 0:
-            final_ans = answer_info['choices'][0]['message']['content']
-            return final_ans
-        else:
-            return ""
-    else:
-        return ""
-
-
 def get_entity_properties(entity: str):
     cypher = NEO4J_ENTITY_SQL.replace('{{entity}}', entity)
     try:
@@ -109,7 +72,7 @@ def get_entity_properties(entity: str):
         neo4j_content = ""
         for k, v in graph_res[0]['props'].items():
             if k != "id":
-                neo4j_content += k+"是"+v+"; "
+                neo4j_content += k + "是" + v + "; "
     except Exception:
         return None
     return neo4j_content if neo4j_content != "" else None
@@ -122,7 +85,7 @@ def get_edge_properties(entity: str):
         neo4j_content = ""
         for res in graph_res:
             for value in res.values():
-                neo4j_content += value+"; "
+                neo4j_content += value + "; "
     except Exception:
         return None
     return neo4j_content if neo4j_content != "" else None
@@ -134,19 +97,19 @@ def get_entity_relationships(entity: str):
         graph_res = graph.query(query=cypher, params={})
         neo4j_content = ""
         for res in graph_res:
-            neo4j_content += res['output']+'; '
+            neo4j_content += res['output'] + '; '
     except Exception:
         return None
     return neo4j_content if neo4j_content != "" else None
 
 
-def neo4j_search_data(question: str):
+def neo4j_search_data(req: QueryRequest):
     # Extract entities from question
     try:
         st = time.time()
-        llm_res = llm_call(question=question, prompt=EXTRACT_ENTITY_SYSTEM_PROMPT, history=[])
+        llm_res = select_llm(req).nonstream(req=req, prompt=EXTRACT_ENTITY_SYSTEM_PROMPT)
         et = time.time()
-        logger.info(f"neo4j entity extract: {et-st}")
+        logger.info(f"neo4j entity extract: {et - st}")
         raw_entities = json.loads(llm_res)
         filter_entities = []
         logger.info(f"获取到的实体词: {raw_entities}")
@@ -163,23 +126,23 @@ def neo4j_search_data(question: str):
         return None
     st = time.time()
     entity_properties_content = ""
-    edge_contet = ""
+    edge_content = ""
     entity_relationships_content = ""
     for entity in filter_entities:
         # Query entity properties
         entity_properties = get_entity_properties(entity=entity)
         if entity_properties is not None:
-            entity_properties_content += entity_properties+"; "
+            entity_properties_content += entity_properties + "; "
         # Query edge
         edge = get_edge_properties(entity=entity)
         if edge is not None:
-            edge_contet += edge+"; "
+            edge_content += edge + "; "
         # Query entity relationships
         entity_relationships = get_entity_relationships(entity=entity)
         if entity_relationships is not None:
-            entity_relationships_content += entity_relationships+"; "
+            entity_relationships_content += entity_relationships + "; "
     et = time.time()
-    logger.info(f"neo4j search: {et-st}")
-    if entity_properties_content == "" and edge_contet == "" and entity_relationships_content == "":
+    logger.info(f"neo4j search: {et - st}")
+    if entity_properties_content == "" and edge_content == "" and entity_relationships_content == "":
         return None
-    return (f"查询结果为: {entity_properties_content}, {edge_contet}, {entity_relationships_content}", "neo4j query result")
+    return f"查询结果为: {entity_properties_content}, {edge_content}, {entity_relationships_content}", "neo4j query result"

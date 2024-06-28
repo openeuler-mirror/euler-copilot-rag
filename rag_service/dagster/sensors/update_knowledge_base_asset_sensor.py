@@ -9,8 +9,8 @@ from rag_service.dagster.assets.updated_knowledge_base_asset import (
     update_knowledge_base_asset, fetch_updated_original_document_set, insert_update_record
 )
 from rag_service.models.enums import VectorizationJobStatus
-from rag_service.models.database.models import yield_session
-from rag_service.models.database.models import VectorizationJob
+from rag_service.models.database import yield_session
+from rag_service.models.database import VectorizationJob
 from rag_service.utils.dagster_util import generate_asset_partition_key
 from rag_service.utils.db_util import change_vectorization_job_status, get_incremental_pending_jobs
 from rag_service.dagster.jobs.update_knowledge_base_asset_job import update_knowledge_base_asset_job

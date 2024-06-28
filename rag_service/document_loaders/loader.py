@@ -6,12 +6,14 @@ from typing import Dict, List
 from abc import ABC, abstractmethod
 
 from langchain.docstore.document import Document
-from langchain.document_loaders import TextLoader, UnstructuredWordDocumentLoader, \
-    UnstructuredPowerPointLoader, UnstructuredPDFLoader
+from langchain_community.document_loaders.text import TextLoader
+from langchain_community.document_loaders.pdf import UnstructuredPDFLoader
+from langchain_community.document_loaders.powerpoint import UnstructuredPowerPointLoader
+from langchain_community.document_loaders.word_document import UnstructuredWordDocumentLoader
 
 from rag_service.logger import get_logger
 from rag_service.constants import SENTENCE_SIZE
-from rag_service.models.generic.models import OriginalDocument
+from rag_service.models.generic import OriginalDocument
 from rag_service.document_loaders.docx_loader import DocxLoader
 from rag_service.document_loaders.excel_loader import ExcelLoader
 from rag_service.text_splitters.chinese_tsplitter import ChineseTextSplitter
@@ -117,7 +119,7 @@ class DOCLoader(Loader, regex=r'.*\.doc$', spec='plain'):
         self.textsplitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
 
     def load(self) -> List[Document]:
-        docs = self.loader.load_and_split(text_splitter=self.textsplitter)
+        docs = self.loader.load()
         return docs
 
 
@@ -128,7 +130,7 @@ class DOCXLoader(Loader, regex=r'.*\.docx$', spec='plain'):
         self.textsplitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
 
     def load(self) -> List[Document]:
-        docs = self.loader.load_and_split(text_splitter=self.textsplitter)
+        docs = self.loader.load()
         return docs
 
 

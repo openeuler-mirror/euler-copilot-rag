@@ -35,15 +35,7 @@ class KnowledgeBaseNotExistsException(Exception):
     ...
 
 
-class TokenCheckFailed(Exception):
-    ...
-
-
 class LlmRequestException(Exception):
-    ...
-
-
-class LlmAnswerException(Exception):
     ...
 
 

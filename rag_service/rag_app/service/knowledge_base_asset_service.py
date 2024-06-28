@@ -18,15 +18,15 @@ from rag_service.exceptions import (
     PostgresQueryException
 )
 from rag_service.logger import get_logger
-from rag_service.models.generic.models import VectorizationConfig
+from rag_service.models.generic import VectorizationConfig
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir
 from rag_service.models.enums import AssetType, VectorizationJobStatus, VectorizationJobType
 from rag_service.constants import DELETE_ORIGINAL_DOCUMENT_METADATA, DELETE_ORIGINAL_DOCUMENT_METADATA_KEY
 from rag_service.utils.db_util import validate_knowledge_base, get_knowledge_base_asset, \
     get_running_knowledge_base_asset
-from rag_service.models.database.models import KnowledgeBase, VectorizationJob, KnowledgeBaseAsset, \
+from rag_service.models.database import KnowledgeBase, VectorizationJob, KnowledgeBaseAsset, \
     OriginalDocument, VectorStore
-from rag_service.models.api.models import CreateKnowledgeBaseAssetReq, InitKnowledgeBaseAssetReq, AssetInfo, \
+from rag_service.models.api import CreateKnowledgeBaseAssetReq, InitKnowledgeBaseAssetReq, AssetInfo, \
     OriginalDocumentInfo, UpdateKnowledgeBaseAssetReq
 
 logger = get_logger()

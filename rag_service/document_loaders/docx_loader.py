@@ -1,6 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import List
-from xml.etree import ElementTree
 
 import docx
 from docx.document import Document
@@ -48,13 +47,13 @@ class DocxLoader(BaseLoader):
                 all_text.append(table_text)
             elif element.tag.endswith("p"):
                 # handle paragraph
-                xmlstr = str(element.xml)
-                if 'pic:pic' in xmlstr and self.do_ocr:
+                xml_str = str(element.xml)
+                if 'pic:pic' in xml_str and self.do_ocr:
                     pic_texts = ''
                     all_text.extend(pic_texts)
                 paragraph = docx.text.paragraph.Paragraph(element, self.doc)
                 para_text = self._handle_paragraph(paragraph)
                 all_text.append(para_text)
-        onetext = " ".join([t for t in all_text])
-        docs.append(Doc(page_content=onetext, metadata={"source": self.doc_path}))
+        one_text = " ".join([t for t in all_text])
+        docs.append(Doc(page_content=one_text, metadata={"source": self.doc_path}))
         return docs

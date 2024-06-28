@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Tuple
 
 from rag_service.constants import DATA_DIR
-from rag_service.models.database.models import KnowledgeBaseAsset
+from rag_service.models.database import KnowledgeBaseAsset
 
 
 def get_knowledge_base_asset_root_dir(knowledge_base_serial_number: str, asset_name: str) -> Path:

@@ -3,13 +3,14 @@ from abc import ABC, abstractmethod
 from typing import Any, Generator, Set
 
 from rag_service.models.enums import AssetType
-from rag_service.models.generic.models import OriginalDocument
+from rag_service.models.generic import OriginalDocument
 
 
 class BaseFetcher(ABC):
-    def __init_subclass__(cls, asset_types: Set[AssetType], **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__()
 
+        asset_types: Set[AssetType] = kwargs.get('asset_types')
         from rag_service.original_document_fetchers import _FETCHER_REGISTRY
 
         for asset_type in asset_types:

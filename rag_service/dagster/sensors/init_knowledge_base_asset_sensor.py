@@ -8,8 +8,8 @@ from rag_service.dagster.assets.init_knowledge_base_asset import (
     change_vectorization_job_status_to_success,
     init_knowledge_base_asset
 )
-from rag_service.models.database.models import yield_session
-from rag_service.models.database.models import VectorizationJob
+from rag_service.models.database import yield_session
+from rag_service.models.database import VectorizationJob
 from rag_service.utils.db_util import change_vectorization_job_status
 from rag_service.utils.dagster_util import generate_asset_partition_key
 from rag_service.models.enums import VectorizationJobType, VectorizationJobStatus

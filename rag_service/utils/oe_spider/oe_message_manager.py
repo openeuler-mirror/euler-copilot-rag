@@ -1,18 +1,15 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-from sqlalchemy import case, func
-from datetime import datetime, timezone, timedelta
-
-import pytz
-
-from pg import PoStrageDB
-from pg import OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution, OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOsv, OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase
+from pg import PostgresDB
+from pg import OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution, \
+    OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOsv, \
+    OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase,OeCommunityOrganizationStructure
 
 
 class OeMessageManager:
     @staticmethod
     def clear_oe_compatibility_overall_unit():
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.query(OeCompatibilityOverallUnit).delete()
                 session.commit()
         except Exception as e:
@@ -37,7 +34,7 @@ class OeMessageManager:
             host_bus_adapter=info.get("hostBusAdapter", ''),
             lang=info.get("lang", ''),
             main_board_bodel=info.get("mainboardModel", ''),
-            openeuler_version =info.get("osVersion", '').replace(' ', '-'),
+            openeuler_version=info.get("osVersion", '').replace(' ', '-'),
             ports_bus_types=info.get("portsBusTypes", ''),
             product_information=info.get("productInformation", ''),
             ram=info.get("ram", ''),
@@ -46,7 +43,7 @@ class OeMessageManager:
             boardCards=info.get("boardCards", '')
         )
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.add(oe_compatibility_overall_unit_slice)
                 session.commit()
         except Exception as e:
@@ -55,7 +52,7 @@ class OeMessageManager:
     @staticmethod
     def clear_oe_compatibility_card():
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.query(OeCompatibilityCard).delete()
                 session.commit()
         except Exception as e:
@@ -76,7 +73,7 @@ class OeMessageManager:
             driver_size=info.get("driverSize", ''),
             item=info.get("item", ''),
             lang=info.get("lang", ''),
-            openeuler_version =info.get("os", '').replace(' ', '-'),
+            openeuler_version=info.get("os", '').replace(' ', '-'),
             sha256=info.get("sha256", ''),
             ss_id=info.get("ssID", ''),
             sv_id=info.get("svID", ''),
@@ -85,7 +82,7 @@ class OeMessageManager:
             version=info.get("version", '')
         )
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.add(oe_compatibility_card_slice)
                 session.commit()
         except Exception as e:
@@ -94,7 +91,7 @@ class OeMessageManager:
     @staticmethod
     def clear_oe_compatibility_open_source_software():
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.query(OeCompatibilityOpenSourceSoftware).delete()
                 session.commit()
         except Exception as e:
@@ -103,7 +100,7 @@ class OeMessageManager:
     @staticmethod
     def add_oe_compatibility_open_source_software(info):
         oe_compatibility_open_source_software_slice = OeCompatibilityOpenSourceSoftware(
-            openeuler_version =info.get("os", '').replace(' ', '-'),
+            openeuler_version=info.get("os", '').replace(' ', '-'),
             arch=info.get("arch", ''),
             property=info.get("property", ''),
             result_url=info.get("result_url", ''),
@@ -123,7 +120,7 @@ class OeMessageManager:
             downloadLink=info.get("downloadLink", '')
         )
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.add(oe_compatibility_open_source_software_slice)
                 session.commit()
         except Exception as e:
@@ -132,7 +129,7 @@ class OeMessageManager:
     @staticmethod
     def clear_oe_compatibility_commercial_software():
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.query(OeCompatibilityCommercialSoftware).delete()
                 session.commit()
         except Exception as e:
@@ -150,11 +147,11 @@ class OeMessageManager:
             company_name=info.get("companyName", ''),
             platform_type_and_server_model=info.get("platformTypeAndServerModel", ''),
             authenticate_link=info.get("authenticateLink", ''),
-            openeuler_version =(info.get("osName", '')+info.get("osVersion", '')).replace(' ', '-'),
+            openeuler_version=(info.get("osName", '')+info.get("osVersion", '')).replace(' ', '-'),
             region=info.get("region", '')
         )
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.add(oe_compatibility_commercial_software_slice)
                 session.commit()
         except Exception as e:
@@ -163,7 +160,7 @@ class OeMessageManager:
     @staticmethod
     def clear_oe_compatibility_solution():
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.query(OeCompatibilitySolution).delete()
                 session.commit()
         except Exception as e:
@@ -184,7 +181,7 @@ class OeMessageManager:
             lang=info.get("lang", ''),
             libvirt_version=info.get("libvirtVersion", ''),
             network_card=info.get("networkCard", ''),
-            openeuler_version =info.get("os", '').replace(' ', '-'),
+            openeuler_version=info.get("os", '').replace(' ', '-'),
             ovs_version=info.get("OVSVersion", ''),
             product=info.get("product", ''),
             qemu_version=info.get("qemuVersion", ''),
@@ -196,7 +193,7 @@ class OeMessageManager:
             stratovirt_version=info.get("stratovirtVersion", '')
         )
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.add(oe_compatibility_solution_slice)
                 session.commit()
         except Exception as e:
@@ -205,7 +202,7 @@ class OeMessageManager:
     @staticmethod
     def clear_compatibility_osv():
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.query(OeCompatibilityOsv).delete()
                 session.commit()
         except Exception as e:
@@ -216,19 +213,19 @@ class OeMessageManager:
         oe_compatibility_osv_slice = OeCompatibilityOsv(
             id=info.get("id", ''),
             arch=info.get("arch", ''),
-            openeuler_version =info.get("osVersion", ''),
+            os_version=info.get("osVersion", ''),
             osv_name=info.get("osvName", ''),
             date=info.get("date", ''),
             os_download_link=info.get("osDownloadLink", ''),
-            type=info.get("id", ''),
-            details=info.get("id", ''),
+            type=info.get("type", ''),
+            details=info.get("details", ''),
             friendly_link=info.get("friendlyLink", ''),
             total_result=info.get("totalResult", ''),
             checksum=info.get("checksum", ''),
-            base_openeuler_version=info.get("baseOpeneulerVersion", '')
+            openeuler_version=info.get('baseOpeneulerVersion', '').replace(' ', '-')
         )
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.add(oe_compatibility_osv_slice)
                 session.commit()
         except Exception as e:
@@ -237,7 +234,7 @@ class OeMessageManager:
     @staticmethod
     def clear_oe_compatibility_security_notice():
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.query(OeCompatibilitySecurityNotice).delete()
                 session.commit()
         except Exception as e:
@@ -269,7 +266,7 @@ class OeMessageManager:
             cve_list=info.get("cveList", '')
         )
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.add(oe_compatibility_security_notice_slice)
                 session.commit()
         except Exception as e:
@@ -278,7 +275,7 @@ class OeMessageManager:
     @staticmethod
     def clear_oe_compatibility_cve_database():
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.query(OeCompatibilityCveDatabase).delete()
                 session.commit()
         except Exception as e:
@@ -322,8 +319,30 @@ class OeMessageManager:
             package_list=info.get("packageList", '')
         )
         try:
-            with PoStrageDB().get_session() as session:
+            with PostgresDB().get_session() as session:
                 session.add(oe_compatibility_cve_database_slice)
+                session.commit()
+        except Exception as e:
+            return
+    def clear_oe_community_organization_structure():
+        try:
+            with PostgresDB().get_session() as session:
+                session.query(OeCommunityOrganizationStructure).delete()
+                session.commit()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def add_oe_community_organization_structure(info):
+        oe_community_organization_structure_slice = OeCommunityOrganizationStructure(
+            committee_name= info.get('committee_name',''),
+            role = info.get('role',''),
+            name = info.get('name',''),
+            personal_message = info.get('personal_message','')
+        )
+        try:
+            with PostgresDB().get_session() as session:
+                session.add(oe_community_organization_structure_slice)
                 session.commit()
         except Exception as e:
             return

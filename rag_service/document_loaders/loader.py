@@ -23,7 +23,7 @@ logger = get_logger()
 
 spec_loader_config = {
     ".docx": {
-        "spec": "specHeadDocx",
+        "spec": "plain",
         "do_ocr": False
     }
 }
@@ -184,4 +184,5 @@ class DocxByHeadLoader(Loader, regex=r'.*\.docx$', spec='specHeadDocx'):
 
     def load(self) -> List[Document]:
         docs = self.loader.load_by_heading(text_splitter=self.textsplitter)
+        logger.error("进入docxheadload")
         return docs

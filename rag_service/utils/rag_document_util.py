@@ -35,15 +35,23 @@ def intent_detect(req: QueryRequest):
         return req.question
     prompt = INTENT_DETECT_PROMPT_TEMPLATE
     history_prompt = ""
+    q_cnt = 0
+    a_cnt = 0
     for item in req.history:
         if item['role'] == 'user':
-            history_prompt += "Q:"+item["content"]+"\n"
+            history_prompt += "用户历史问题"+str(q_cnt)+':'+item["content"]+"\n"
+            q_cnt += 1
         if item['role'] == 'assistant':
-            history_prompt += "A: *\n"
-            item["content"] = ""
+            history_prompt += "模型历史回答"+str(a_cnt)+':'+item["content"]+"\n"
+            a_cnt += 1
     prompt = prompt.format(history=history_prompt, question=req.question)
+    logger.error('prompt为 '+prompt)
+    tmp_req = copy.deepcopy(req)
+    tmp_req.question = '请给出一个改写后的问题'
+    tmp_req.history = []
+    logger.error('用户问题改写prompt')
     st = time.time()
-    rewrite_query = select_llm(req).nonstream(req, prompt).content
+    rewrite_query = select_llm(tmp_req).nonstream(tmp_req, prompt).content
     et = time.time()
     logger.info(f"query改写结果 = {rewrite_query}")
     logger.info(f"query改写耗时 = {et-st}")
@@ -58,7 +66,6 @@ def get_rag_document_info(req: QueryRequest):
     # rewrite_req.history = []
     rewrite_req.model_name = config['VERSION_EXPERT_LLM_MODEL']
     rewrite_query = intent_detect(rewrite_req)
-    logger.error(rewrite_query)
     rewrite_req.question = rewrite_query
     req.question = QUESTION_PROMPT.format(question=req.question, question_after_expend=rewrite_query)
     rewrite_req.history = []
@@ -93,7 +100,9 @@ def rag_search_and_rerank(raw_question: str, kb_sn: str, top_k: int) -> List[tup
     docs = []
     docs_index = {}
     pg_result_hash = set()
+    logger.error(str(pg_results))
     for pg_result in pg_results:
+        logger.error("pg_result "+pg_result[0])
         if pg_result[0] in pg_result_hash:
             continue
         pg_result_hash.add(pg_result[0])

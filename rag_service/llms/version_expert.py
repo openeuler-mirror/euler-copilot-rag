@@ -3,6 +3,7 @@ import os
 import re
 import time
 import json
+import copy
 
 from sqlalchemy import text
 
@@ -19,6 +20,7 @@ logger = get_logger()
 
 def get_data_by_gsql(req, prompt):
     raw_generate_sql = select_llm(req).nonstream(req, prompt).content
+    logger.error('llm生成的sql '+raw_generate_sql)
     if not raw_generate_sql or "select" not in str.lower(raw_generate_sql):
         return raw_generate_sql, []
     logger.info(f"版本专家生成sql = {raw_generate_sql}")
@@ -50,16 +52,16 @@ def version_expert_search_data(req: QueryRequest):
     except Exception:
         logger.error("打开文件失败")
         return
-    prompt = SQL_GENERATE_PROMPT_TEMPLATE.format(table=table_content, example=example_content)
-
-    raw_generate_sql = select_llm(req).nonstream(req, prompt).content
-    if not raw_generate_sql or "select" not in str.lower(raw_generate_sql):
-        results = ()
-    else:
-        raw_generate_sql, results = get_data_by_gsql(req, prompt)
+    prompt = SQL_GENERATE_PROMPT_TEMPLATE.format(table=table_content, example=example_content, question=req.question)
+    tmp_req = copy.deepcopy(req)
+    tmp_req.question = '请生成一条在postgres数据库可执行的sql'
+    raw_generate_sql, results = get_data_by_gsql(tmp_req, prompt)
     if len(results) == 0:
-        prompt = SQL_GENERATE_PROMPT_TEMPLATE.format(table=table_content, sql=raw_generate_sql, example=example_content)
-        results = get_data_by_gsql(req, prompt)
+        prompt = SQL_GENERATE_PROMPT_TEMPLATE.format(
+            table=table_content, sql=raw_generate_sql, example=example_content, question=req.question)
+        raw_generate_sql, results = get_data_by_gsql(tmp_req, prompt)
+    if len(results)==0:
+        return
     string_results = [str(item) for item in results]
     joined_results = ', '.join(string_results)
     et = time.time()

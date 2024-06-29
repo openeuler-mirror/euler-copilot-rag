@@ -1,0 +1,231 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import datetime
+from enum import Enum
+from uuid import uuid4
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    JSON,
+    String,
+    text,
+    UniqueConstraint,
+    UnicodeText,
+    Enum as SAEnum,
+    Integer,
+    DateTime,
+    create_engine,
+    func
+)
+from pgvector.sqlalchemy import Vector
+from sqlalchemy.types import TIMESTAMP, UUID
+from sqlalchemy.orm import relationship, declarative_base
+
+
+class VectorizationJobStatus(Enum):
+    PENDING = 'PENDING'
+    STARTING = 'STARTING'
+    STARTED = 'STARTED'
+    SUCCESS = 'SUCCESS'
+    FAILURE = 'FAILURE'
+
+    @classmethod
+    def types_not_running(cls):
+        return [cls.SUCCESS, cls.FAILURE]
+
+
+class VectorizationJobType(Enum):
+    INIT = 'INIT'
+    INCREMENTAL = 'INCREMENTAL'
+    DELETE = 'DELETE'
+
+
+class AssetType(Enum):
+    UPLOADED_ASSET = 'UPLOADED_ASSET'
+
+    @classmethod
+    def types_require_upload_files(cls):
+        return [cls.UPLOADED_ASSET]
+
+
+class EmbeddingModel(Enum):
+    TEXT2VEC_BASE_CHINESE_PARAPHRASE = 'text2vec-base-chinese-paraphrase'
+    BGE_LARGE_ZH = 'bge-large-zh'
+    BGE_MIXED_MODEL = 'bge-mixed-model'
+
+
+class UpdateOriginalDocumentType(Enum):
+    DELETE = 'DELETE'
+    UPDATE = 'UPDATE'
+    INCREMENTAL = 'INCREMENTAL'
+
+
+Base = declarative_base()
+
+
+class ServiceConfig(Base):
+    __tablename__ = 'service_config'
+
+    id = Column(UUID, default=uuid4, primary_key=True)
+    name = Column(String, unique=True)
+    value = Column(UnicodeText)
+
+
+class KnowledgeBase(Base):
+    __tablename__ = 'knowledge_base'
+
+    id = Column(UUID, default=uuid4, primary_key=True)
+    name = Column(String)
+    sn = Column(String, unique=True)
+    owner = Column(String)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
+
+    knowledge_base_assets = relationship(
+        "KnowledgeBaseAsset", back_populates="knowledge_base", cascade="all, delete-orphan")
+
+
+class KnowledgeBaseAsset(Base):
+    __tablename__ = 'knowledge_base_asset'
+    __table_args__ = (
+        UniqueConstraint('kb_id', 'name', name='knowledge_base_asset_name_uk'),
+    )
+
+    id = Column(UUID, default=uuid4, primary_key=True)
+    name = Column(String)
+    asset_type = Column(SAEnum(AssetType))
+    asset_uri = Column(String, nullable=True)
+    embedding_model = Column(SAEnum(EmbeddingModel), nullable=True)
+    vectorization_config = Column(JSON, default=dict)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
+
+    kb_id = Column(UUID, ForeignKey('knowledge_base.id'))
+    knowledge_base = relationship("KnowledgeBase", back_populates="knowledge_base_assets")
+
+    vector_stores = relationship("VectorStore", back_populates="knowledge_base_asset", cascade="all, delete-orphan")
+    incremental_vectorization_job_schedule = relationship(
+        "IncrementalVectorizationJobSchedule",
+        uselist=False,
+        cascade="all, delete-orphan",
+        back_populates="knowledge_base_asset"
+    )
+    vectorization_jobs = relationship(
+        "VectorizationJob", back_populates="knowledge_base_asset", cascade="all, delete-orphan")
+
+
+class VectorStore(Base):
+    __tablename__ = 'vector_store'
+    __table_args__ = (
+        UniqueConstraint('kba_id', 'name', name='vector_store_name_uk'),
+    )
+
+    id = Column(UUID, default=uuid4, primary_key=True)
+    name = Column(String)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
+
+    original_documents = relationship("OriginalDocument", back_populates="vector_store", cascade="all, delete-orphan")
+
+    kba_id = Column(UUID, ForeignKey('knowledge_base_asset.id'))
+    knowledge_base_asset = relationship("KnowledgeBaseAsset", back_populates="vector_stores")
+
+
+class OriginalDocument(Base):
+    __tablename__ = 'original_document'
+    __table_args__ = (
+        UniqueConstraint('vs_id', 'uri', name='kb_doc_uk'),
+    )
+
+    id = Column(UUID, default=uuid4, primary_key=True)
+    uri = Column(String, index=True)
+    source = Column(String)
+    mtime = Column(TIMESTAMP(timezone=True), index=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
+
+    vs_id = Column(UUID, ForeignKey('vector_store.id'))
+    vector_store = relationship("VectorStore", back_populates="original_documents")
+
+
+class IncrementalVectorizationJobSchedule(Base):
+    __tablename__ = 'incremental_vectorization_job_schedule'
+
+    id = Column(UUID, default=uuid4, primary_key=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    last_updated_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_cycle = Column(TIMESTAMP, default=7 * 24 * 3600)
+    next_updated_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    kba_id = Column(UUID, ForeignKey('knowledge_base_asset.id'))
+    knowledge_base_asset = relationship("KnowledgeBaseAsset", back_populates="incremental_vectorization_job_schedule")
+
+
+class VectorizationJob(Base):
+    __tablename__ = 'vectorization_job'
+
+    id = Column(UUID, default=uuid4, primary_key=True)
+    status = Column(SAEnum(VectorizationJobStatus))
+    job_type = Column(SAEnum(VectorizationJobType))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp())
+
+    kba_id = Column(UUID, ForeignKey('knowledge_base_asset.id'))
+    knowledge_base_asset = relationship("KnowledgeBaseAsset", back_populates="vectorization_jobs")
+
+    updated_original_documents = relationship("UpdatedOriginalDocument", back_populates="vectorization_job")
+
+
+class UpdatedOriginalDocument(Base):
+    __tablename__ = 'updated_original_document'
+
+    id = Column(UUID, default=uuid4, primary_key=True)
+    update_type = Column(SAEnum(UpdateOriginalDocumentType))
+    source = Column(String)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
+
+    job_id = Column(UUID, ForeignKey('vectorization_job.id'))
+    vectorization_job = relationship("VectorizationJob", back_populates="updated_original_documents")
+
+
+class VectorizeItems(Base):
+    __tablename__ = 'vectorize_items'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    general_text = Column(String())
+    general_text_vector = Column(Vector())
+    source = Column(String())
+    uri = Column(String())
+    mtime = Column(DateTime, default=datetime.datetime.now)
+    extended_metadata = Column(String())
+    index_name = Column(String())
+
+
+def create_db_and_tables(pg_host, pg_port, pg_user, pg_pwd):
+    pg_url = pg_host+':'+pg_port
+    engine = create_engine(
+        f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
+        pool_size=20,
+        max_overflow=80,
+        pool_recycle=300,
+        pool_pre_ping=True
+    )
+    with engine.connect() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS zhparser"))
+    Base.metadata.create_all(engine)

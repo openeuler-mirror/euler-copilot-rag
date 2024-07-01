@@ -73,7 +73,7 @@ class Config:
             config_file = os.getenv("CONFIG")
         else:
             #config_file = "/rag-service/.env"
-            config_file = "./.env"
+            config_file = "./config/.env"
         self.config = ConfigModel(**(dotenv_values(config_file)))
         if os.getenv("PROD"):
             os.remove(config_file)

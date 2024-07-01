@@ -39,6 +39,7 @@ def upload_files(upload_file_paths: List[str], engine, ssl_enable, rag_url, kb_n
     else:
         res = requests.post(url=rag_url, data=data, files=upload_files_list)
     while Vectorize.is_rag_busy(engine):
+        print('等待之前任务完成中')
         time.sleep(5)
     if res.status_code == 200:
         return True

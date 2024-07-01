@@ -86,7 +86,7 @@ def split_into_paragraphs(text, max_paragraph_length=2000):
     return paragraphs
 
 
-def get_paragraphs_from_file(file_path, max_paragraph_length=2000):
+def get_paragraphs_from_file(file_path, max_paragraph_length=2048):
     file_extension = os.path.splitext(file_path)[1].lower()
     if file_extension == '.txt':
         with open(file_path, 'r', encoding='utf-8') as file:

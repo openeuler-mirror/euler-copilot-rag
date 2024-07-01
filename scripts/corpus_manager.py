@@ -62,7 +62,9 @@ def work(args):
             shutil.rmtree(para_dir)
         os.mkdir(para_dir)
         try:
-            change_document_to_para(corpus_dir, para_dir, corpus_chunk)
+            corpus_name_list=change_document_to_para(corpus_dir, para_dir, corpus_chunk)
+            for corpus_name in corpus_name_list:
+                delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corpus_name)
             upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable,
                           rag_host, rag_port, kb_name, kb_asset_name, para_dir)
             print("语料已上传")
@@ -103,8 +105,8 @@ def work(args):
             print("未查询到语料")
         else:
             print("查询到以下语料名：")
-        for corpus_name in corpus_name_list:
-            print(corpus_name)
+        for corpus_name,time in corpus_name_list:
+            print('语料名 ',corpus_name,' 上传时间 ',time)
 
     elif choice == "stop_embdding_jobs":
         try:
@@ -128,7 +130,7 @@ def init_args():
     parser.add_argument("--pg_host", default='127.0.0.1',type=str, required=False, help="语料库所在postres的ip")
     parser.add_argument("--pg_port", default='5432',type=str, required=False, help="语料库所在postres的端口")
     parser.add_argument("--pg_user", default='postgres',type=str, required=False, help="语料库所在postres的用户")
-    parser.add_argument("--pg_pwd", default='uh6XkcS7VUGeLw86i',type=str, required=False, help="语料库所在postres的密码")
+    parser.add_argument("--pg_pwd", default='123456',type=str, required=False, help="语料库所在postres的密码")
     parser.add_argument("--rag_host", type=str, default='127.0.0.1', required=False, help="rag服务的ip")
     parser.add_argument("--rag_port", type=str, default='8005', required=False, help="rag服务的port")
     parser.add_argument("--kb_name", type=str, default='default_test', required=False, help="资产名称")

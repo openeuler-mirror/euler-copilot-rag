@@ -5,7 +5,6 @@ dagster-postgres==0.22.9
 dagster-webserver==1.6.9
 fastapi==0.110.2
 fastapi-pagination==0.12.19
-#FlagEmbedding == 1.2.9
 itsdangerous==2.1.2
 langchain==0.1.16
 langchain-openai == 0.0.8
@@ -25,3 +24,8 @@ SQLAlchemy == 2.0.23
 spark_ai_python == 0.3.28
 uvicorn==0.21.0
 urllib3==2.2.1
+nltk==3.8.1
+beautifulsoup4==4.12.3
+PyPDF2==3.0.1
+Markdown==3.6
+openpyxl==3.1.2

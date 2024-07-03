@@ -16,25 +16,28 @@ def query_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corp
         pool_pre_ping=True
     )
     corpus_name_list = []
-    with sessionmaker(bind=engine)() as session:
-            default_kb = session.query(KnowledgeBase).filter_by(sn=kb_name).first()
-            default_kba = session.query(KnowledgeBaseAsset).filter(
-                KnowledgeBaseAsset.kb_id == default_kb.id,
-                KnowledgeBaseAsset.name == kb_asset_name
-            ).first()
-            vector_itmes_id = session.query(VectorStore.name).filter(
-                VectorStore.kba_id == default_kba.id
-            ).first()[0]
-            vector_itmes_table_name = 'vectorize_items_'+vector_itmes_id
-            metadata = MetaData()
-            table = Table(vector_itmes_table_name, metadata, autoload_with=engine)
+    try:
+        with sessionmaker(bind=engine)() as session:
+                default_kb = session.query(KnowledgeBase).filter_by(sn=kb_name).first()
+                default_kba = session.query(KnowledgeBaseAsset).filter(
+                    KnowledgeBaseAsset.kb_id == default_kb.id,
+                    KnowledgeBaseAsset.name == kb_asset_name
+                ).first()
+                vector_itmes_id = session.query(VectorStore.name).filter(
+                    VectorStore.kba_id == default_kba.id
+                ).first()[0]
+                vector_itmes_table_name = 'vectorize_items_'+vector_itmes_id
+                metadata = MetaData()
+                table = Table(vector_itmes_table_name, metadata, autoload_with=engine)
 
-            query = (
-                select(table.c.source,table.c.mtime)
-                .where(table.c.source.ilike('%' + corpus_name + '%'))
-            )
+                query = (
+                    select(table.c.source,table.c.mtime)
+                    .where(table.c.source.ilike('%' + corpus_name + '%'))
+                )
 
-            corpus_name_list = session.execute(query).fetchall()
+                corpus_name_list = session.execute(query).fetchall()
+    except:
+         return []
     corpus_name_time={}
 
     for i in range(len(corpus_name_list)):

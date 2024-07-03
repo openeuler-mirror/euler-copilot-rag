@@ -1,10 +1,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import uuid
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text,and_
 from sqlalchemy.orm import sessionmaker
 
-from rag_service.models.database import KnowledgeBase, KnowledgeBaseAsset, VectorStore, VectorizationJob
+from scripts.init_all_table import KnowledgeBase, KnowledgeBaseAsset, VectorStore, VectorizationJob
 
 
 def init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedding_model):
@@ -52,7 +52,10 @@ def init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedd
 
             # insert success vectorization job
             knowledge_base_asset = session.query(KnowledgeBaseAsset).filter(
-                KnowledgeBaseAsset.name == kb_asset_name).one()
+                and_(KnowledgeBaseAsset.name == kb_asset_name,
+                     KnowledgeBaseAsset.kb_id ==knowledge_base_id[0]
+                    )).one()
+
 
             vectorization_job = VectorizationJob()
             vectorization_job.id = uuid.uuid4()

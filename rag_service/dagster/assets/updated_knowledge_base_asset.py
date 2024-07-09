@@ -15,7 +15,6 @@ from rag_service.models.database import yield_session
 from rag_service.models.generic import OriginalDocument
 from rag_service.original_document_fetchers import select_fetcher, Fetcher
 from rag_service.models.enums import VectorizationJobStatus, UpdateOriginalDocumentType
-from rag_service.rag_app.service.spark_embedding_online import SparkEmbeddingOnline
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
 from rag_service.models.database import VectorStore, VectorizationJob, KnowledgeBaseAsset
 from rag_service.vectorstore.postgresql.manage_pg import pg_create_and_insert_data, pg_delete_data
@@ -202,19 +201,14 @@ def embedding_update_documents(
         embeddings = []
         while index < len(documents):
             try:
-                if config['EMBEDDING_METHOD'] == "offline":
-                    tmp = vectorize_embedding(
+                tmp = vectorize_embedding(
                         [documents[index].page_content],
                         knowledge_base_asset.embedding_model
-                    )
-                elif config['EMBEDDING_METHOD'] == "online":
-                    tmp = SparkEmbeddingOnline.embedding_by_spark_online(
-                        [documents[index].page_content], config["SPARK_QUERY_EMDEDDING"])
+                )
                 embeddings.extend(tmp)
                 index += 1
             except:
                 del updated_original_documents[index]
-                del documents[index]
         # 后续选择合适的vector_store进行存储
         vector_store_name = vector_stores[0].name
     return updated_original_documents, documents, embeddings, vector_store_name

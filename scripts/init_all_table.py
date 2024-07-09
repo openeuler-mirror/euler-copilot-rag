@@ -19,7 +19,9 @@ from sqlalchemy import (
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.types import TIMESTAMP, UUID
 from sqlalchemy.orm import relationship, declarative_base
+from logger import get_logger
 
+logger = get_logger()
 
 class VectorizationJobStatus(Enum):
     PENDING = 'PENDING'
@@ -217,15 +219,23 @@ class VectorizeItems(Base):
 
 
 def create_db_and_tables(pg_host, pg_port, pg_user, pg_pwd):
-    pg_url = pg_host+':'+pg_port
-    engine = create_engine(
-        f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
-        pool_size=20,
-        max_overflow=80,
-        pool_recycle=300,
-        pool_pre_ping=True
-    )
-    with engine.connect() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS zhparser"))
-    Base.metadata.create_all(engine)
+    try:
+        pg_url = pg_host+':'+pg_port
+        engine = create_engine(
+            f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
+            pool_size=20,
+            max_overflow=80,
+            pool_recycle=300,
+            pool_pre_ping=True
+        )
+    except Exception as e:
+        logger.error(f'数据库引擎初始化失败，由于原因{e}')
+        raise e
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS zhparser"))
+        Base.metadata.create_all(engine)
+    except Exception as e:
+        logger.error(f'表格初始化失败，由于原因{e}')
+        raise e

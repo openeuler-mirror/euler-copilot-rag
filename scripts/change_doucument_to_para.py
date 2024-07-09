@@ -1,7 +1,9 @@
 import os
 from docx import Document
+from document_split import get_paragraphs_from_file
+from logger import get_logger
 
-from scripts.document_split import get_paragraphs_from_file
+logger = get_logger()
 
 
 def get_all_file_paths(directory):
@@ -17,11 +19,11 @@ def change_document_to_para(src_dir, tar_dir, chunk=1024):
     all_files = get_all_file_paths(src_dir)
     file_name_list=[]
     for dir in all_files:
-        #try:
-        print(dir)
-        para_list = get_paragraphs_from_file(dir, chunk)
-        #except:
-            #continue
+        try:
+            para_list = get_paragraphs_from_file(dir, chunk)
+        except Exception as e:
+            logger.error(f'文件 {src_dir}转换为片段失败，由于错误{e}')
+            continue
         file_name = os.path.basename(dir)
         para_cnt = 1
         if len(para_list)!=0:

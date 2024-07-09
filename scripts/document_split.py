@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import PyPDF2
 from docx import Document
 import markdown
+
 nltk_data_path = "./nltk_data"
 
 if os.path.exists(nltk_data_path):
@@ -62,7 +63,7 @@ def tokenize_docx(docx_path):
 
 
 def tokenize_md(md_path):
-    with open(md_path, 'r', encoding='utf-8') as file:
+    with open(md_path, 'r', encoding='utf-8', errors="ignore") as file:
         md_text = file.read()
         html_text = markdown.markdown(md_text)
         tokens = tokenize_html(html_text)
@@ -88,13 +89,14 @@ def split_into_paragraphs(text, max_paragraph_length=2000):
 
 def get_paragraphs_from_file(file_path, max_paragraph_length=2048):
     file_extension = os.path.splitext(file_path)[1].lower()
+    print(file_extension)
     if file_extension == '.txt':
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, 'r', encoding='utf-8', errors="ignore") as file:
             text = file.read()
             paragraphs = split_into_paragraphs(text, max_paragraph_length)
             return paragraphs
     elif file_extension == '.html':
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, 'r', encoding='utf-8', errors="ignore") as file:
             html_text = file.read()
             tokens = tokenize_html(html_text)
             text = " ".join(tokens)
@@ -105,10 +107,11 @@ def get_paragraphs_from_file(file_path, max_paragraph_length=2048):
         text = " ".join(tokens)
         paragraphs = split_into_paragraphs(text, max_paragraph_length)
         return paragraphs
-    elif file_extension == '.docx': 
+    elif file_extension == '.docx':
         tokens = tokenize_docx(file_path)
         text = " ".join(tokens)
         paragraphs = split_into_paragraphs(text, max_paragraph_length)
+        print(paragraphs)
         return paragraphs
     elif file_extension == '.md':
         tokens = tokenize_md(file_path)

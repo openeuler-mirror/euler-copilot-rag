@@ -10,6 +10,7 @@ from more_itertools import chunked
 from langchain.schema import Document
 from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut, DynamicOutput, RetryPolicy
 
+from rag_service.logger import get_logger
 from rag_service.document_loaders.loader import load_file
 from rag_service.models.enums import VectorizationJobStatus
 from rag_service.security.config import config
@@ -24,8 +25,8 @@ from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir, pa
 from rag_service.models.database import OriginalDocument as OriginalDocumentEntity, KnowledgeBase
 from rag_service.dagster.partitions.knowledge_base_asset_partition import knowledge_base_asset_partitions_def
 from rag_service.rag_app.service.vectorize_service import vectorize_embedding
-from rag_service.rag_app.service.spark_embedding_online import SparkEmbeddingOnline
 
+logger = get_logger()
 
 @op(retry_policy=RetryPolicy(max_retries=3))
 def change_vectorization_job_status_to_started(context: OpExecutionContext):
@@ -79,8 +80,7 @@ def embedding_documents(
                 KnowledgeBase.sn == knowledge_base_serial_number,
                 KnowledgeBaseAsset.name == knowledge_base_asset_name
         ).one()
-    if config['EMBEDDING_METHOD'] == "offline":
-        embeddings = list(
+    embeddings = list(
             itertools.chain.from_iterable(
                 [
                     vectorize_embedding(
@@ -89,11 +89,7 @@ def embedding_documents(
                     ) for chunked_documents in chunked(documents, EMBEDDING_CHUNK_SIZE)
                 ]
             )
-        )
-    elif config['EMBEDDING_METHOD'] == "online":
-        embeddings = SparkEmbeddingOnline.embedding_by_spark_online(
-                [document.page_content for document in documents],
-                config['EMBEDDING_METHOD_ONLINE'])
+    )
     return original_documents, documents, embeddings
 
 

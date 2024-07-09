@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, update, and_
 from sqlalchemy.orm import sessionmaker
 
 
-from scripts.init_all_table import VectorizationJob
+from init_all_table import VectorizationJob
 
 
 def stop_embedding_job(pg_host, pg_port, pg_user, pg_pwd):

@@ -3,18 +3,24 @@ import os
 
 from sqlalchemy import create_engine, MetaData, Table,  select, distinct
 from sqlalchemy.orm import sessionmaker
-from scripts.init_all_table import KnowledgeBase, KnowledgeBaseAsset, VectorStore
+from init_all_table import KnowledgeBase, KnowledgeBaseAsset, VectorStore
+from logger import get_logger
 
+logger = get_logger()
 
 def query_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corpus_name):
-    pg_url = pg_host+':'+pg_port
-    engine = create_engine(
-        f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
-        pool_size=20,
-        max_overflow=80,
-        pool_recycle=300,
-        pool_pre_ping=True
-    )
+    try:
+        pg_url = pg_host+':'+pg_port
+        engine = create_engine(
+            f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
+            pool_size=20,
+            max_overflow=80,
+            pool_recycle=300,
+            pool_pre_ping=True
+        )
+    except Exception as e:
+        logger.error(f'数据库引擎初始化失败，由于原因{e}')
+        raise e
     corpus_name_list = []
     try:
         with sessionmaker(bind=engine)() as session:
@@ -36,8 +42,9 @@ def query_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corp
                 )
 
                 corpus_name_list = session.execute(query).fetchall()
-    except:
-         return []
+    except Exception as e:
+        logger.error(f'语料查询失败由于原因{e}')
+        raise e
     corpus_name_time={}
 
     for i in range(len(corpus_name_list)):

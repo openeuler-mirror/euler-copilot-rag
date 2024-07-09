@@ -2,17 +2,23 @@
 import os
 from sqlalchemy import create_engine, MetaData, Table, select,delete
 from sqlalchemy.orm import sessionmaker
-from scripts.init_all_table import KnowledgeBase, KnowledgeBaseAsset, VectorStore
+from init_all_table import KnowledgeBase, KnowledgeBaseAsset, VectorStore
+from logger import get_logger
 
+logger = get_logger()
 def delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corpus_name):
-    pg_url = pg_host+':'+pg_port
-    engine = create_engine(
-        f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
-        pool_size=20,
-        max_overflow=80,
-        pool_recycle=300,
-        pool_pre_ping=True
-    )
+    try:
+        pg_url = pg_host+':'+pg_port
+        engine = create_engine(
+            f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
+            pool_size=20,
+            max_overflow=80,
+            pool_recycle=300,
+            pool_pre_ping=True
+        )
+    except Exception as e:
+        logger.error(f'数据库引擎初始化失败，由于原因{e}')
+        raise e
     try:
         with sessionmaker(bind=engine)() as session:
             default_kb = session.query(KnowledgeBase).filter_by(sn=kb_name).first()
@@ -35,6 +41,8 @@ def delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, cor
                     .where(table.c.source.ilike('%' + file_name+ '%'))
                 )
             corpus_name_list = session.execute(query).fetchall()
+            if len(corpus_name_list) == 0:
+                return False
             for i in range(len(corpus_name_list)):
                 file_name=os.path.splitext(corpus_name_list[i][0])[0]
                 index=file_name[::-1].index('_')
@@ -43,5 +51,7 @@ def delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, cor
                     delete_stmt = delete(table).where(table.c.source == corpus_name_list[i][0])
                     session.execute(delete_stmt)
                     session.commit()
-    except:
-        pass
+            return True
+    except Exception as e:
+        logger.error(f'文件删除失败由于原因 {e}')
+        raise e

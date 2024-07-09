@@ -1,11 +1,13 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import uuid
+from datetime import datetime
 
-from sqlalchemy import create_engine, text,and_
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, text, and_, MetaData, Table, Column, Integer, String, DateTime
+from sqlalchemy.orm import sessionmaker, registry
+from sqlalchemy import create_engine
+from pgvector.sqlalchemy import Vector
 
-from scripts.init_all_table import KnowledgeBase, KnowledgeBaseAsset, VectorStore, VectorizationJob
-
+from init_all_table import KnowledgeBase, KnowledgeBaseAsset, VectorStore, VectorizationJob
 
 def init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedding_model):
     pg_url = pg_host+':'+pg_port
@@ -73,5 +75,34 @@ def init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedd
             session.add(vector_store)
             session.commit()
 
+            vector_items_id = session.query(VectorStore.name).filter(
+                VectorStore.kba_id == knowledge_base_asset.id
+            ).first()[0]
+            metadata = MetaData()
+
+            def create_dynamic_table(vector_items_id):
+                table_name = f'vectorize_items_{vector_items_id}'
+                table = Table(
+                    table_name,
+                    metadata,
+                    Column('id', Integer, primary_key=True, autoincrement=True),
+                    Column('general_text', String()),
+                    Column('general_text_vector', Vector()),
+                    Column('source', String()),
+                    Column('uri', String()),
+                    Column('mtime', DateTime, default=datetime.now),
+                    Column('extended_metadata', String()),
+                    Column('index_name', String())
+                )
+                return table
+
+            dynamic_table = create_dynamic_table(vector_items_id)
+
+            reg = registry()
+            @reg.mapped
+            class VectorItem:
+                __table__ = dynamic_table
+
+            metadata.create_all(engine)
     except Exception as e:
         raise e

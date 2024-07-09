@@ -8,10 +8,12 @@ import requests
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import create_engine, func, and_
 
-from scripts.init_all_table import VectorizationJob
+from init_all_table import VectorizationJob
+from logger import get_logger
+logger = get_logger()
 
 Base = declarative_base()
-CHUNK_SIZE = 100
+
 
 
 class Vectorize:
@@ -47,27 +49,40 @@ def upload_files(upload_file_paths: List[str], engine, ssl_enable, rag_url, kb_n
         return False
 
 
-def upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable, rag_host, rag_port, kb_name, kb_asset_name, corpus_dir):
-    pg_url = pg_host+':'+pg_port
+def upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable, rag_host, rag_port, kb_name, kb_asset_name, corpus_dir, up_chunk):
     rag_url = 'http://'+rag_host+':'+rag_port+'/kba/update'
     if ssl_enable:
         rag_url = 'https://'+rag_host+':'+rag_port+'/kba/update'
-    engine = create_engine(
-        f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
-        pool_size=20,
-        max_overflow=80,
-        pool_recycle=300,
-        pool_pre_ping=True
-    )
-    for root, dirs, files in tqdm(os.walk(corpus_dir)):
-        index = 0
-        batch_count = 0
-        file_paths = []
-        for file_name in files:
-            index += 1
-            file_paths.append(os.path.join(root, file_name))
-            if index == CHUNK_SIZE:
-                index = 0
+    try:
+        pg_url = pg_host+':'+pg_port
+        engine = create_engine(
+            f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
+            pool_size=20,
+            max_overflow=80,
+            pool_recycle=300,
+            pool_pre_ping=True
+        )
+    except Exception as e:
+        logger.error(f'数据库引擎初始化失败，由于原因{e}')
+        raise e
+    try:
+        for root, dirs, files in tqdm(os.walk(corpus_dir)):
+            index = 0
+            batch_count = 0
+            file_paths = []
+            for file_name in files:
+                index += 1
+                file_paths.append(os.path.join(root, file_name))
+                if index == up_chunk:
+                    index = 0
+                    batch_count += 1
+                    upload_res = upload_files(file_paths, engine, ssl_enable, rag_url, kb_name, kb_asset_name)
+                    if upload_res:
+                        print(f'upload succeed {batch_count}')
+                    else:
+                        raise Exception("error")
+                    file_paths.clear()
+            if index != 0:
                 batch_count += 1
                 upload_res = upload_files(file_paths, engine, ssl_enable, rag_url, kb_name, kb_asset_name)
                 if upload_res:
@@ -75,11 +90,6 @@ def upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable, rag_host, rag_p
                 else:
                     raise Exception("error")
                 file_paths.clear()
-        if index != 0:
-            batch_count += 1
-            upload_res = upload_files(file_paths, engine, ssl_enable, rag_url, kb_name, kb_asset_name)
-            if upload_res:
-                print(f'upload succeed {batch_count}')
-            else:
-                raise Exception("error")
-            file_paths.clear()
+    except Exception as e:
+        logger.error('文件上传失败由于原因{e}')
+        raise e

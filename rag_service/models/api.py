@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from rag_service.constants import DEFAULT_TOP_K
 from rag_service.models.generic import VectorizationConfig
 from rag_service.models.enums import AssetType, EmbeddingModel, VectorizationJobType, VectorizationJobStatus
-
+from rag_service.security.config import config
 
 def as_form(cls: Type[BaseModel]):
     new_params = [
@@ -71,7 +71,7 @@ class QueryRequest(BaseModel):
     top_k: int = Field(DEFAULT_TOP_K, ge=3, le=10)
     fetch_source: bool = False
     history: Optional[List] = []
-    model_name: Optional[str] = "spark"
+    model_name: Optional[str] = config['DEFAULT_LLM_MODEL']
 
 
 class AssetInfo(BaseModel):

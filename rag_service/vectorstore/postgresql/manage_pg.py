@@ -14,7 +14,6 @@ from rag_service.utils.serdes import serialize
 from rag_service.models.database import VectorizeItems
 from rag_service.exceptions import PostgresQueryException
 from rag_service.models.database import create_vectorize_items, yield_session
-from rag_service.rag_app.service.spark_embedding_online import SparkEmbeddingOnline
 from rag_service.rag_app.service.vectorize_service import vectorize_embedding
 from rag_service.models.database import KnowledgeBase, KnowledgeBaseAsset, VectorizationJob
 from rag_service.models.enums import EmbeddingModel, VectorizationJobType, VectorizationJobStatus
@@ -55,11 +54,7 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
             vectors.extend(asset_term.vector_stores)
         index_names = [vector.name for vector in vectors]
         st = time.time()
-        if config['EMBEDDING_METHOD'] == "offline":
-            vectors = vectorize_embedding([question], embedding_name.value)[0]
-        elif config['EMBEDDING_METHOD'] == "online":
-            vectors = SparkEmbeddingOnline.embedding_by_spark_online(
-                [question], config['EMBEDDING_METHOD_ONLINE'])[0]
+        vectors = vectorize_embedding([question], embedding_name.value)[0]
         et = time.time()
         logger.info(f"问题向量化耗时 = {et-st}")
 
@@ -150,6 +145,8 @@ def like_keyword_search(session, index_names, question, top_k):
 def pg_create_and_insert_data(documents: List[Document], embeddings: List[List[float]], index_name: str):
     table_name = f"vectorize_items_{index_name}"
     # 先判断是否存在语料表
+    if len(embeddings) == 0:
+        return
     vectorize_items_model = create_vectorize_items(table_name, len(embeddings[0]))
     # 语料表插入数据
     try:

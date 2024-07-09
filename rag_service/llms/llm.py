@@ -51,10 +51,10 @@ def token_check(messages: str) -> bool:
                 if token_count > max_token:
                     return False
         else:
-            logger.error("大模型响应不合规，返回：%s", check_result)
+            logger.error(f"大模型响应不合规，返回：{check_result}")
             return True
     else:
-        logger.error("大模型调用失败，返回：%s", response.content)
+        logger.error(f"大模型调用失败，返回：{response.content}")
         return True
     return True
 
@@ -71,7 +71,7 @@ def llm_stream_call(question: str, prompt: str, history: List = None):
         if len(messages) > 2:
             messages = messages[:1]+messages[2:]
         else:
-            raise TokenCheckFailed(f'Token is too long.')
+            raise TokenCheckFailed('Token is too long.')
     headers = {
         "Content-Type": "application/json",
         "cache-control": "no-cache",
@@ -150,9 +150,9 @@ def llm_with_rag_stream_answer(req: QueryRequest):
             yield "data: " + json.dumps({'content': part}) + '\n\n'
         yield "data: [DONE]"
     except KeyError as error:
-        raise ElasitcsearchEmptyKeyException(f'Get llm prompt key error') from error
+        raise ElasitcsearchEmptyKeyException('Get llm prompt key error') from error
     except Exception as error:
-        logger.exception("用户提问：%s，查询资产库：%s，运行失败：%s", req.question, req.kb_sn, error)
+        logger.exception(f"{error}")
         raise HTTPException(status_code=500, detail="结果报错，未获取到任何信息") from error
     # 记录历史对话
     if req.session_id:

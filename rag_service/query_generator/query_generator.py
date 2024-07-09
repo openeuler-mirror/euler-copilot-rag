@@ -54,10 +54,10 @@ class RagLLM(LLM):
                 final_ans = answer_info['choices'][0]['message']['content']
                 return final_ans
             else:
-                logger.error("大模型响应不合规，返回：%s", answer_info)
+                logger.error(f"大模型响应不合规，返回：{answer_info}")
                 return ""
         else:
-            logger.error("大模型调用失败，返回：%s", response.content)
+            logger.error(f"大模型调用失败，返回：{response.content}")
             return ""
 
 

@@ -17,7 +17,7 @@ class SizedTimedRotatingFileHandler(TimedRotatingFileHandler):
         if self.stream is None:
             self.stream = self._open()
         if self.max_bytes > 0:
-            msg = "%s\n" % self.format(record)
+            msg = f"{self.format(record)}\n"
             self.stream.seek(0, 2)
             if self.stream.tell()+len(msg) >= self.max_bytes:
                 return 1

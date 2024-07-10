@@ -16,7 +16,8 @@ RUN sed -i 's|repo.openeuler.org|mirrors.nju.edu.cn/openeuler|g' /etc/yum.repos.
     chown -R eulercopilot:eulercopilot /rag-service &&\
     yum clean all && \
     sed -i 's/umask 002/umask 027/g' /etc/bashrc && \
-    sed -i 's/umask 022/umask 027/g' /etc/bashrc
+    sed -i 's/umask 022/umask 027/g' /etc/bashrc && \
+    sed -i "/PATH=/d" /home/eulercopilot/.bashrc
 
 USER eulercopilot
 RUN pip3 install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple

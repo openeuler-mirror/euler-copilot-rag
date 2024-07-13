@@ -29,7 +29,7 @@ def _configure_router():
 def main():
     configure()
     try:
-        uvicorn.run(app, host=config["UVICORN_IP"], port=int(config["UVICORN_PORT"]),
+        uvicorn.run(app, host=config["UVICORN_HOST"], port=int(config["UVICORN_PORT"]),
                     log_config=log_config,
                     proxy_headers=True, forwarded_allow_ips='*',
                     ssl_certfile=config["SSL_CERTFILE"],

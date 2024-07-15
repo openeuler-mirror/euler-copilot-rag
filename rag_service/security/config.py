@@ -17,7 +17,7 @@ class ConfigModel(BaseModel):
     PYTHONPATH: str = Field(None, description="Python执行时的额外模块搜索路径")
     SSL_ENABLE: str = Field(None, description="是否启用SSL连接")
     GRAPH_RAG_ENABLE: str = Field(None, description="是否启用图检索增强生成模型")
-    DEFAULT_LLM_MODEL = Field(None, description="默认使用的大模型")
+    DEFAULT_LLM_MODEL: str = Field(None, description="默认使用的大模型")
     VERSION_EXPERT_LLM_MODEL: str = Field(None, description="版本专家所使用的大模型")
     OEPKG_ASSET_INDEX_NAME: str = Field(None, description="OEPKG资产索引名称")
     

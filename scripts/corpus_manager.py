@@ -27,10 +27,14 @@ def work(args):
         pg_user = pg_info.get('pg_user', '')
         pg_pwd = pg_info.get('pg_pwd', '')
     choice = args['method']
-    pg_host = args['pg_host']
-    pg_port = args['pg_port']
-    pg_user = args['pg_user']
-    pg_pwd = args['pg_pwd']
+    if args['pg_host'] is not None:
+        pg_host = args['pg_host']
+    if args['pg_port'] is not None:
+        pg_port = args['pg_port']
+    if args['pg_user'] is not None:
+        pg_user = args['pg_user']
+    if args['pg_pwd'] is not None:
+        pg_pwd = args['pg_pwd']
     ssl_enable = args['ssl_enable']
     rag_host = args['rag_host']
     rag_port = args['rag_port']
@@ -155,10 +159,10 @@ def init_args():
                                                                      脚本使用模式，有初始化数据库配置、初始化数据库、初始化语料资产、
                                                                      清除数据库所有内容、上传语料(当前支持txt、html、pdf、docx和md格式)、删除语料、查询语
                                                                      料和停止当前上传任务''')
-    parser.add_argument("--pg_host", default='127.0.0.1', type=str, required=False, help="语料库所在postres的ip")
-    parser.add_argument("--pg_port", default='5432', type=str, required=False, help="语料库所在postres的端口")
-    parser.add_argument("--pg_user", default='postgres', type=str, required=False, help="语料库所在postres的用户")
-    parser.add_argument("--pg_pwd", default='123456', type=str, required=False, help="语料库所在postres的密码")
+    parser.add_argument("--pg_host", default=None, required=False, help="语料库所在postres的ip")
+    parser.add_argument("--pg_port", default=None, required=False, help="语料库所在postres的端口")
+    parser.add_argument("--pg_user", default=None, required=False, help="语料库所在postres的用户")
+    parser.add_argument("--pg_pwd", default=None, required=False, help="语料库所在postres的密码")
     parser.add_argument("--rag_host", type=str, default='127.0.0.1', required=False, help="rag服务的ip")
     parser.add_argument("--rag_port", type=str, default='8005', required=False, help="rag服务的port")
     parser.add_argument("--kb_name", type=str, default='default_test', required=False, help="资产名称")

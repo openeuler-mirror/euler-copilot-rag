@@ -46,7 +46,6 @@ def query_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corp
         logger.error(f'语料查询失败由于原因{e}')
         raise e
     corpus_name_time={}
-
     for i in range(len(corpus_name_list)):
         file_name=os.path.splitext(corpus_name_list[i][0])[0]
         index=file_name[::-1].index('_')

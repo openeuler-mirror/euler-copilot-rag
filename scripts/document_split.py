@@ -41,13 +41,26 @@ def tokenize_docx(docx_path):
 
     def extract_paragraph(paragraph):
         tokens.extend(word_tokenize(paragraph.text))
-
+        tokens.extend('\n')
 
     def extract_table(table):
+        flag = False
+        tokens.extend('\n\n')
         for row in table.rows:
+            if not flag:
+                cnt = 0
             for cell in row.cells:
-                tokens.extend(word_tokenize(cell.text))
-
+                if not flag:
+                    cnt += len(str(cell.text).strip())+2
+                tokens.extend(word_tokenize(str(cell.text).strip()))
+                tokens.extend(' ')
+                tokens.extend('|')
+            tokens.extend('\n')
+            if not flag:
+                tokens.extend('-'*cnt)
+                tokens.extend('\n')
+                flag = True
+        tokens.extend('\n\n')
     body = doc.element.body
     
 
@@ -58,7 +71,6 @@ def tokenize_docx(docx_path):
         elif child.tag.endswith('tbl'):  # 表格
             table = next(t for t in doc.tables if t._element == child)
             extract_table(table)
-    
     return tokens
 
 
@@ -89,7 +101,6 @@ def split_into_paragraphs(text, max_paragraph_length=2000):
 
 def get_paragraphs_from_file(file_path, max_paragraph_length=2048):
     file_extension = os.path.splitext(file_path)[1].lower()
-    print(file_extension)
     if file_extension == '.txt':
         with open(file_path, 'r', encoding='utf-8', errors="ignore") as file:
             text = file.read()
@@ -111,7 +122,6 @@ def get_paragraphs_from_file(file_path, max_paragraph_length=2048):
         tokens = tokenize_docx(file_path)
         text = " ".join(tokens)
         paragraphs = split_into_paragraphs(text, max_paragraph_length)
-        print(paragraphs)
         return paragraphs
     elif file_extension == '.md':
         tokens = tokenize_md(file_path)
@@ -120,3 +130,4 @@ def get_paragraphs_from_file(file_path, max_paragraph_length=2048):
         return paragraphs
     else:
         return []
+

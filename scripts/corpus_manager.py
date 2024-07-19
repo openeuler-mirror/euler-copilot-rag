@@ -92,8 +92,6 @@ def work(args):
         except:
             pass
         try:
-            for corpus_name in corpus_name_list:
-                delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corpus_name)
             upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable,
                           rag_host, rag_port, kb_name, kb_asset_name, para_dir, up_chunk)
             print("语料已上传")

@@ -33,9 +33,7 @@ def delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, cor
             metadata = MetaData()
             table = Table(vector_itmes_table_name, metadata, autoload_with=engine)
             file_name=os.path.splitext(corpus_name)[0]
-            file_type=os.path.splitext(corpus_name)[1]
-            if file_type!='.docx':
-                return
+            file_type = os.path.splitext(corpus_name)[1]
             query = (
                     select(table.c.source)
                     .where(table.c.source.ilike('%' + file_name+ '%'))

@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field
 
 
 class ConfigModel(BaseModel):
-    SSL_ENABLE: Optional[str] = Field(description="选择是否开启SSL", default=None)
     UVICORN_HOST: str = Field(description="FastAPI监听地址")
     UVICORN_PORT: int = Field(description="FastAPI监听端口", default=8005)
     SSL_CERTFILE: Optional[str] = Field(description="SSL证书路径", default=None)
@@ -20,7 +19,6 @@ class ConfigModel(BaseModel):
     REMOTE_RERANKING_ENDPOINT: str = Field(description="远程重排序服务Endpoint")
     REMOTE_EMBEDDING_ENDPOINT: str = Field(description="远程嵌入向量服务Endpoint")
     OPENAI_APP_KEY: str = Field(description="OpenAI应用密钥")
-    OPENAI_API_BASE: str = Field(description="OpenAI API基础URL")
 
     POSTGRES_HOST: str = Field(description="PostgreSQL数据库主机地址")
     POSTGRES_DATABASE: str = Field(description="PostgreSQL数据库名")

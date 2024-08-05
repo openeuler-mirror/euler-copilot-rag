@@ -20,6 +20,7 @@ def delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, cor
         logger.error(f'数据库引擎初始化失败，由于原因{e}')
         raise e
     try:
+        logger.info(f'用户尝试删除语料{corpus_name}')
         with sessionmaker(bind=engine)() as session:
             default_kb = session.query(KnowledgeBase).filter_by(sn=kb_name).first()
             default_kba = session.query(KnowledgeBaseAsset).filter(
@@ -40,6 +41,7 @@ def delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, cor
                 )
             corpus_name_list = session.execute(query).fetchall()
             if len(corpus_name_list) == 0:
+                logger.info(f'数据库内未查询到相关语料：{corpus_name}')
                 return False
             for i in range(len(corpus_name_list)):
                 file_name=os.path.splitext(corpus_name_list[i][0])[0]
@@ -49,6 +51,7 @@ def delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, cor
                     delete_stmt = delete(table).where(table.c.source == corpus_name_list[i][0])
                     session.execute(delete_stmt)
                     session.commit()
+            logger.info(f'用户删除语料成功：{corpus_name}')
             return True
     except Exception as e:
         logger.error(f'文件删除失败由于原因 {e}')

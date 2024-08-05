@@ -5,12 +5,11 @@ from typing import List
 from langchain.text_splitter import CharacterTextSplitter
 
 from rag_service.logger import get_logger
-from rag_service.constants import SENTENCE_SIZE
 
 logger = get_logger()
 
 # 最大分句长度
-MAX_SENTENCE_SIZE = SENTENCE_SIZE * 3
+MAX_SENTENCE_SIZE = 300 * 3
 
 # 分割句子模板
 PATTERN_SENT = r'(\.{3,6}|…{2}|[;；!！。？?]["’”」』]?)'
@@ -53,7 +52,7 @@ def search_from_backward(text, start_index=-1):
 
 
 class ChineseTextSplitter(CharacterTextSplitter):
-    def __init__(self, pdf: bool = False, sentence_size: int = SENTENCE_SIZE,
+    def __init__(self, pdf: bool = False, sentence_size: int = 300,
                  max_sentence_size: int = MAX_SENTENCE_SIZE, **kwargs):
         super().__init__(**kwargs)
         self.pdf = pdf

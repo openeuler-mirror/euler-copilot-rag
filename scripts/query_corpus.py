@@ -47,14 +47,18 @@ def query_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corp
         raise e
     corpus_name_time={}
     for i in range(len(corpus_name_list)):
-        file_name=os.path.splitext(corpus_name_list[i][0])[0]
-        index=file_name[::-1].index('_')
-        file_name=file_name[:len(file_name)-index-1]
-        file_type=os.path.splitext(corpus_name_list[i][0])[1]
-        if file_name+file_type not in corpus_name_time:
-             corpus_name_time[file_name+file_type]=corpus_name_list[i][1]
-        else:
-            corpus_name_time[file_name+file_type]=min(corpus_name_time[file_name+file_type],corpus_name_list[i][1])
+        try:
+            file_name=os.path.splitext(corpus_name_list[i][0])[0]
+            index=file_name[::-1].index('_')
+            file_name=file_name[:len(file_name)-index-1]
+            file_type=os.path.splitext(corpus_name_list[i][0])[1]
+            if file_name+file_type not in corpus_name_time:
+                corpus_name_time[file_name+file_type]=corpus_name_list[i][1]
+            else:
+                corpus_name_time[file_name+file_type]=min(corpus_name_time[file_name+file_type],corpus_name_list[i][1])
+        except Exception as e:
+            logger.error(f'片段名转换失败由于{e}')
+            continue
     corpus_name_list=[]
     for key,val in corpus_name_time.items():
          corpus_name_list.append([key,val])

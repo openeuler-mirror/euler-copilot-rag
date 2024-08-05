@@ -31,6 +31,7 @@ class Vectorize:
 
 
 def upload_files(upload_file_paths: List[str], engine, ssl_enable, rag_url, kb_name, kb_asset_name) -> bool:
+    logger.info(f'用户尝试上传以下片段{str(upload_file_paths)}')
     upload_files_list = []
     for _, file_path in enumerate(upload_file_paths):
         with open(file_path, 'rb') as file:
@@ -41,11 +42,13 @@ def upload_files(upload_file_paths: List[str], engine, ssl_enable, rag_url, kb_n
     else:
         res = requests.post(url=rag_url, data=data, files=upload_files_list)
     while Vectorize.is_rag_busy(engine):
-        print('等待之前任务完成中')
+        print('等待任务完成中')
         time.sleep(5)
     if res.status_code == 200:
+        logger.info(f'用户上传以下片段{str(upload_file_paths)}成功')
         return True
     else:
+        logger.info(f'用户上传以下片段{str(upload_file_paths)}失败')
         return False
 
 
@@ -91,5 +94,5 @@ def upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable, rag_host, rag_p
                     raise Exception("error")
                 file_paths.clear()
     except Exception as e:
-        logger.error('文件上传失败由于原因{e}')
+        logger.error(f'文件上传失败由于原因{e}')
         raise e

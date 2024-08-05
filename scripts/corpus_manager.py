@@ -13,19 +13,27 @@ from query_corpus import query_corpus
 from stop_all_job import stop_embedding_job
 from init_asset import init_asset
 from change_doucument_to_para import change_document_to_para
+from logger import get_logger
 
+logger=get_logger()
 
 def work(args):
     config_dir = './config'
     if not os.path.exists(config_dir):
         os.mkdir(config_dir)
     if os.path.exists(os.path.join(config_dir, 'pg_info.json')):
-        with open(os.path.join(config_dir, 'pg_info.json'), 'r') as f:
+        with open(os.path.join(config_dir, 'pg_info.json'), 'r',encoding='utf-8') as f:
             pg_info = json.load(f)
         pg_host = pg_info.get('pg_host', '')
         pg_port = pg_info.get('pg_port', '')
         pg_user = pg_info.get('pg_user', '')
         pg_pwd = pg_info.get('pg_pwd', '')
+    if os.path.exists(os.path.join(config_dir, 'rag_info.json')):
+        with open(os.path.join(config_dir, 'rag_info.json'), 'r',encoding='utf-8') as f:
+            rag_info = json.load(f)
+        rag_host = rag_info.get('rag_host', '')
+        rag_port = rag_info.get('rag_port', '')
+    
     choice = args['method']
     if args['pg_host'] is not None:
         pg_host = args['pg_host']
@@ -36,8 +44,10 @@ def work(args):
     if args['pg_pwd'] is not None:
         pg_pwd = args['pg_pwd']
     ssl_enable = args['ssl_enable']
-    rag_host = args['rag_host']
-    rag_port = args['rag_port']
+    if args['rag_host'] is not None:
+        rag_host = args['rag_host']
+    if args['rag_port'] is not None:
+        rag_port = str(args['rag_port'])
     kb_name = args['kb_name']
     kb_asset_name = args['kb_asset_name']
     corpus_dir = args['corpus_dir']
@@ -46,13 +56,21 @@ def work(args):
     up_chunk = args['up_chunk']
     embedding_model = args['embedding_model']
     if choice == 'init_pg_info':
+        logger.info('用户初始化postgres配置')
         pg_info = {}
         pg_info['pg_host'] = pg_host
         pg_info['pg_port'] = pg_port
         pg_info['pg_user'] = pg_user
         pg_info['pg_pwd'] = pg_pwd
-        with open(os.path.join(config_dir, 'pg_info.json'), 'w') as f:
+        with open(os.path.join(config_dir, 'pg_info.json'), 'w',encoding='utf-8') as f:
             json.dump(pg_info, f)
+    elif choice =="init_rag_info":
+        logger.info('用户初始化rag配置')
+        rag_info = {}
+        rag_info['rag_host'] = rag_host
+        rag_info['rag_port'] = rag_port
+        with open(os.path.join(config_dir, 'rag_info.json'), 'w',encoding='utf-8') as f:
+            json.dump(rag_info, f)
     elif choice == "init_pg":
         try:
             create_db_and_tables(pg_host, pg_port, pg_user, pg_pwd)
@@ -151,7 +169,7 @@ def work(args):
 def init_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", type=str, required=True,
-                        choices=['init_pg_info', 'init_pg', 'init_corpus_asset', 'clear_pg', 'up_corpus', 'del_corpus',
+                        choices=['init_pg_info','init_rag_info', 'init_pg', 'init_corpus_asset', 'clear_pg', 'up_corpus', 'del_corpus',
                                  'query_corpus', 'stop_embdding_jobs'],
                         help='''
                                                                      脚本使用模式，有初始化数据库配置、初始化数据库、初始化语料资产、
@@ -161,8 +179,8 @@ def init_args():
     parser.add_argument("--pg_port", default=None, required=False, help="语料库所在postres的端口")
     parser.add_argument("--pg_user", default=None, required=False, help="语料库所在postres的用户")
     parser.add_argument("--pg_pwd", default=None, required=False, help="语料库所在postres的密码")
-    parser.add_argument("--rag_host", type=str, default='127.0.0.1', required=False, help="rag服务的ip")
-    parser.add_argument("--rag_port", type=str, default='8005', required=False, help="rag服务的port")
+    parser.add_argument("--rag_host", default=None, required=False, help="rag服务的ip")
+    parser.add_argument("--rag_port", default=None, required=False, help="rag服务的port")
     parser.add_argument("--kb_name", type=str, default='default_test', required=False, help="资产名称")
     parser.add_argument("--kb_asset_name", type=str, default='default_test_asset', required=False, help="资产库名称")
     parser.add_argument("--corpus_dir", type=str, default='./docs', required=False, help="待上传语料所在路径")

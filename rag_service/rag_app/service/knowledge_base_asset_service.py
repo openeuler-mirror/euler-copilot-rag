@@ -21,7 +21,6 @@ from rag_service.logger import get_logger
 from rag_service.models.generic import VectorizationConfig
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir
 from rag_service.models.enums import AssetType, VectorizationJobStatus, VectorizationJobType
-from rag_service.constants import DELETE_ORIGINAL_DOCUMENT_METADATA, DELETE_ORIGINAL_DOCUMENT_METADATA_KEY
 from rag_service.utils.db_util import validate_knowledge_base, get_knowledge_base_asset, \
     get_running_knowledge_base_asset
 from rag_service.models.database import KnowledgeBase, VectorizationJob, KnowledgeBaseAsset, \
@@ -95,13 +94,13 @@ async def update_knowledge_base_asset(
 
 def _save_deleted_original_document_to_json(knowledge_base_asset, req):
     asset_uri = get_knowledge_base_asset_root_dir(knowledge_base_asset.knowledge_base.sn, knowledge_base_asset.name)
-    delete_original_document_metadata_path = asset_uri / DELETE_ORIGINAL_DOCUMENT_METADATA
+    delete_original_document_metadata_path = asset_uri / 'delete_original_document_metadata.json'
     asset_uri.mkdir(parents=True, exist_ok=True)
     delete_original_documents = req.delete_original_documents.split('/') if req.delete_original_documents else []
     delete_original_documents = [
         delete_original_document.strip() for delete_original_document in delete_original_documents
     ]
-    delete_original_document_dict = {DELETE_ORIGINAL_DOCUMENT_METADATA_KEY: delete_original_documents}
+    delete_original_document_dict = {'user_uploaded_deleted_documents': delete_original_documents}
     with delete_original_document_metadata_path.open('w', encoding='utf-8') as file_content:
         json.dump(delete_original_document_dict, file_content)
 

@@ -26,7 +26,7 @@ from rag_service.models.enums import (
     UpdateOriginalDocumentType,
 )
 from rag_service.security.config import config
-from rag_service.constants import DEFAULT_UPDATE_TIME_INTERVAL_SECOND
+
 
 Base = declarative_base()
 
@@ -135,7 +135,7 @@ class IncrementalVectorizationJobSchedule(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
     last_updated_at = Column(TIMESTAMP(timezone=True), server_default=func.current_timestamp())
-    updated_cycle = Column(TIMESTAMP, default=DEFAULT_UPDATE_TIME_INTERVAL_SECOND)
+    updated_cycle = Column(TIMESTAMP, default=7 * 24 * 3600)
     next_updated_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
     kba_id = Column(UUID, ForeignKey('knowledge_base_asset.id'))

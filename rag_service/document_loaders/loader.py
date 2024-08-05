@@ -12,7 +12,7 @@ from langchain_community.document_loaders.powerpoint import UnstructuredPowerPoi
 from langchain_community.document_loaders.word_document import UnstructuredWordDocumentLoader
 
 from rag_service.logger import get_logger
-from rag_service.constants import SENTENCE_SIZE
+
 from rag_service.models.generic import OriginalDocument
 from rag_service.document_loaders.docx_loader import DocxLoader
 from rag_service.document_loaders.excel_loader import ExcelLoader
@@ -37,7 +37,7 @@ def if_do_ocr(file: Path):
     return spec_loader_config.get(file.suffix, {}).get("do_ocr", False)
 
 
-def load_file(original_document: OriginalDocument, sentence_size=SENTENCE_SIZE) -> List[Document]:
+def load_file(original_document: OriginalDocument, sentence_size=300) -> List[Document]:
     """
     解析不同类型文件，获取Document类型列表
     @param original_document: OriginalDocument对象，包含uri, source, mtime
@@ -82,7 +82,7 @@ class Loader(ABC):
 
 
 class PDFLoader(Loader, regex=r'.*\.pdf$', spec='plain'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = UnstructuredPDFLoader(self._filename)
         self.textsplitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
@@ -93,7 +93,7 @@ class PDFLoader(Loader, regex=r'.*\.pdf$', spec='plain'):
 
 
 class XLSXLoader(Loader, regex=r'.*\.xlsx$', spec='plain'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = ExcelLoader(self._filename)
 
@@ -103,7 +103,7 @@ class XLSXLoader(Loader, regex=r'.*\.xlsx$', spec='plain'):
 
 
 class XLSLoader(Loader, regex=r'.*\.xls$', spec='plain'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = ExcelLoader(self._filename)
 
@@ -113,7 +113,7 @@ class XLSLoader(Loader, regex=r'.*\.xls$', spec='plain'):
 
 
 class DOCLoader(Loader, regex=r'.*\.doc$', spec='plain'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = UnstructuredWordDocumentLoader(self._filename)
         self.textsplitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
@@ -124,7 +124,7 @@ class DOCLoader(Loader, regex=r'.*\.doc$', spec='plain'):
 
 
 class DOCXLoader(Loader, regex=r'.*\.docx$', spec='plain'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = DocxLoader(self._filename)
         self.textsplitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
@@ -135,7 +135,7 @@ class DOCXLoader(Loader, regex=r'.*\.docx$', spec='plain'):
 
 
 class PPTXLoader(Loader, regex=r'.*\.pptx$', spec='plain'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = UnstructuredPowerPointLoader(self._filename, mode='paged', include_page_breaks=False)
 
@@ -145,7 +145,7 @@ class PPTXLoader(Loader, regex=r'.*\.pptx$', spec='plain'):
 
 
 class PPTLoader(Loader, regex=r'.*\.ppt$', spec='plain'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = UnstructuredPowerPointLoader(self._filename, mode='paged', include_page_breaks=False)
 
@@ -155,7 +155,7 @@ class PPTLoader(Loader, regex=r'.*\.ppt$', spec='plain'):
 
 
 class TXTLoader(Loader, regex=r'.*\.txt$', spec='plain'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = TextLoader(self._filename, autodetect_encoding=True, encoding="utf8")
         self.textsplitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
@@ -166,7 +166,7 @@ class TXTLoader(Loader, regex=r'.*\.txt$', spec='plain'):
 
 
 class MDLoader(Loader, regex=r'.*\.md$', spec='plain'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = TextLoader(self._filename)
         self.textsplitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
@@ -177,7 +177,7 @@ class MDLoader(Loader, regex=r'.*\.md$', spec='plain'):
 
 
 class DocxByHeadLoader(Loader, regex=r'.*\.docx$', spec='specHeadDocx'):
-    def __init__(self, filename: str, sentence_size=SENTENCE_SIZE, do_ocr=False):
+    def __init__(self, filename: str, sentence_size=300, do_ocr=False):
         self._filename = filename
         self.loader = DocxLoaderByHead(self._filename, image_inline=do_ocr)
         self.textsplitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)

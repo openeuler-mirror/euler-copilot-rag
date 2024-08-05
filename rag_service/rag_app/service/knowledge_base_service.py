@@ -9,7 +9,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from rag_service.logger import get_logger
 
 from rag_service.llms.llm import select_llm
-from rag_service.constants import LLM_PROMPT_TEMPLATE
+from rag_service.constant.prompt_manageer import prompt_template_dict
 from rag_service.models.database import KnowledgeBase
 from rag_service.utils.db_util import validate_knowledge_base
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
@@ -39,7 +39,7 @@ async def create_knowledge_base(req: CreateKnowledgeBaseReq, session) -> str:
 def get_llm_answer(req: QueryRequest) -> LlmAnswer:
     documents_info = get_rag_document_info(req=req)
     query_context = get_query_context(documents_info)
-    res = select_llm(req).nonstream(req=req, prompt=LLM_PROMPT_TEMPLATE.format(context=query_context))
+    res = select_llm(req).nonstream(req=req, prompt=prompt_template_dict['LLM_PROMPT_TEMPLATE'].format(context=query_context))
     if req.fetch_source:
         return LlmAnswer(
             answer=res.content, sources=[doc[1] for doc in documents_info],
@@ -52,7 +52,7 @@ def get_llm_stream_answer(req: QueryRequest) -> str:
     query_context = get_query_context(documents_info=documents_info)
     logger.error("finish")
     return select_llm(req).stream(
-        req=req, documents_info=documents_info, prompt=LLM_PROMPT_TEMPLATE.format(context=query_context))
+        req=req, documents_info=documents_info, prompt=prompt_template_dict['LLM_PROMPT_TEMPLATE'].format(context=query_context))
 
 
 def get_knowledge_base_list(owner: str, session) -> Page[KnowledgeBaseInfo]:

@@ -32,6 +32,7 @@ def main():
     configure()
     try:
         ssl_enable = config["SSL_ENABLE"]
+        logger.info(str(config.__dict__))
         if ssl_enable:
             uvicorn.run(app, host=config["UVICORN_IP"], port=int(config["UVICORN_PORT"]),
                         log_config=log_config,

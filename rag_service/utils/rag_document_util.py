@@ -9,7 +9,7 @@ from rag_service.llms.llm import select_llm
 from rag_service.security.config import config
 from rag_service.models.api import QueryRequest
 from rag_service.models.database import yield_session
-from rag_service.constants import INTENT_DETECT_PROMPT_TEMPLATE, QUESTION_PROMPT, SQL_RESULT_PROMPT
+from rag_service.constant.prompt_manageer import prompt_template_dict
 from rag_service.llms.version_expert import version_expert_search_data
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
 from rag_service.vectorstore.neo4j.manage_neo4j import neo4j_search_data
@@ -33,7 +33,7 @@ def get_query_context(documents_info) -> str:
 def intent_detect(req: QueryRequest):
     if not req.history:
         return req.question
-    prompt = INTENT_DETECT_PROMPT_TEMPLATE
+    prompt = prompt_template_dict['INTENT_DETECT_PROMPT_TEMPLATE']
     history_prompt = ""
     q_cnt = 0
     a_cnt = 0
@@ -67,7 +67,7 @@ def get_rag_document_info(req: QueryRequest):
     rewrite_req.model_name = config['VERSION_EXPERT_LLM_MODEL']
     rewrite_query = intent_detect(rewrite_req)
     rewrite_req.question = rewrite_query
-    req.question = QUESTION_PROMPT.format(question=req.question, question_after_expend=rewrite_query)
+    req.question = prompt_template_dict['QUESTION_PROMPT_TEMPLATE'].format(question=req.question, question_after_expend=rewrite_query)
     rewrite_req.history = []
     documents_info = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -81,7 +81,7 @@ def get_rag_document_info(req: QueryRequest):
             result = future.result()
             if result is not None:
                 result = list(result)
-                result[0] = SQL_RESULT_PROMPT.format(sql_result=result[0])
+                result[0] = prompt_template_dict['SQL_RESULT_PROMPT_TEMPLATE'].format(sql_result=result[0])
                 result = tuple(result)
                 documents_info.append(result)
     logger.info(f"图数据库/版本专家检索结果 = {documents_info}")

@@ -18,7 +18,6 @@ from rag_service.models.database import yield_session
 from rag_service.models.generic import OriginalDocument
 from rag_service.vectorstore.postgresql.manage_pg import pg_insert_data
 from rag_service.original_document_fetchers import select_fetcher, Fetcher
-from rag_service.constants import VECTORIZATION_CHUNK_SIZE, EMBEDDING_CHUNK_SIZE
 from rag_service.utils.db_util import change_vectorization_job_status, get_knowledge_base_asset
 from rag_service.models.database import VectorStore, VectorizationJob, KnowledgeBaseAsset
 from rag_service.utils.dagster_util import get_knowledge_base_asset_root_dir, parse_asset_partition_key
@@ -50,7 +49,8 @@ def fetch_original_documents(context: OpExecutionContext):
     fetcher: Fetcher = select_fetcher(knowledge_base_asset.asset_type)
     original_documents = fetcher(knowledge_base_asset.asset_uri, knowledge_base_asset_dir,
                                  knowledge_base_asset.asset_type).fetch()
-    for idx, chunked_original_documents in enumerate(chunked(original_documents, VECTORIZATION_CHUNK_SIZE)):
+    chunk_size=100
+    for idx, chunked_original_documents in enumerate(chunked(original_documents, chunk_size)):
         yield DynamicOutput(chunked_original_documents, mapping_key=str(idx))
 
 
@@ -80,13 +80,14 @@ def embedding_documents(
                 KnowledgeBase.sn == knowledge_base_serial_number,
                 KnowledgeBaseAsset.name == knowledge_base_asset_name
         ).one()
+    chunk_size=10000
     embeddings = list(
             itertools.chain.from_iterable(
                 [
                     vectorize_embedding(
                         [document.page_content for document in chunked_documents],
                         knowledge_base_asset.embedding_model
-                    ) for chunked_documents in chunked(documents, EMBEDDING_CHUNK_SIZE)
+                    ) for chunked_documents in chunked(documents, chunk_size)
                 ]
             )
     )

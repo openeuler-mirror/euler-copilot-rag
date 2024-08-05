@@ -2,12 +2,12 @@
 from pathlib import Path
 from typing import Tuple
 
-from rag_service.constants import DATA_DIR
+
 from rag_service.models.database import KnowledgeBaseAsset
 
 
 def get_knowledge_base_asset_root_dir(knowledge_base_serial_number: str, asset_name: str) -> Path:
-    return Path(DATA_DIR) / knowledge_base_serial_number / asset_name
+    return Path("/tmp/vector_data") / knowledge_base_serial_number / asset_name
 
 
 def generate_asset_partition_key(knowledge_base_asset: KnowledgeBaseAsset) -> str:

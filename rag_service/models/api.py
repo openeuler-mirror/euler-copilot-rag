@@ -6,7 +6,7 @@ from typing import Optional, Type, Dict, Any, List
 from fastapi import Form
 from pydantic import BaseModel, Field
 
-from rag_service.constants import DEFAULT_TOP_K
+
 from rag_service.models.generic import VectorizationConfig
 from rag_service.models.enums import AssetType, EmbeddingModel, VectorizationJobType, VectorizationJobStatus
 from rag_service.security.config import config
@@ -68,7 +68,7 @@ class RerankingRequest(BaseModel):
 class QueryRequest(BaseModel):
     question: str
     kb_sn: str
-    top_k: int = Field(DEFAULT_TOP_K, ge=3, le=10)
+    top_k: int = Field(5, ge=3, le=10)
     fetch_source: bool = False
     history: Optional[List] = []
     model_name: Optional[str] = config['DEFAULT_LLM_MODEL']

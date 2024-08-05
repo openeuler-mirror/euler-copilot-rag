@@ -9,7 +9,7 @@ from rag_service.models.enums import AssetType
 from rag_service.models.generic import OriginalDocument
 from rag_service.models.database import KnowledgeBaseAsset
 from rag_service.original_document_fetchers.base import BaseFetcher
-from rag_service.constants import DELETE_ORIGINAL_DOCUMENT_METADATA, DELETE_ORIGINAL_DOCUMENT_METADATA_KEY
+
 
 
 class LocalFetcher(BaseFetcher, asset_types={AssetType.UPLOADED_ASSET}):
@@ -34,7 +34,7 @@ class LocalFetcher(BaseFetcher, asset_types={AssetType.UPLOADED_ASSET}):
 
         for root, _, files in os.walk(root_path):
             for file in files:
-                if file == DELETE_ORIGINAL_DOCUMENT_METADATA:
+                if file == 'delete_original_document_metadata.json':
                     continue
                 path = Path(root) / file
                 uploaded_original_document_sources.append(str(path.relative_to(root_path)))
@@ -45,8 +45,8 @@ class LocalFetcher(BaseFetcher, asset_types={AssetType.UPLOADED_ASSET}):
                         mtime=datetime.datetime.fromtimestamp(path.lstat().st_mtime)
                     )
                 )
-        delete_original_document_metadata_path = root_path / DELETE_ORIGINAL_DOCUMENT_METADATA
+        delete_original_document_metadata_path = root_path / 'delete_original_document_metadata.json'
         with delete_original_document_metadata_path.open('r', encoding='utf-8') as file_content:
             delete_original_document_dict = json.load(file_content)
-            delete_original_document_sources = delete_original_document_dict[DELETE_ORIGINAL_DOCUMENT_METADATA_KEY]
+            delete_original_document_sources = delete_original_document_dict['user_uploaded_deleted_documents']
         return delete_original_document_sources, uploaded_original_document_sources, uploaded_original_documents

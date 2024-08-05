@@ -9,7 +9,6 @@ from langchain.schema import Document
 from dagster import op, OpExecutionContext, graph_asset, In, Nothing, DynamicOut, DynamicOutput, RetryPolicy
 
 from rag_service.security.config import config
-from rag_service.constants import VECTORIZATION_CHUNK_SIZE
 from rag_service.document_loaders.loader import load_file
 from rag_service.models.database import yield_session
 from rag_service.models.generic import OriginalDocument
@@ -167,8 +166,9 @@ def insert_update_record(
 def fetch_updated_original_documents(
         updated_original_documents: List[OriginalDocument]
 ) -> List[OriginalDocument]:
+    chunk_size=100
     for idx, chunked_update_original_documents in enumerate(
-            chunked(updated_original_documents, VECTORIZATION_CHUNK_SIZE)
+            chunked(updated_original_documents, chunk_size)
     ):
         yield DynamicOutput(chunked_update_original_documents, mapping_key=str(idx))
 

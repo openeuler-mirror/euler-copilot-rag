@@ -14,7 +14,6 @@ from sparkai.core.messages import ChatMessage
 from rag_service.logger import get_logger
 from rag_service.models.api import QueryRequest
 from rag_service.security.config import config
-from rag_service.constants import LLM_TEMPERATURE
 
 
 logger = get_logger()
@@ -37,6 +36,7 @@ class LLM:
     def stream(self, req: QueryRequest, documents_info: List[str], prompt: str):
         st = time.time()
         q = queue.Queue(maxsize=10)
+
         def data_producer(q, question, prompt: str, history=None):
             message = self.assemble_prompt(prompt=prompt, question=question, history=history)
             logger.info(message)
@@ -72,6 +72,7 @@ class LLM:
             yield "data: " + json.dumps({'content': chunk}, ensure_ascii=False) + '\n\n'
         yield "data: [DONE]"
 
+
 class Spark(LLM):
 
     def __init__(self):
@@ -82,7 +83,7 @@ class Spark(LLM):
                                    spark_llm_domain=config["SPARK_APP_DOMAIN"],
                                    max_tokens=config["SPARK_MAX_TOKENS"],
                                    streaming=True,
-                                   temperature=LLM_TEMPERATURE,
+                                   temperature=0.01,
                                    request_timeout=90)
 
     def assemble_prompt(self, prompt: str, question: str, history: List = None):
@@ -91,20 +92,16 @@ class Spark(LLM):
         history.append(ChatMessage(role="system", content=prompt))
         history.append(ChatMessage(role="user", content=question))
         return history
+
+
 class OpenAi(LLM):
-    def __init__(self,method):
+    def __init__(self, method):
         self.client = ChatOpenAI(model_name=config[method+"_MODEL"],
                                  openai_api_base=config[method+"_URL"],
                                  openai_api_key=config[method+"_KEY"],
                                  request_timeout=config[method+"_TIMEOUT"],
                                  max_tokens=config[method+"_MAX_TOKENS"],
-                                 temperature=LLM_TEMPERATURE)
-        logger.error(config[method+"_MODEL"])
-        logger.error(config[method+"_URL"])
-        logger.error(config[method+"_KEY"])
-        logger.error(config[method+"_TIMEOUT"])
-        logger.error(config[method+"_MAX_TOKENS"])
-        logger.error(LLM_TEMPERATURE)
+                                 temperature=0.01)
 
     def assemble_prompt(self, prompt: str, question: str, history: List = None):
         if history is None:
@@ -115,8 +112,8 @@ class OpenAi(LLM):
 
 
 def select_llm(req: QueryRequest) -> LLM:
-    method=req.model_name
-    method=method.upper()
-    if method=="SPARK":
+    method = req.model_name
+    method = method.upper()
+    if method == "SPARK":
         return Spark()
     return OpenAi(method)

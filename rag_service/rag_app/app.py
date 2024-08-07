@@ -6,30 +6,25 @@ from asgi_correlation_id import CorrelationIdMiddleware
 
 from rag_service.logger import get_logger
 from rag_service.logger import log_config
-from rag_service.rag_app.router import routers
 from rag_service.models.database import create_db_and_tables
 from rag_service.security.config import config
+from rag_service.rag_app.router import health_check
+from rag_service.rag_app.router import knowledge_base_api
+from rag_service.rag_app.router import knowledge_base_asset_api
 
 create_db_and_tables()
 
 app = fastapi.FastAPI(docs_url=None, redoc_url=None)
 app.add_middleware(CorrelationIdMiddleware)
-add_pagination(app)
+app.include_router(health_check.router)
+app.include_router(knowledge_base_api.router)
+app.include_router(knowledge_base_asset_api.router)
 
+add_pagination(app)
 logger = get_logger()
 
 
-def configure():
-    _configure_router()
-
-
-def _configure_router():
-    for router in routers:
-        app.include_router(router)
-
-
 def main():
-    configure()
     try:
         ssl_enable = config["SSL_ENABLE"]
         logger.info(str(config.__dict__))

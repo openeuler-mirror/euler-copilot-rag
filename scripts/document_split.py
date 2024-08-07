@@ -95,6 +95,8 @@ def tokenize_docx(docx_path):
     num_cores = os.cpu_count()
     if num_cores is None:
         return []
+    num_cores//=2
+    num_cores=max(num_cores,1)
     num_cores = min(8,min(num_cores, len(el_list)))
     chunk_sz = len(el_list)//num_cores
     for i in range(num_cores):

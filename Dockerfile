@@ -13,3 +13,4 @@ RUN mkdir /dagster_home && cp /rag-service/dagster.yaml /rag-service/workspace.y
 
 USER eulercopilot
 CMD ["/bin/bash", "run.sh"]
+

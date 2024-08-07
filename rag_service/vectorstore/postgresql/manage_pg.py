@@ -123,8 +123,8 @@ def to_tsquery(session, question: str):
 def pg_search(session, question, vectors, index_names, top_k):
     results = []
     try:
-        results.extend(semantic_search(session, index_names, vectors, top_k))
-        results.extend(keyword_search(session, index_names, question, top_k))
+        results.extend(keyword_search(session, index_names, question, int(1.5*top_k)))
+        results.extend(semantic_search(session, index_names, vectors, 2*top_k-len(results)))
         return results
     except Exception:
         logger.info("Postgres关键词分词/语义检索失败 = {}".format(traceback.format_exc()))

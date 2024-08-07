@@ -69,7 +69,7 @@ def upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable, rag_host, rag_p
         logger.error(f'数据库引擎初始化失败，由于原因{e}')
         raise e
     try:
-        for root, dirs, files in tqdm(os.walk(corpus_dir)):
+        for root, dirs, files in os.walk(corpus_dir):
             index = 0
             batch_count = 0
             file_paths = []

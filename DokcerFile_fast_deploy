@@ -1,0 +1,23 @@
+#本地快速容器部署
+FROM rag_base:latest
+
+# COPY --chown=1001:1001 --chmod=550 ./ /rag-service/
+COPY ./ /rag-service/
+WORKDIR /rag-service
+
+ENV PYTHONPATH /rag-service
+ENV DAGSTER_HOME /dagster_home
+ENV DAGSTER_DB_CONNECTION postgresql+psycopg2://postgres:uh6XkcS7VUGeLw86i@0.0.0.0:5444/postgres
+
+USER root
+RUN mkdir /dagster_home && cp /rag-service/workspace.yaml /dagster_home && cp /rag-service/dagster.yaml /dagster_home
+
+#  && \
+    # chown -R 1001:1001 /dagster_home && chmod -R 550 /dagster_home
+
+EXPOSE 3000
+EXPOSE 8005
+
+# USER eulercopilot
+CMD ["/bin/bash", "run.sh"]
+# CMD ["tail","-f","/dev/null"]

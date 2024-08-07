@@ -12,7 +12,6 @@ from rag_service.models.database import yield_session
 from rag_service.constant.prompt_manageer import prompt_template_dict
 from rag_service.llms.version_expert import version_expert_search_data
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
-from rag_service.vectorstore.neo4j.manage_neo4j import neo4j_search_data
 from rag_service.rag_app.service.vectorize_service import vectorize_reranking
 
 logger = get_logger()
@@ -23,7 +22,8 @@ def get_query_context(documents_info) -> str:
     index = 1
     try:
         for doc in documents_info:
-            query_context += str(index) + ". " + doc[0].strip() + "\n"
+            query_context += '背景信息'+str(index)+':\n\n'
+            query_context += str(index) + ". " + doc[0].strip() + "\n\n"
             index += 1
         return query_context
     except Exception as error:
@@ -63,19 +63,17 @@ def get_rag_document_info(req: QueryRequest):
 
     # query改写后, 深拷贝一个request对象传递给版本专家使用
     rewrite_req = copy.deepcopy(req)
-    # rewrite_req.history = []
     rewrite_req.model_name = config['VERSION_EXPERT_LLM_MODEL']
     rewrite_query = intent_detect(rewrite_req)
     rewrite_req.question = rewrite_query
-    req.question = prompt_template_dict['QUESTION_PROMPT_TEMPLATE'].format(question=req.question, question_after_expend=rewrite_query)
+    req.question = prompt_template_dict['QUESTION_PROMPT_TEMPLATE'].format(
+        question=req.question, question_after_expend=rewrite_query)
     rewrite_req.history = []
     documents_info = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
         tasks = {
             executor.submit(version_expert_search_data, rewrite_req): 'version_expert_search_data'
         }
-        if config["GRAPH_RAG_ENABLE"]:
-            tasks[executor.submit(neo4j_search_data, rewrite_query)] = 'neo4j_search_data'
 
         for future in concurrent.futures.as_completed(tasks):
             result = future.result()

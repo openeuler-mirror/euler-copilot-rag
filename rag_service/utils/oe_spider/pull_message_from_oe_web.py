@@ -34,7 +34,7 @@ class PullMessageFromOeWeb:
             headers=headers,
             json=data
         )
-        results=[]
+        results = []
         total_num = response.json()["result"]["totalCount"]
         for i in range(total_num//10+(total_num % 10 != 0)):
             data = {
@@ -97,7 +97,7 @@ class PullMessageFromOeWeb:
             headers=headers,
             json=data
         )
-        results=[]
+        results = []
         total_num = response.json()["result"]["totalCount"]
         for i in range(total_num//10+(total_num % 10 != 0)):
             data = {
@@ -156,7 +156,7 @@ class PullMessageFromOeWeb:
             headers=headers,
             json=data
         )
-        results=[]
+        results = []
         total_num = response.json()["result"]["totalNum"]
         for i in range(total_num//10+(total_num % 10 != 0)):
             data = {
@@ -177,7 +177,7 @@ class PullMessageFromOeWeb:
                 headers=headers,
                 json=data
             )
-            results+= response.json()["result"]["data"]
+            results += response.json()["result"]["data"]
         OeMessageManager.clear_oe_compatibility_commercial_software()
         for i in range(len(results)):
             for key in results[i]:
@@ -201,7 +201,7 @@ class PullMessageFromOeWeb:
             headers=headers,
             data=data
         )
-        results=[]
+        results = []
         total_num = response.json()["total"]
         for i in range(total_num//10+(total_num % 10 != 0)):
             data = {
@@ -323,6 +323,8 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["osvList"]
+        for i in range(len(results)):
+            results[i]['details'] = 'https://www.openeuler.org/zh/approve/approve-info/?id='+str(results[i]['id'])
         OeMessageManager.clear_compatibility_osv()
         for i in range(len(results)):
             for key in results[i]:
@@ -435,29 +437,29 @@ class PullMessageFromOeWeb:
                         results[i][key]) == tuple:
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_cve_database(results[i])
+
     @staticmethod
     def oe_organize_message_handler():
-        f=open('rag_service/utils/oe_spider/organize.txt','r',encoding='utf-8')
-        lines=f.readlines()
-        st=0
-        en=0
-        filed_list=['role','name','personal_message']
+        f = open('rag_service/utils/oe_spider/organize.txt', 'r', encoding='utf-8')
+        lines = f.readlines()
+        st = 0
+        en = 0
+        filed_list = ['role', 'name', 'personal_message']
         OeMessageManager.clear_oe_community_organization_structure()
-        while st<len(lines):
-            while en<len(lines) and lines[en]!='\n':
-                en+=1
-            lines[st]=lines[st].replace('\n','')
-            committee_name=lines[st]
-            for i in range(st+1,en):
-                data=lines[i].replace('\n','').split(' ')
-                info={'committee_name':committee_name}
-                for j in range(min(len(filed_list),len(data))):
-                    data[j]=data[j].replace('\n','')
-                    if j==2:
-                        data[j]=data[j].replace('_',' ')
-                    info[filed_list[j]]=data[j]
+        while st < len(lines):
+            while en < len(lines) and lines[en] != '\n':
+                en += 1
+            lines[st] = lines[st].replace('\n', '')
+            committee_name = lines[st]
+            for i in range(st+1, en):
+                data = lines[i].replace('\n', '').split(' ')
+                info = {'committee_name': committee_name}
+                for j in range(min(len(filed_list), len(data))):
+                    data[j] = data[j].replace('\n', '')
+                    if j == 2:
+                        data[j] = data[j].replace('_', ' ')
+                    info[filed_list[j]] = data[j]
                 OeMessageManager.add_oe_community_organization_structure(info)
-            st=en+1
-            en=st
+            st = en+1
+            en = st
 
-PullMessageFromOeWeb.oe_organize_message_handler()

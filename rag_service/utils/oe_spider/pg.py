@@ -1,7 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from threading import Lock
 
-from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine
+from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine, MetaData
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from rag_service.security.config import config
@@ -29,7 +29,7 @@ class OeCompatibilityOverallUnit(Base):
     host_bus_adapter = Column(String())
     lang = Column(String())
     main_board_bodel = Column(String())
-    openeuler_version  = Column(String(), comment='openEuler版本')
+    openeuler_version = Column(String(), comment='openEuler版本')
     ports_bus_types = Column(String())
     product_information = Column(String())
     ram = Column(String())
@@ -37,6 +37,7 @@ class OeCompatibilityOverallUnit(Base):
     video_adapter = Column(String())
     compatibility_configuration = Column(String())
     boardCards = Column(String())
+
 
 class OeCompatibilityCard(Base):
     __tablename__ = 'oe_compatibility_card'
@@ -53,7 +54,7 @@ class OeCompatibilityCard(Base):
     driver_size = Column(String())
     item = Column(String())
     lang = Column(String())
-    openeuler_version  = Column(String(), comment='openEuler版本')
+    openeuler_version = Column(String(), comment='openEuler版本')
     sha256 = Column(String())
     ss_id = Column(String())
     sv_id = Column(String())
@@ -66,7 +67,7 @@ class OeCompatibilityOpenSourceSoftware(Base):
     __tablename__ = 'oe_compatibility_open_source_software'
     __table_args__ = {'comment': 'openEuler支持的开源软件'}
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    openeuler_version  = Column(String(), comment='openEuler版本')
+    openeuler_version = Column(String(), comment='openEuler版本')
     arch = Column(String(), comment='架构')
     property = Column(String(), comment='软件属性')
     result_url = Column(String())
@@ -98,7 +99,7 @@ class OeCompatibilityCommercialSoftware(Base):
     company_name = Column(String(), comment='厂家名称')
     platform_type_and_server_model = Column(String())
     authenticate_link = Column(String())
-    openeuler_version  = Column(String(), comment='openEuler版本')
+    openeuler_version = Column(String(), comment='openEuler版本')
     region = Column(String())
 
 
@@ -116,6 +117,7 @@ class OeCompatibilityOepkgs(Base):
     rpmlicense = Column(String())
     version = Column(String())
 
+
 class OeCompatibilitySolution(Base):
     __tablename__ = 'oe_compatibility_solution'
     __table_args__ = {'comment': 'openeuler支持的解决方案'}
@@ -131,7 +133,7 @@ class OeCompatibilitySolution(Base):
     lang = Column(String())
     libvirt_version = Column(String())
     network_card = Column(String())
-    openeuler_version  = Column(String(), comment='openEuler版本')
+    openeuler_version = Column(String(), comment='openEuler版本')
     ovs_version = Column(String())
     product = Column(String(), comment='型号')
     qemu_version = Column(String())
@@ -163,7 +165,7 @@ class OeCompatibilitySecurityNotice(Base):
     __tablename__ = 'oe_compatibility_security_notice'
     id = Column(String(), primary_key=True,)
     affected_component = Column(String())
-    affected_product = Column(String())
+    openeuler_version = Column(String())
     announcement_time = Column(String())
     cve_id = Column(String())
     description = Column(String())
@@ -182,6 +184,7 @@ class OeCompatibilitySecurityNotice(Base):
     package_list = Column(String())
     reference_list = Column(String())
     cve_list = Column(String())
+    details = Column(String())
 
 
 class OeCompatibilityCveDatabase(Base):
@@ -219,6 +222,7 @@ class OeCompatibilityCveDatabase(Base):
     parser_bean = Column(String())
     cvrf = Column(String())
     package_list = Column(String())
+    details = Column(String())
 
 
 class PostgresDBMeta(type):
@@ -231,6 +235,7 @@ class PostgresDBMeta(type):
             cls._instances[cls] = instance
         return cls._instances[cls]
 
+
 class OeCommunityOrganizationStructure(Base):
     __tablename__ = 'oe_community_organization_structure'
     __table_args__ = {'comment': 'openEuler社区组织架构信息表，存储了各委员会下人员的职位、姓名和个人信息'}
@@ -239,7 +244,8 @@ class OeCommunityOrganizationStructure(Base):
     role = Column(String(), comment='职位')
     name = Column(String(), comment='姓名')
     personal_message = Column(String(), comment='个人信息')
-    
+
+
 class PostgresDB(metaclass=PostgresDBMeta):
 
     def __init__(self):
@@ -248,6 +254,9 @@ class PostgresDB(metaclass=PostgresDBMeta):
             f'@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}',
             echo=False,
             pool_pre_ping=True)
+        self.create_table()
+
+    def create_table(self):
         Base.metadata.create_all(self.engine)
 
     def get_session(self):

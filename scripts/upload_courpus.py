@@ -44,6 +44,7 @@ def upload_files(upload_file_paths: List[str], engine, ssl_enable, rag_url, kb_n
     while Vectorize.is_rag_busy(engine):
         print('等待任务完成中')
         time.sleep(5)
+    print(res.text)
     if res.status_code == 200:
         logger.info(f'用户上传以下片段{str(upload_file_paths)}成功')
         return True
@@ -68,8 +69,7 @@ def upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable, rag_host, rag_p
     except Exception as e:
         logger.error(f'数据库引擎初始化失败，由于原因{e}')
         raise e
-    try:
-        for root, dirs, files in os.walk(corpus_dir):
+    for root, dirs, files in os.walk(corpus_dir):
             index = 0
             batch_count = 0
             file_paths = []
@@ -93,6 +93,3 @@ def upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable, rag_host, rag_p
                 else:
                     raise Exception("error")
                 file_paths.clear()
-    except Exception as e:
-        logger.error(f'文件上传失败由于原因{e}')
-        raise e

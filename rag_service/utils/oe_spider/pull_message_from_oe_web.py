@@ -1,6 +1,6 @@
 import requests
 import json
-
+import copy
 from oe_message_manager import OeMessageManager
 
 
@@ -377,6 +377,25 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["securityNoticeList"]
+            break
+        new_results = []
+        for i in range(len(results)):
+            openeuler_version_list = results[i]['affectedProduct'].split(';')
+            cve_id_list= results[i]['cveId'].split(';')
+            cnt=0
+            for openeuler_version in openeuler_version_list:
+                if len(openeuler_version)>0:
+                    for cve_id in cve_id_list:
+                        if len(cve_id)>0:
+                            tmp_dict = copy.deepcopy(results[i])
+                            del tmp_dict['affectedProduct']
+                            tmp_dict['id']=int(str(tmp_dict['id'])+str(cnt))
+                            tmp_dict['openeuler_version']=openeuler_version
+                            tmp_dict['cveId']=cve_id
+                            new_results.append(tmp_dict)
+                            tmp_dict['details'] = 'https://www.openeuler.org/zh/security/security-bulletins/detail/?id='+tmp_dict['securityNoticeNo']
+                            cnt+=1
+        results = new_results
         OeMessageManager.clear_oe_compatibility_security_notice()
         for i in range(len(results)):
             for key in results[i]:
@@ -429,6 +448,10 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["cveDatabaseList"]
+            break
+        for i in range(len(results)):
+            results[i]['details'] = 'https://www.openeuler.org/zh/security/cve/detail/?cveId=' + \
+                results[i]['cveId']+'&packageName='+results[i]['packageName']
         OeMessageManager.clear_oe_compatibility_cve_database()
         for i in range(len(results)):
             for key in results[i]:
@@ -463,3 +486,5 @@ class PullMessageFromOeWeb:
             st = en+1
             en = st
 
+
+PullMessageFromOeWeb.pull_oe_compatibility_security_notice()

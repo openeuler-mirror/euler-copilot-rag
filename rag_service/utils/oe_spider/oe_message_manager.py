@@ -1,4 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+from sqlalchemy import text
 from pg import PostgresDB
 from pg import OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution, \
     OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOsv, \
@@ -10,8 +11,9 @@ class OeMessageManager:
     def clear_oe_compatibility_overall_unit():
         try:
             with PostgresDB().get_session() as session:
-                session.query(OeCompatibilityOverallUnit).delete()
+                session.execute(text("DROP TABLE IF EXISTS oe_compatibility_overall_unit;"))
                 session.commit()
+            PostgresDB().create_table()
         except Exception as e:
             return
 
@@ -53,8 +55,9 @@ class OeMessageManager:
     def clear_oe_compatibility_card():
         try:
             with PostgresDB().get_session() as session:
-                session.query(OeCompatibilityCard).delete()
+                session.execute(text("DROP TABLE IF EXISTS oe_compatibility_card;"))
                 session.commit()
+            PostgresDB().create_table()
         except Exception as e:
             return
 
@@ -92,8 +95,9 @@ class OeMessageManager:
     def clear_oe_compatibility_open_source_software():
         try:
             with PostgresDB().get_session() as session:
-                session.query(OeCompatibilityOpenSourceSoftware).delete()
+                session.execute(text("DROP TABLE IF EXISTS oe_compatibility_open_source_software;"))
                 session.commit()
+            PostgresDB().create_table()
         except Exception as e:
             return
 
@@ -130,8 +134,9 @@ class OeMessageManager:
     def clear_oe_compatibility_commercial_software():
         try:
             with PostgresDB().get_session() as session:
-                session.query(OeCompatibilityCommercialSoftware).delete()
+                session.execute(text("DROP TABLE IF EXISTS oe_compatibility_commercial_software;"))
                 session.commit()
+            PostgresDB().create_table()
         except Exception as e:
             return
 
@@ -161,8 +166,9 @@ class OeMessageManager:
     def clear_oe_compatibility_solution():
         try:
             with PostgresDB().get_session() as session:
-                session.query(OeCompatibilitySolution).delete()
+                session.execute(text("DROP TABLE IF EXISTS oe_compatibility_solution;"))
                 session.commit()
+            PostgresDB().create_table()
         except Exception as e:
             return
 
@@ -203,8 +209,9 @@ class OeMessageManager:
     def clear_compatibility_osv():
         try:
             with PostgresDB().get_session() as session:
-                session.query(OeCompatibilityOsv).delete()
+                session.execute(text("DROP TABLE IF EXISTS oe_compatibility_osv;"))
                 session.commit()
+            PostgresDB().create_table()
         except Exception as e:
             return
 
@@ -235,8 +242,9 @@ class OeMessageManager:
     def clear_oe_compatibility_security_notice():
         try:
             with PostgresDB().get_session() as session:
-                session.query(OeCompatibilitySecurityNotice).delete()
+                session.execute(text("DROP TABLE IF EXISTS oe_compatibility_security_notice;"))
                 session.commit()
+            PostgresDB().create_table()
         except Exception as e:
             return
 
@@ -245,7 +253,7 @@ class OeMessageManager:
         oe_compatibility_security_notice_slice = OeCompatibilitySecurityNotice(
             id=info.get("id", ''),
             affected_component=info.get("affectedComponent", ''),
-            affected_product=info.get("affectedProduct", ''),
+            openeuler_version=info.get("openeuler_version", ''),
             announcement_time=info.get("announcementTime", ''),
             cve_id=info.get("cveId", ''),
             description=info.get("description", ''),
@@ -263,8 +271,12 @@ class OeMessageManager:
             package_hotpatch_list=info.get("packageHotpatchList", ''),
             package_list=info.get("packageList", ''),
             reference_list=info.get("referenceList", ''),
-            cve_list=info.get("cveList", '')
+            cve_list=info.get("cveList", ''),
+            details=info.get("details", ''),
         )
+        with PostgresDB().get_session() as session:
+                session.add(oe_compatibility_security_notice_slice)
+                session.commit()
         try:
             with PostgresDB().get_session() as session:
                 session.add(oe_compatibility_security_notice_slice)
@@ -276,8 +288,9 @@ class OeMessageManager:
     def clear_oe_compatibility_cve_database():
         try:
             with PostgresDB().get_session() as session:
-                session.query(OeCompatibilityCveDatabase).delete()
+                session.execute(text("DROP TABLE IF EXISTS oe_compatibility_cve_database;"))
                 session.commit()
+            PostgresDB().create_table()
         except Exception as e:
             return
 
@@ -316,7 +329,8 @@ class OeMessageManager:
             security_notice_no=info.get("securityNoticeNo", ''),
             parser_bean=info.get("parserBean", ''),
             cvrf=info.get("cvrf", ''),
-            package_list=info.get("packageList", '')
+            package_list=info.get("packageList", ''),
+            details=info.get("details", ''),
         )
         try:
             with PostgresDB().get_session() as session:
@@ -327,8 +341,9 @@ class OeMessageManager:
     def clear_oe_community_organization_structure():
         try:
             with PostgresDB().get_session() as session:
-                session.query(OeCommunityOrganizationStructure).delete()
+                session.execute(text("DROP TABLE IF EXISTS oe_community_organization_structure;"))
                 session.commit()
+            PostgresDB().create_table()
         except Exception as e:
             return
 

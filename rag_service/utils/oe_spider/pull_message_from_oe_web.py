@@ -1,7 +1,9 @@
 import requests
 import json
 import copy
+from datetime import datetime
 from oe_message_manager import OeMessageManager
+from rag_service.security.config import config
 
 
 class PullMessageFromOeWeb:
@@ -223,6 +225,46 @@ class PullMessageFromOeWeb:
             OeMessageManager.add_oe_compatibility_open_source_software(results[i])
 
     @staticmethod
+    def pull_oe_compatibility_oepkgs():
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        params = {'user': config['oepkg_user_account'],
+                  'password': config['oepkg_user_pwd'],
+                  'expireInSeconds': 36000
+                  }
+        url = 'https://search.oepkgs.net/api/search/openEuler/genToken'
+        response = requests.post(url, headers=headers, params=params)
+        token = response.json()['data']['Authorization']
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': token
+        }
+        url = 'https://search.oepkgs.net/api/search/openEuler/scroll?scrollId='
+        response = requests.get(url, headers=headers)
+        data = response.json()['data']
+        scrollId = data['scrollId']
+        totalHits = data['totalHits']
+        data_list = data['list']
+        results = data_list
+        totalHits -= 1000
+
+        while totalHits > 0:
+            url = 'https://search.oepkgs.net/api/search/openEuler/scroll?scrollId='+scrollId
+            response = requests.get(url, headers=headers)
+            data = response.json()['data']
+            data_list = data['list']
+            results += data_list
+            totalHits -= 1000
+        OeMessageManager.clear_oe_compatibility_oepkgs()
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(results[i][key]) == dict or type(
+                        results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_compatibility_oepkgs(results[i])
+
+    @staticmethod
     def pull_oe_compatibility_solution():
         url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/solutioncomp/findAll'
         headers = {
@@ -377,24 +419,24 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["securityNoticeList"]
-            break
+
         new_results = []
         for i in range(len(results)):
             openeuler_version_list = results[i]['affectedProduct'].split(';')
-            cve_id_list= results[i]['cveId'].split(';')
-            cnt=0
+            cve_id_list = results[i]['cveId'].split(';')
+            cnt = 0
             for openeuler_version in openeuler_version_list:
-                if len(openeuler_version)>0:
+                if len(openeuler_version) > 0:
                     for cve_id in cve_id_list:
-                        if len(cve_id)>0:
+                        if len(cve_id) > 0:
                             tmp_dict = copy.deepcopy(results[i])
                             del tmp_dict['affectedProduct']
-                            tmp_dict['id']=int(str(tmp_dict['id'])+str(cnt))
-                            tmp_dict['openeuler_version']=openeuler_version
-                            tmp_dict['cveId']=cve_id
+                            tmp_dict['id'] = int(str(tmp_dict['id'])+str(cnt))
+                            tmp_dict['openeuler_version'] = openeuler_version
+                            tmp_dict['cveId'] = cve_id
                             new_results.append(tmp_dict)
                             tmp_dict['details'] = 'https://www.openeuler.org/zh/security/security-bulletins/detail/?id='+tmp_dict['securityNoticeNo']
-                            cnt+=1
+                            cnt += 1
         results = new_results
         OeMessageManager.clear_oe_compatibility_security_notice()
         for i in range(len(results)):
@@ -486,5 +528,17 @@ class PullMessageFromOeWeb:
             st = en+1
             en = st
 
+    @staticmethod
+    def oe_openeuler_version_message_handler():
+        f = open('rag_service/utils/oe_spider/openeuler_version.txt', 'r', encoding='utf-8')
+        lines = f.readlines()
+        filed_list = ['openeuler_version', 'kernel_version', 'publish_time', 'version_type']
+        OeMessageManager.clear_oe_community_openEuler_version()
+        for line in lines:
+            tmp_list = line.replace('\n','').split(' ')
+            tmp_list[2] = datetime.strptime(tmp_list[2], "%Y-%m-%d")
+            tmp_dict = {}
+            for i in range(len(filed_list)):
+                tmp_dict[filed_list[i]] = tmp_list[i]
+            OeMessageManager.add_oe_community_openEuler_version(tmp_dict)
 
-PullMessageFromOeWeb.pull_oe_compatibility_security_notice()

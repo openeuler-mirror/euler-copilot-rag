@@ -2,8 +2,8 @@
 from sqlalchemy import text
 from pg import PostgresDB
 from pg import OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution, \
-    OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOsv, \
-    OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase,OeCommunityOrganizationStructure
+    OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware,OeCompatibilityOepkgs, OeCompatibilityOsv, \
+    OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase,OeCommunityOrganizationStructure,OeCommunityOpenEulerVersion
 
 
 class OeMessageManager:
@@ -204,7 +204,36 @@ class OeMessageManager:
                 session.commit()
         except Exception as e:
             return
+    @staticmethod
+    def clear_oe_compatibility_oepkgs():
+        try:
+            with PostgresDB().get_session() as session:
+                session.execute(text("DROP TABLE IF EXISTS oe_compatibility_oepkgs;"))
+                session.commit()
+            PostgresDB().create_table()
+        except Exception as e:
+            return
 
+    @staticmethod
+    def add_oe_compatibility_oepkgs(info):
+        oe_compatibility_oepkgs_slice = OeCompatibilityOepkgs(
+            id=info.get("id", ''),
+            name=info.get("name", ''),
+            summary=info.get("summary", ''),
+            repotype=info.get("repoType", ''),
+            openeuler_version=info.get("os", '')+'-'+info.get("osVer", ''),
+            rpmpackurl=info.get("rpmPackUrl", ''),
+            srcrpmpackurl=info.get("srcRpmPackUrl", ''),
+            arch=info.get("arch", ''),
+            rpmlicense=info.get("rpmLicense", ''),
+            version=info.get("version", ''),
+        )
+        try:
+            with PostgresDB().get_session() as session:
+                session.add(oe_compatibility_oepkgs_slice)
+                session.commit()
+        except Exception as e:
+            return
     @staticmethod
     def clear_compatibility_osv():
         try:
@@ -361,3 +390,25 @@ class OeMessageManager:
                 session.commit()
         except Exception as e:
             return
+    
+    def clear_oe_community_openEuler_version():
+        try:
+            with PostgresDB().get_session() as session:
+                session.execute(text("DROP TABLE IF EXISTS oe_community_openEuler_version;"))
+                session.commit()
+            PostgresDB().create_table()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def add_oe_community_openEuler_version(info):
+        oe_community_openeuler_version_slice = OeCommunityOpenEulerVersion(
+            openeuler_version= info.get('openeuler_version',''),
+            kernel_version = info.get('kernel_version',''),
+            publish_time = info.get('publish_time',''),
+            version_type = info.get('version_type','')
+        )
+        print(info)
+        with PostgresDB().get_session() as session:
+            session.add(oe_community_openeuler_version_slice)
+            session.commit()

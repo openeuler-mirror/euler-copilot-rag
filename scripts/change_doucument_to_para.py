@@ -32,12 +32,12 @@ def write_para_to_docx(tar_dir,para_cnt,file_name,para_list):
             except Exception as e:
                 logger.error(f'片段写入失败由于{e}')
                 print(para)
-def change_document_to_para(src_dir, tar_dir, chunk=1024):
+def change_document_to_para(src_dir, tar_dir, para_chunk=1024):
     all_files = get_all_file_paths(src_dir)
     file_name_list=[]
     for dir in all_files:
         try:
-            para_list = get_paragraphs_from_file(dir, chunk)
+            para_list = get_paragraphs_from_file(dir, para_chunk)
         except Exception as e:
             logger.error(f'文件 {src_dir}转换为片段失败，由于错误{e}')
             continue
@@ -50,10 +50,10 @@ def change_document_to_para(src_dir, tar_dir, chunk=1024):
         num_cores//=2
         num_cores=max(num_cores,1)
         num_cores = min(8,min(num_cores, len(para_list)))
-        chunk=len(para_list)//num_cores
+        task_chunk=len(para_list)//num_cores
         processes=[]
         for i in range(num_cores):
-            p = Process(target=write_para_to_docx, args=(tar_dir,i*chunk, file_name, para_list[i*chunk:min(chunk*(i+1), len(para_list))]))
+            p = Process(target=write_para_to_docx, args=(tar_dir,i*task_chunk, file_name, para_list[i*task_chunk:min(task_chunk*(i+1), len(para_list))]))
             processes.append(p)
             p.start()
         for i in range(len(processes)):

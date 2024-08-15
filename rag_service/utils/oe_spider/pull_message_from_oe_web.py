@@ -490,7 +490,7 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["cveDatabaseList"]
-            break
+
         for i in range(len(results)):
             results[i]['details'] = 'https://www.openeuler.org/zh/security/cve/detail/?cveId=' + \
                 results[i]['cveId']+'&packageName='+results[i]['packageName']

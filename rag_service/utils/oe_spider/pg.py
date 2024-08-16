@@ -4,8 +4,6 @@ from threading import Lock
 from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine, MetaData
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from rag_service.security.config import config
-
 
 Base = declarative_base()
 
@@ -105,17 +103,18 @@ class OeCompatibilityCommercialSoftware(Base):
 
 class OeCompatibilityOepkgs(Base):
     __tablename__ = 'oe_compatibility_oepkgs'
-    __table_args__ = {'comment': 'openEuler支持的软件包信息表，存储了openEuler支持软件包的名称、简介、是否为官方版本标识、相关的openEuler版本、rpm包下载链接、源码包下载链接、支持的架构、版本'}
+    __table_args__ = {
+        'comment': 'openEuler支持的软件包信息表，存储了openEuler支持软件包的名称、简介、是否为官方版本标识、相关的openEuler版本、rpm包下载链接、源码包下载链接、支持的架构、版本'}
     id = Column(String(), primary_key=True)
-    name = Column(String(),comment='openEuler支持的软件包的版本')
-    summary = Column(String(),comment='openEuler支持的软件包的简介')
-    repotype = Column(String(),comment='openEuler支持的软件包的是否为官方版本标识')
-    openeuler_version = Column(String(),comment='openEuler支持的软件包的相关的openEuler版本')
-    rpmpackurl = Column(String(),comment='openEuler支持的软件包的rpm包下载链接')
-    srcrpmpackurl = Column(String(),comment='openEuler支持的软件包的源码包下载链接')
-    arch = Column(String(),comment='openEuler支持的软件包的支持的架构')
+    name = Column(String(), comment='openEuler支持的软件包的版本')
+    summary = Column(String(), comment='openEuler支持的软件包的简介')
+    repotype = Column(String(), comment='openEuler支持的软件包的是否为官方版本标识')
+    openeuler_version = Column(String(), comment='openEuler支持的软件包的相关的openEuler版本')
+    rpmpackurl = Column(String(), comment='openEuler支持的软件包的rpm包下载链接')
+    srcrpmpackurl = Column(String(), comment='openEuler支持的软件包的源码包下载链接')
+    arch = Column(String(), comment='openEuler支持的软件包的支持的架构')
     rpmlicense = Column(String())
-    version = Column(String(),comment='openEuler支持的软件包的版本')
+    version = Column(String(), comment='openEuler支持的软件包的版本')
 
 
 class OeCompatibilitySolution(Base):
@@ -125,7 +124,7 @@ class OeCompatibilitySolution(Base):
     architecture = Column(String(), comment='openeuler支持的解决方案的架构')
     bios_uefi = Column(String())
     certification_type = Column(String(), comment='openeuler支持的解决方案的硬件')
-    cpu = Column(String(),comment='openeuler支持的解决方案的硬件的cpu型号')
+    cpu = Column(String(), comment='openeuler支持的解决方案的硬件的cpu型号')
     date = Column(String())
     driver = Column(String())
     hard_disk_drive = Column(String())
@@ -147,7 +146,8 @@ class OeCompatibilitySolution(Base):
 
 class OeCompatibilityOsv(Base):
     __tablename__ = 'oe_compatibility_osv'
-    __table_args__ = {'comment': 'openEuler相关的OSV(Operating System Vendor,操作系统供应商)信息表，存储了openEuler相关的OSV(Operating System Vendor,操作系统供应商)的支持的架构、版本、名称、下载链接、详细信息的链接和相关的openEuler版本'}
+    __table_args__ = {
+        'comment': 'openEuler相关的OSV(Operating System Vendor,操作系统供应商)信息表，存储了openEuler相关的OSV(Operating System Vendor,操作系统供应商)的支持的架构、版本、名称、下载链接、详细信息的链接和相关的openEuler版本'}
     id = Column(String(), primary_key=True,)
     arch = Column(String())
     os_version = Column(String(), comment='openEuler相关的OSV(Operating System Vendor,操作系统供应商)的版本')
@@ -228,6 +228,7 @@ class OeCompatibilityCveDatabase(Base):
     package_list = Column(String())
     details = Column(String())
 
+
 class OeCommunityOrganizationStructure(Base):
     __tablename__ = 'oe_community_organization_structure'
     __table_args__ = {'comment': 'openEuler社区组织架构信息表，存储了openEuler社区成员所属的委员会、职位、姓名和个人信息'}
@@ -237,6 +238,7 @@ class OeCommunityOrganizationStructure(Base):
     name = Column(String(), comment='openEuler社区成员的姓名')
     personal_message = Column(String(), comment='openEuler社区成员的个人信息')
 
+
 class OeCommunityOpenEulerVersion(Base):
     __tablename__ = 'oe_community_openeuler_version'
     __table_args__ = {'comment': 'openEuler社区openEuler版本信息表，存储了openEuler版本的版本、内核版本、发布日期和版本类型'}
@@ -245,6 +247,8 @@ class OeCommunityOpenEulerVersion(Base):
     kernel_version = Column(String(), comment='openEuler版本的内核版本')
     publish_time = Column(TIMESTAMP(), comment='openEuler版本的发布日期')
     version_type = Column(String(), comment='openEuler社区成员的版本类型')
+
+
 class PostgresDBMeta(type):
     _instances = {}
     _lock: Lock = Lock()
@@ -255,12 +259,12 @@ class PostgresDBMeta(type):
             cls._instances[cls] = instance
         return cls._instances[cls]
 
+
 class PostgresDB(metaclass=PostgresDBMeta):
 
-    def __init__(self):
+    def __init__(self, pg_url):
         self.engine = create_engine(
-            f'postgresql+psycopg2://{config["POSTGRES_USER"]}:{config["POSTGRES_PWD"]}'
-            f'@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}',
+            pg_url,
             echo=False,
             pool_pre_ping=True)
         self.create_table()
@@ -273,8 +277,3 @@ class PostgresDB(metaclass=PostgresDBMeta):
 
     def close(self):
         self.engine.dispose()
-
-
-with PostgresDB().get_session() as session:
-    session.query(1)
-    pass

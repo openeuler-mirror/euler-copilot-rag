@@ -4,6 +4,7 @@ from logger import get_logger
 
 logger = get_logger()
 
+
 def drop_all_tables(pg_host, pg_port, pg_user, pg_pwd):
     try:
         pg_url = pg_host+':'+pg_port
@@ -20,4 +21,10 @@ def drop_all_tables(pg_host, pg_port, pg_user, pg_pwd):
     metadata = MetaData()
     metadata.reflect(bind=engine)
     with engine.begin() as conn:
+        for table in metadata.tables.values():
+            for index in table.indexes:
+                try:
+                    index.drop(bind=conn)
+                except Exception as e:
+                    logger.warning(f"删除索引失败由于: {e}")
         metadata.drop_all(bind=conn)

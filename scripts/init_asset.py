@@ -2,14 +2,15 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import create_engine, text, and_, MetaData, Table, Column, Integer, String, DateTime
+from sqlalchemy import create_engine, text, and_, MetaData, Table, Column, Integer, String, DateTime, Index
 from sqlalchemy.orm import sessionmaker, registry
 from sqlalchemy import create_engine
 from pgvector.sqlalchemy import Vector
 
 from init_all_table import KnowledgeBase, KnowledgeBaseAsset, VectorStore, VectorizationJob
 
-def init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedding_model):
+
+def init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedding_model, vector_dim):
     pg_url = pg_host+':'+pg_port
     engine = create_engine(
         f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
@@ -55,9 +56,8 @@ def init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedd
             # insert success vectorization job
             knowledge_base_asset = session.query(KnowledgeBaseAsset).filter(
                 and_(KnowledgeBaseAsset.name == kb_asset_name,
-                     KnowledgeBaseAsset.kb_id ==knowledge_base_id[0]
-                    )).one()
-
+                     KnowledgeBaseAsset.kb_id == knowledge_base_id[0]
+                     )).one()
 
             vectorization_job = VectorizationJob()
             vectorization_job.id = uuid.uuid4()
@@ -87,7 +87,7 @@ def init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedd
                     metadata,
                     Column('id', Integer, primary_key=True, autoincrement=True),
                     Column('general_text', String()),
-                    Column('general_text_vector', Vector()),
+                    Column('general_text_vector', Vector(vector_dim)),
                     Column('source', String()),
                     Column('uri', String()),
                     Column('mtime', DateTime, default=datetime.now),
@@ -99,9 +99,19 @@ def init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedd
             dynamic_table = create_dynamic_table(vector_items_id)
 
             reg = registry()
+
             @reg.mapped
             class VectorItem:
                 __table__ = dynamic_table
+                __table_args__ = (
+                    Index(
+                        f'general_text_vector_index_{vector_items_id}',
+                        dynamic_table.c.general_text_vector,
+                        postgresql_using='hnsw',
+                        postgresql_with={'m': 16, 'ef_construction': 200},
+                        postgresql_ops={'general_text_vector': 'vector_cosine_ops'}
+                    ),
+                )
 
             metadata.create_all(engine)
     except Exception as e:

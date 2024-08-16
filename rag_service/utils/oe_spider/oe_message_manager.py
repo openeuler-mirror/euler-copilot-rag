@@ -2,23 +2,23 @@
 from sqlalchemy import text
 from pg import PostgresDB
 from pg import OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution, \
-    OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware,OeCompatibilityOepkgs, OeCompatibilityOsv, \
-    OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase,OeCommunityOrganizationStructure,OeCommunityOpenEulerVersion
+    OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOepkgs, OeCompatibilityOsv, \
+    OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase, OeCommunityOrganizationStructure, OeCommunityOpenEulerVersion
 
 
 class OeMessageManager:
     @staticmethod
-    def clear_oe_compatibility_overall_unit():
+    def clear_oe_compatibility_overall_unit(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_overall_unit;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_compatibility_overall_unit(info):
+    def add_oe_compatibility_overall_unit(pg_url, info):
         oe_compatibility_overall_unit_slice = OeCompatibilityOverallUnit(
             id=info.get("id", ''),
             architecture=info.get("architecture", ''),
@@ -45,24 +45,24 @@ class OeMessageManager:
             boardCards=info.get("boardCards", '')
         )
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_overall_unit_slice)
                 session.commit()
         except Exception as e:
             return
 
     @staticmethod
-    def clear_oe_compatibility_card():
+    def clear_oe_compatibility_card(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_card;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_compatibility_card(info):
+    def add_oe_compatibility_card(pg_url, info):
         oe_compatibility_card_slice = OeCompatibilityCard(
             id=info.get("id", ''),
             architecture=info.get("architecture", ''),
@@ -85,24 +85,24 @@ class OeMessageManager:
             version=info.get("version", '')
         )
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_card_slice)
                 session.commit()
         except Exception as e:
             return
 
     @staticmethod
-    def clear_oe_compatibility_open_source_software():
+    def clear_oe_compatibility_open_source_software(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_open_source_software;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_compatibility_open_source_software(info):
+    def add_oe_compatibility_open_source_software(pg_url, info):
         oe_compatibility_open_source_software_slice = OeCompatibilityOpenSourceSoftware(
             openeuler_version=info.get("os", '').replace(' ', '-'),
             arch=info.get("arch", ''),
@@ -124,24 +124,24 @@ class OeMessageManager:
             downloadLink=info.get("downloadLink", '')
         )
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_open_source_software_slice)
                 session.commit()
         except Exception as e:
             return
 
     @staticmethod
-    def clear_oe_compatibility_commercial_software():
+    def clear_oe_compatibility_commercial_software(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_commercial_software;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_compatibility_commercial_software(info):
+    def add_oe_compatibility_commercial_software(pg_url, info):
         oe_compatibility_commercial_software_slice = OeCompatibilityCommercialSoftware(
             id=info.get("certId", ''),
             data_id=info.get("dataId", ''),
@@ -156,24 +156,24 @@ class OeMessageManager:
             region=info.get("region", '')
         )
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_commercial_software_slice)
                 session.commit()
         except Exception as e:
             return
 
     @staticmethod
-    def clear_oe_compatibility_solution():
+    def clear_oe_compatibility_solution(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_solution;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_compatibility_solution(info):
+    def add_oe_compatibility_solution(pg_url, info):
         oe_compatibility_solution_slice = OeCompatibilitySolution(
             id=info.get("id", ''),
             architecture=info.get("architecture", ''),
@@ -199,23 +199,24 @@ class OeMessageManager:
             stratovirt_version=info.get("stratovirtVersion", '')
         )
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_solution_slice)
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
-    def clear_oe_compatibility_oepkgs():
+    def clear_oe_compatibility_oepkgs(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_oepkgs;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_compatibility_oepkgs(info):
+    def add_oe_compatibility_oepkgs(pg_url, info):
         oe_compatibility_oepkgs_slice = OeCompatibilityOepkgs(
             id=info.get("id", ''),
             name=info.get("name", ''),
@@ -229,23 +230,24 @@ class OeMessageManager:
             version=info.get("version", ''),
         )
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_oepkgs_slice)
                 session.commit()
         except Exception as e:
             return
+
     @staticmethod
-    def clear_compatibility_osv():
+    def clear_compatibility_osv(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_osv;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_compatibility_osv(info):
+    def add_oe_compatibility_osv(pg_url, info):
         oe_compatibility_osv_slice = OeCompatibilityOsv(
             id=info.get("id", ''),
             arch=info.get("arch", ''),
@@ -261,24 +263,24 @@ class OeMessageManager:
             openeuler_version=info.get('baseOpeneulerVersion', '').replace(' ', '-')
         )
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_osv_slice)
                 session.commit()
         except Exception as e:
             return
 
     @staticmethod
-    def clear_oe_compatibility_security_notice():
+    def clear_oe_compatibility_security_notice(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_security_notice;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_compatibility_security_notice(info):
+    def add_oe_compatibility_security_notice(pg_url, info):
         oe_compatibility_security_notice_slice = OeCompatibilitySecurityNotice(
             id=info.get("id", ''),
             affected_component=info.get("affectedComponent", ''),
@@ -303,28 +305,25 @@ class OeMessageManager:
             cve_list=info.get("cveList", ''),
             details=info.get("details", ''),
         )
-        with PostgresDB().get_session() as session:
-                session.add(oe_compatibility_security_notice_slice)
-                session.commit()
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_security_notice_slice)
                 session.commit()
         except Exception as e:
             return
 
     @staticmethod
-    def clear_oe_compatibility_cve_database():
+    def clear_oe_compatibility_cve_database(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_cve_database;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_compatibility_cve_database(info):
+    def add_oe_compatibility_cve_database(pg_url, info):
         oe_compatibility_cve_database_slice = OeCompatibilityCveDatabase(
             id=info.get("id", ''),
             affected_product=info.get("affectedProduct", ''),
@@ -362,53 +361,53 @@ class OeMessageManager:
             details=info.get("details", ''),
         )
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_cve_database_slice)
                 session.commit()
         except Exception as e:
             return
-    def clear_oe_community_organization_structure():
+
+    def clear_oe_community_organization_structure(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_community_organization_structure;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_community_organization_structure(info):
+    def add_oe_community_organization_structure(pg_url, info):
         oe_community_organization_structure_slice = OeCommunityOrganizationStructure(
-            committee_name= info.get('committee_name',''),
-            role = info.get('role',''),
-            name = info.get('name',''),
-            personal_message = info.get('personal_message','')
+            committee_name=info.get('committee_name', ''),
+            role=info.get('role', ''),
+            name=info.get('name', ''),
+            personal_message=info.get('personal_message', '')
         )
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_community_organization_structure_slice)
                 session.commit()
         except Exception as e:
             return
-    
-    def clear_oe_community_openEuler_version():
+
+    def clear_oe_community_openEuler_version(pg_url):
         try:
-            with PostgresDB().get_session() as session:
+            with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_community_openEuler_version;"))
                 session.commit()
-            PostgresDB().create_table()
+            PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_community_openEuler_version(info):
+    def add_oe_community_openEuler_version(pg_url, info):
         oe_community_openeuler_version_slice = OeCommunityOpenEulerVersion(
-            openeuler_version= info.get('openeuler_version',''),
-            kernel_version = info.get('kernel_version',''),
-            publish_time = info.get('publish_time',''),
-            version_type = info.get('version_type','')
+            openeuler_version=info.get('openeuler_version', ''),
+            kernel_version=info.get('kernel_version', ''),
+            publish_time=info.get('publish_time', ''),
+            version_type=info.get('version_type', '')
         )
-        print(info)
-        with PostgresDB().get_session() as session:
+        with PostgresDB(pg_url).get_session() as session:
             session.add(oe_community_openeuler_version_slice)
             session.commit()

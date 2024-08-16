@@ -15,25 +15,26 @@ from init_asset import init_asset
 from change_doucument_to_para import change_document_to_para
 from logger import get_logger
 
-logger=get_logger()
+logger = get_logger()
+
 
 def work(args):
     config_dir = './config'
     if not os.path.exists(config_dir):
         os.mkdir(config_dir)
     if os.path.exists(os.path.join(config_dir, 'pg_info.json')):
-        with open(os.path.join(config_dir, 'pg_info.json'), 'r',encoding='utf-8') as f:
+        with open(os.path.join(config_dir, 'pg_info.json'), 'r', encoding='utf-8') as f:
             pg_info = json.load(f)
         pg_host = pg_info.get('pg_host', '')
         pg_port = pg_info.get('pg_port', '')
         pg_user = pg_info.get('pg_user', '')
         pg_pwd = pg_info.get('pg_pwd', '')
     if os.path.exists(os.path.join(config_dir, 'rag_info.json')):
-        with open(os.path.join(config_dir, 'rag_info.json'), 'r',encoding='utf-8') as f:
+        with open(os.path.join(config_dir, 'rag_info.json'), 'r', encoding='utf-8') as f:
             rag_info = json.load(f)
         rag_host = rag_info.get('rag_host', '')
         rag_port = rag_info.get('rag_port', '')
-    
+
     choice = args['method']
     if args['pg_host'] is not None:
         pg_host = args['pg_host']
@@ -55,6 +56,7 @@ def work(args):
     corpus_name = args['corpus_name']
     up_chunk = args['up_chunk']
     embedding_model = args['embedding_model']
+    vector_dim = args['vector_dim']
     if choice == 'init_pg_info':
         logger.info('用户初始化postgres配置')
         pg_info = {}
@@ -62,14 +64,14 @@ def work(args):
         pg_info['pg_port'] = pg_port
         pg_info['pg_user'] = pg_user
         pg_info['pg_pwd'] = pg_pwd
-        with open(os.path.join(config_dir, 'pg_info.json'), 'w',encoding='utf-8') as f:
+        with open(os.path.join(config_dir, 'pg_info.json'), 'w', encoding='utf-8') as f:
             json.dump(pg_info, f)
-    elif choice =="init_rag_info":
+    elif choice == "init_rag_info":
         logger.info('用户初始化rag配置')
         rag_info = {}
         rag_info['rag_host'] = rag_host
         rag_info['rag_port'] = rag_port
-        with open(os.path.join(config_dir, 'rag_info.json'), 'w',encoding='utf-8') as f:
+        with open(os.path.join(config_dir, 'rag_info.json'), 'w', encoding='utf-8') as f:
             json.dump(rag_info, f)
     elif choice == "init_pg":
         try:
@@ -79,7 +81,7 @@ def work(args):
             print(f'数据库初始化失败：{e}')
     elif choice == "init_corpus_asset":
         try:
-            init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedding_model)
+            init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedding_model, vector_dim)
             print("资产已初始化")
         except Exception as e:
             print(f'资产始化失败：{e}')
@@ -168,9 +170,9 @@ def work(args):
 
 def init_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", type=str, required=True,
-                        choices=['init_pg_info','init_rag_info', 'init_pg', 'init_corpus_asset', 'clear_pg', 'up_corpus', 'del_corpus',
-                                 'query_corpus', 'stop_embdding_jobs'],
+    parser.add_argument("--method", type=str, requiFred=True,
+                        choices=['init_pg_info', 'init_rag_info', 'init_pg', 'init_corpus_asset', 'clear_pg',
+                                 'up_corpus', 'del_corpus', 'query_corpus', 'stop_embdding_jobs'],
                         help='''
                                                                      脚本使用模式，有初始化数据库配置、初始化数据库、初始化语料资产、
                                                                      清除数据库所有内容、上传语料(当前支持txt、html、pdf、docx和md格式)、删除语料、查询语
@@ -192,6 +194,7 @@ def init_args():
         "--embedding_model", type=str, default='BGE_MIXED_MODEL', required=False,
         choices=['TEXT2VEC_BASE_CHINESE_PARAPHRASE', 'BGE_LARGE_ZH', 'BGE_MIXED_MODEL'],
         help="初始化资产时决定使用的嵌入模型")
+    parser.add_argument("--vector_dim", type=int, default=1024, required=False, help="向量化维度")
     args = parser.parse_args()
     return args
 

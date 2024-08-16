@@ -12,7 +12,8 @@ from sqlalchemy import (
     Integer,
     DateTime,
     create_engine,
-    func
+    func,
+    Index
 )
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.types import TIMESTAMP, UUID
@@ -177,7 +178,7 @@ class VectorizeItems(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     general_text = Column(String())
-    general_text_vector = Column(Vector())
+    general_text_vector = Column(Vector(1024))
     source = Column(String())
     uri = Column(String())
     mtime = Column(DateTime, default=datetime.datetime.now)

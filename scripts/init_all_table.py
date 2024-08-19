@@ -205,6 +205,18 @@ class UpdatedOriginalDocument(Base):
     job_id = Column(UUID, ForeignKey('vectorization_job.id'))
     vectorization_job = relationship("VectorizationJob", back_populates="updated_original_documents")
 
+class VectorizeItems(Base):
+    __tablename__ = 'vectorize_items'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    general_text = Column(String())
+    general_text_vector = Column(Vector(1024))
+    source = Column(String())
+    uri = Column(String())
+    mtime = Column(DateTime, default=datetime.datetime.now)
+    extended_metadata = Column(String())
+    index_name = Column(String())
+
 
 def create_db_and_tables(pg_host, pg_port, pg_user, pg_pwd):
     try:

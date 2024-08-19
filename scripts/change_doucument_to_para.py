@@ -41,6 +41,8 @@ def change_document_to_para(src_dir, tar_dir, para_chunk=1024):
         except Exception as e:
             logger.error(f'文件 {src_dir}转换为片段失败，由于错误{e}')
             continue
+        if len(para_list)==0:
+            continue
         file_name = os.path.basename(dir)
         if len(para_list)!=0:
             file_name_list.append(file_name)
@@ -48,8 +50,8 @@ def change_document_to_para(src_dir, tar_dir, para_chunk=1024):
         if num_cores is None:
             return []
         num_cores//=2
-        num_cores=max(num_cores,1)
         num_cores = min(8,min(num_cores, len(para_list)))
+        num_cores=max(num_cores,1)
         task_chunk=len(para_list)//num_cores
         processes=[]
         for i in range(num_cores):

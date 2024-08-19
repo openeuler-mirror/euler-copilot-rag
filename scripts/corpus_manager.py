@@ -170,7 +170,7 @@ def work(args):
 
 def init_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", type=str, requiFred=True,
+    parser.add_argument("--method", type=str, required=True,
                         choices=['init_pg_info', 'init_rag_info', 'init_pg', 'init_corpus_asset', 'clear_pg',
                                  'up_corpus', 'del_corpus', 'query_corpus', 'stop_embdding_jobs'],
                         help='''

@@ -1,0 +1,5 @@
+pg_database: postgres
+pg_host: 0.0.0.0
+pg_port: '5444'
+pg_pwd: '123456'
+pg_user: postgres

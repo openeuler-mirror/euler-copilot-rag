@@ -508,7 +508,7 @@ class PullMessageFromOeWeb:
 
     @staticmethod
     def oe_organize_message_handler(pg_url):
-        f = open('rag_service/utils/oe_spider/organize.txt', 'r', encoding='utf-8')
+        f = open('./doc/organize.txt', 'r', encoding='utf-8')
         lines = f.readlines()
         st = 0
         en = 0
@@ -533,7 +533,7 @@ class PullMessageFromOeWeb:
 
     @staticmethod
     def oe_openeuler_version_message_handler(pg_url):
-        f = open('rag_service/utils/oe_spider/openeuler_version.txt', 'r', encoding='utf-8')
+        f = open('./docs/openeuler_version.txt', 'r', encoding='utf-8')
         lines = f.readlines()
         filed_list = ['openeuler_version', 'kernel_version', 'publish_time', 'version_type']
         OeMessageManager.clear_oe_community_openEuler_version(pg_url)
@@ -601,7 +601,7 @@ def work(args):
         if not os.path.exists('./config/pg_info.yaml'):
             print('请先配置postgres数据库信息')
             exit()
-        if (oe_spider_method == 'all' or oe_spider_method == 'oepkgs') and not os.path.exists('./config/oepkgs_info.yaml.yaml'):
+        if (oe_spider_method == 'all' or oe_spider_method == 'oepkgs') and not os.path.exists('./config/oepkgs_info.yaml'):
             print('请先配置oepkgs用户信息')
             exit()
         pg_info = {}
@@ -627,9 +627,9 @@ def work(args):
             for func in func_map:
                 try:
                     if func == 'oepkgs':
-                        func(pg_url, oepkgs_info)
+                        func_map[func](pg_url, oepkgs_info)
                     else:
-                        func(pg_url)
+                        func_map[func](pg_url)
                     print(prompt_map[func]+'入库成功')
                 except Exception as e:
                     print(f'{prompt_map[func]}入库失败由于:{e}')
@@ -658,9 +658,9 @@ def init_args():
     parser.add_argument("--oepkgs_pwd", default=None, required=False, help="语料库所在postres的端口")
     parser.add_argument(
         "--oe_spider_method", default='all', required=False,
-        choices=['card', 'commercial_software', 'cve_database', 'oepkgs', 'open_source_software', 'overall_unit',
+        choices=['all','card', 'commercial_software', 'cve_database', 'oepkgs', 'open_source_software', 'overall_unit',
                  'security_notice', 'osv', 'cve_database', 'openeuler_version_message', 'organize_message'],
-        help="需要爬取的openEuler数据类型，有card（openEuler支持的板卡信息）,commercial_software（openEuler支持的商业软件）,cve_database（openEuler的cve信息）,oepkgs（openEuler支持的软件包信息）,open_source_software（openEuler支持的开源软件信息）,overall_unit（openEuler支持的整机信息）,security_notice（openEuler官网的安全公告）,osv（openEuler相关的osv厂商）,cve_database（openEuler的cve漏洞）,openeuler_version_message（openEuler的版本信息）,organize_message（openEuler社区成员组织架构）")
+        help="需要爬取的openEuler数据类型，有all(所有内容)，card（openEuler支持的板卡信息）,commercial_software（openEuler支持的商业软件）,cve_database（openEuler的cve信息）,oepkgs（openEuler支持的软件包信息）,open_source_software（openEuler支持的开源软件信息）,overall_unit（openEuler支持的整机信息）,security_notice（openEuler官网的安全公告）,osv（openEuler相关的osv厂商）,cve_database（openEuler的cve漏洞）,openeuler_version_message（openEuler的版本信息）,organize_message（openEuler社区成员组织架构）")
     args = parser.parse_args()
     return args
 

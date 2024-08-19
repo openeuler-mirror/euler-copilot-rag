@@ -96,8 +96,8 @@ def tokenize_docx(docx_path):
     if num_cores is None:
         return []
     num_cores//=2
-    num_cores=max(num_cores,1)
     num_cores = min(8,min(num_cores, len(el_list)))
+    num_cores=max(num_cores,1)
     chunk_sz = len(el_list)//num_cores
     for i in range(num_cores):
         tmp_tokens.append([])

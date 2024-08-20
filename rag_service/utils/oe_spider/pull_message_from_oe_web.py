@@ -7,6 +7,7 @@ import yaml
 from yaml import SafeLoader
 from oe_message_manager import OeMessageManager
 import argparse
+import urllib.parse
 
 
 class PullMessageFromOeWeb:
@@ -41,10 +42,10 @@ class PullMessageFromOeWeb:
         )
         results = []
         total_num = response.json()["result"]["totalCount"]
-        for i in range(total_num//10+(total_num % 10 != 0)):
+        for i in range(total_num // 10 + (total_num % 10 != 0)):
             data = {
                 "pages": {
-                    "page": i+1,
+                    "page": i + 1,
                     "size": 10
                 },
                 "architecture": "",
@@ -70,7 +71,7 @@ class PullMessageFromOeWeb:
             for key in results[i]:
                 if type(results[i][key]) == list or type(
                         results[i][key]) == dict or type(
-                        results[i][key]) == tuple:
+                    results[i][key]) == tuple:
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_overall_unit(pg_url, results[i])
 
@@ -104,10 +105,10 @@ class PullMessageFromOeWeb:
         )
         results = []
         total_num = response.json()["result"]["totalCount"]
-        for i in range(total_num//10+(total_num % 10 != 0)):
+        for i in range(total_num // 10 + (total_num % 10 != 0)):
             data = {
                 "pages": {
-                    "page": i+1,
+                    "page": i + 1,
                     "size": 10
                 },
                 "architecture": "",
@@ -133,7 +134,7 @@ class PullMessageFromOeWeb:
             for key in results[i]:
                 if type(results[i][key]) == list or type(
                         results[i][key]) == dict or type(
-                        results[i][key]) == tuple:
+                    results[i][key]) == tuple:
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_card(pg_url, results[i])
 
@@ -163,9 +164,9 @@ class PullMessageFromOeWeb:
         )
         results = []
         total_num = response.json()["result"]["totalNum"]
-        for i in range(total_num//10+(total_num % 10 != 0)):
+        for i in range(total_num // 10 + (total_num % 10 != 0)):
             data = {
-                "pageSize": i+1,
+                "pageSize": i + 1,
                 "pageNo": 10,
                 "testOrganization": "",
                 "osName": "",
@@ -208,9 +209,9 @@ class PullMessageFromOeWeb:
         )
         results = []
         total_num = response.json()["total"]
-        for i in range(total_num//10+(total_num % 10 != 0)):
+        for i in range(total_num // 10 + (total_num % 10 != 0)):
             data = {
-                "page_size": i+1,
+                "page_size": i + 1,
                 "page_num": 10
             }
             response = requests.get(
@@ -233,7 +234,7 @@ class PullMessageFromOeWeb:
             'Content-Type': 'application/json'
         }
         params = {'user': oepkgs_info.get('oepkgs_user', ''),
-                  'password':  oepkgs_info.get('oepkgs_pwd', ''),
+                  'password': oepkgs_info.get('oepkgs_pwd', ''),
                   'expireInSeconds': 36000
                   }
         url = 'https://search.oepkgs.net/api/search/openEuler/genToken'
@@ -253,7 +254,7 @@ class PullMessageFromOeWeb:
         totalHits -= 1000
 
         while totalHits > 0:
-            url = 'https://search.oepkgs.net/api/search/openEuler/scroll?scrollId='+scrollId
+            url = 'https://search.oepkgs.net/api/search/openEuler/scroll?scrollId=' + scrollId
             response = requests.get(url, headers=headers)
             data = response.json()['data']
             data_list = data['list']
@@ -297,10 +298,10 @@ class PullMessageFromOeWeb:
         )
         results = []
         total_num = response.json()["result"]["totalCount"]
-        for i in range(total_num//10+(total_num % 10 != 0)):
+        for i in range(total_num // 10 + (total_num % 10 != 0)):
             data = {
                 "pages": {
-                    "page": i+1,
+                    "page": i + 1,
                     "size": total_num
                 },
                 "architecture": "",
@@ -326,7 +327,7 @@ class PullMessageFromOeWeb:
             for key in results[i]:
                 if type(results[i][key]) == list or type(
                         results[i][key]) == dict or type(
-                        results[i][key]) == tuple:
+                    results[i][key]) == tuple:
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_solution(pg_url, results[i])
 
@@ -352,10 +353,10 @@ class PullMessageFromOeWeb:
         )
         results = []
         total_num = response.json()["result"]["totalCount"]
-        for i in range(total_num//10+(total_num % 10 != 0)):
+        for i in range(total_num // 10 + (total_num % 10 != 0)):
             data = {
                 "pages": {
-                    "page": i+1,
+                    "page": i + 1,
                     "size": 10
                 },
                 "keyword": "",
@@ -369,7 +370,7 @@ class PullMessageFromOeWeb:
             )
             results += response.json()["result"]["osvList"]
         for i in range(len(results)):
-            results[i]['details'] = 'https://www.openeuler.org/zh/approve/approve-info/?id='+str(results[i]['id'])
+            results[i]['details'] = 'https://www.openeuler.org/zh/approve/approve-info/?id=' + str(results[i]['id'])
         OeMessageManager.clear_compatibility_osv(pg_url)
         for i in range(len(results)):
             for key in results[i]:
@@ -403,10 +404,10 @@ class PullMessageFromOeWeb:
         )
         results = []
         total_num = response.json()["result"]["totalCount"]
-        for i in range(total_num//10+(total_num % 10 != 0)):
+        for i in range(total_num // 10 + (total_num % 10 != 0)):
             data = {
                 "pages": {
-                    "page": i+1,
+                    "page": i + 1,
                     "size": 10
                 },
                 "keyword": "",
@@ -434,19 +435,21 @@ class PullMessageFromOeWeb:
                         if len(cve_id) > 0:
                             tmp_dict = copy.deepcopy(results[i])
                             del tmp_dict['affectedProduct']
-                            tmp_dict['id'] = int(str(tmp_dict['id'])+str(cnt))
+                            tmp_dict['id'] = int(str(tmp_dict['id']) + str(cnt))
                             tmp_dict['openeuler_version'] = openeuler_version
                             tmp_dict['cveId'] = cve_id
                             new_results.append(tmp_dict)
-                            tmp_dict['details'] = 'https://www.openeuler.org/zh/security/security-bulletins/detail/?id='+tmp_dict['securityNoticeNo']
+                            tmp_dict[
+                                'details'] = 'https://www.openeuler.org/zh/security/security-bulletins/detail/?id=' + \
+                                             tmp_dict['securityNoticeNo']
                             cnt += 1
         results = new_results
         OeMessageManager.clear_oe_compatibility_security_notice(pg_url)
         for i in range(len(results)):
             for key in results[i]:
                 if type(results[i][key]) == list or type(
-                    results[i][key]) == dict or type(
-                        results[i][key]) == tuple:
+                        results[i][key]) == dict or type(
+                    results[i][key]) == tuple:
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_security_notice(pg_url, results[i])
 
@@ -475,10 +478,10 @@ class PullMessageFromOeWeb:
         js = response.json()
         results = []
         total_num = response.json()["result"]["totalCount"]
-        for i in range(total_num//10+(total_num % 10 != 0)):
+        for i in range(total_num // 10 + (total_num % 10 != 0)):
             data = {
                 "pages": {
-                    "page": i+1,
+                    "page": i + 1,
                     "size": 10
                 },
                 "keyword": "",
@@ -496,15 +499,60 @@ class PullMessageFromOeWeb:
 
         for i in range(len(results)):
             results[i]['details'] = 'https://www.openeuler.org/zh/security/cve/detail/?cveId=' + \
-                results[i]['cveId']+'&packageName='+results[i]['packageName']
+                                    results[i]['cveId'] + '&packageName=' + results[i]['packageName']
         OeMessageManager.clear_oe_compatibility_cve_database(pg_url)
         for i in range(len(results)):
             for key in results[i]:
                 if type(results[i][key]) == list or type(
-                    results[i][key]) == dict or type(
-                        results[i][key]) == tuple:
+                        results[i][key]) == dict or type(
+                    results[i][key]) == tuple:
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_cve_database(pg_url, results[i])
+
+    @staticmethod
+    def pull_oe_openeuler_sig(pg_url):
+        url_base = 'https://www.openeuler.org/api-dsapi/query/sig/info'
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        data = {
+            "community": "openeuler",
+            "page": 1,
+            "pageSize": 12,
+            "search": "fuzzy"
+        }
+        url = url_base + '?' + urllib.parse.urlencode(data)
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data
+        )
+
+        results = []
+        total_num = response.json()["data"][0]["total"]
+        for i in range(total_num // 12 + (total_num % 12 != 0)):
+            data = {
+                "community": "openeuler",
+                "page": i + 1,
+                "pageSize": 12,
+                "search": "fuzzy"
+            }
+            url = url_base + '?' + urllib.parse.urlencode(data)
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data
+            )
+            results += response.json()["data"][0]["data"]
+
+        OeMessageManager.clear_oe_openeuler_sig(pg_url)
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(
+                        results[i][key]) == dict or type(
+                    results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            OeMessageManager.add_oe_openeuler_sig(pg_url, results[i])
 
     @staticmethod
     def oe_organize_message_handler(pg_url):
@@ -519,7 +567,7 @@ class PullMessageFromOeWeb:
                 en += 1
             lines[st] = lines[st].replace('\n', '')
             committee_name = lines[st]
-            for i in range(st+1, en):
+            for i in range(st + 1, en):
                 data = lines[i].replace('\n', '').split(' ')
                 info = {'committee_name': committee_name}
                 for j in range(min(len(filed_list), len(data))):
@@ -528,7 +576,7 @@ class PullMessageFromOeWeb:
                         data[j] = data[j].replace('_', ' ')
                     info[filed_list[j]] = data[j]
                 OeMessageManager.add_oe_community_organization_structure(pg_url, info)
-            st = en+1
+            st = en + 1
             en = st
 
     @staticmethod
@@ -557,7 +605,8 @@ def work(args):
                 'osv': PullMessageFromOeWeb.pull_oe_compatibility_osv,
                 'cve_database': PullMessageFromOeWeb.pull_oe_compatibility_cve_database,
                 'openeuler_version_message': PullMessageFromOeWeb.oe_openeuler_version_message_handler,
-                'organize_message': PullMessageFromOeWeb.oe_organize_message_handler}
+                'organize_message': PullMessageFromOeWeb.oe_organize_message_handler,
+                'openeuler_sig':PullMessageFromOeWeb.pull_oe_openeuler_sig}
     prompt_map = {'card': 'openEuler支持的板卡信息',
                   'commercial_software': 'openEuler支持的商业软件',
                   'cve_database': 'openEuler的cve信息',
@@ -568,7 +617,8 @@ def work(args):
                   'osv': 'openEuler相关的osv厂商',
                   'cve_database': 'openEuler的cve漏洞',
                   'openeuler_version_message': 'openEuler的版本信息',
-                  'organize_message': 'openEuler社区成员组织架构'}
+                  'organize_message': 'openEuler社区成员组织架构',
+                  'openeuler_sig': 'openeuler_sig（openEuler SIG组成员信息）'}
     method = args['method']
     pg_host = args['pg_host']
     pg_port = args['pg_port']
@@ -601,7 +651,8 @@ def work(args):
         if not os.path.exists('./config/pg_info.yaml'):
             print('请先配置postgres数据库信息')
             exit()
-        if (oe_spider_method == 'all' or oe_spider_method == 'oepkgs') and not os.path.exists('./config/oepkgs_info.yaml'):
+        if (oe_spider_method == 'all' or oe_spider_method == 'oepkgs') and not os.path.exists(
+                './config/oepkgs_info.yaml'):
             print('请先配置oepkgs用户信息')
             exit()
         pg_info = {}
@@ -611,7 +662,7 @@ def work(args):
         except:
             print('postgres数据库配置文件加载失败')
             exit()
-        pg_host = pg_info.get('pg_host', '')+':'+pg_info.get('pg_port', '')
+        pg_host = pg_info.get('pg_host', '') + ':' + pg_info.get('pg_port', '')
         pg_user = pg_info.get('pg_user', '')
         pg_pwd = pg_info.get('pg_pwd', '')
         pg_database = pg_info.get('pg_database', '')
@@ -630,7 +681,7 @@ def work(args):
                         func_map[func](pg_url, oepkgs_info)
                     else:
                         func_map[func](pg_url)
-                    print(prompt_map[func]+'入库成功')
+                    print(prompt_map[func] + '入库成功')
                 except Exception as e:
                     print(f'{prompt_map[func]}入库失败由于:{e}')
         else:
@@ -639,7 +690,7 @@ def work(args):
                     func_map[oe_spider_method](pg_url, oepkgs_info)
                 else:
                     func_map[oe_spider_method](pg_url)
-                print(prompt_map[oe_spider_method]+'入库成功')
+                print(prompt_map[oe_spider_method] + '入库成功')
             except Exception as e:
                 print(f'{prompt_map[oe_spider_method]}入库失败由于:{e}')
 
@@ -658,9 +709,14 @@ def init_args():
     parser.add_argument("--oepkgs_pwd", default=None, required=False, help="语料库所在postres的端口")
     parser.add_argument(
         "--oe_spider_method", default='all', required=False,
-        choices=['all','card', 'commercial_software', 'cve_database', 'oepkgs', 'open_source_software', 'overall_unit',
-                 'security_notice', 'osv', 'cve_database', 'openeuler_version_message', 'organize_message'],
-        help="需要爬取的openEuler数据类型，有all(所有内容)，card（openEuler支持的板卡信息）,commercial_software（openEuler支持的商业软件）,cve_database（openEuler的cve信息）,oepkgs（openEuler支持的软件包信息）,open_source_software（openEuler支持的开源软件信息）,overall_unit（openEuler支持的整机信息）,security_notice（openEuler官网的安全公告）,osv（openEuler相关的osv厂商）,cve_database（openEuler的cve漏洞）,openeuler_version_message（openEuler的版本信息）,organize_message（openEuler社区成员组织架构）")
+        choices=['all', 'card', 'commercial_software', 'cve_database', 'oepkgs', 'open_source_software',
+                 'overall_unit', 'security_notice', 'osv', 'cve_database', 'openeuler_version_message',
+                 'organize_message', 'openeuler_sig'],
+        help="需要爬取的openEuler数据类型，有all(所有内容)，card（openEuler支持的板卡信息）,commercial_software（openEuler支持的商业软件）,"
+             "cve_database（openEuler的cve信息）,oepkgs（openEuler支持的软件包信息）,open_source_software（openEuler支持的开源软件信息）,"
+             "overall_unit（openEuler支持的整机信息）,security_notice（openEuler官网的安全公告）,osv（openEuler相关的osv厂商）,"
+             "cve_database（openEuler的cve漏洞）,openeuler_version_message（openEuler的版本信息）,"
+             "organize_message（openEuler社区成员组织架构）,openeuler_sig（openEuler SIG组成员信息）")
     args = parser.parse_args()
     return args
 

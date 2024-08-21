@@ -1,11 +1,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from sqlalchemy import text
-from pg import PostgresDB
-from pg import (OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution, \
-                OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOepkgs, \
+from pg import PostgresDB, OeSigGroupRepo, OeSigGroupMember, OeSigRepoMember
+from pg import (OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution,
+                OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOepkgs,
                 OeCompatibilityOsv, OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase,
-                OeCommunityOrganizationStructure, \
-                OeCommunityOpenEulerVersion, OeOpeneulerSig)
+                OeCommunityOrganizationStructure, OeCommunityOpenEulerVersion, OeOpeneulerSigGroup,
+                OeOpeneulerSigMembers, OeOpeneulerSigRepos)
 
 
 class OeMessageManager:
@@ -370,28 +370,23 @@ class OeMessageManager:
             return
 
     @staticmethod
-    def clear_oe_openeuler_sig(pg_url):
+    def clear_oe_openeuler_sig_members(pg_url):
         try:
             with PostgresDB(pg_url).get_session() as session:
-                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig;"))
+                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig_members;"))
                 session.commit()
             PostgresDB(pg_url).create_table()
         except Exception as e:
             return
 
     @staticmethod
-    def add_oe_openeuler_sig(pg_url, info):
-        oe_openeuler_slice = OeOpeneulerSig(
-            sig_name=info.get("sig_name", ''),
-            description=info.get("description", ''),
-            mailing_list=info.get("mailing_list", ''),
-            maintainers=info.get("maintainers", ''),
-            committers=info.get("committers", ''),
-            repos=info.get("repos", ''),
-            created_at=info.get("created_at", ''),
-            is_sig_original=info.get("is_sig_original", ''),
-            maintainer_info=info.get("maintainer_info", ''),
-            committer_info=info.get("committer_info", '')
+    def add_oe_openeuler_sig_members(pg_url, info):
+        oe_openeuler_slice = OeOpeneulerSigMembers(
+            name=info.get('name', ''),
+            gitee_id=info.get('gitee_id', ''),
+            orgnization=info.get('orgnization', ''),
+            member_role=info.get('member_role', ''),
+            email=info.get('email', ''),
         )
         try:
             with PostgresDB(pg_url).get_session() as session:
@@ -400,6 +395,123 @@ class OeMessageManager:
         except Exception as e:
             return
 
+    @staticmethod
+    def clear_oe_openeuler_sig_group(pg_url):
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig_groups;"))
+                session.commit()
+            PostgresDB(pg_url).create_table()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def add_oe_openeuler_sig_group(pg_url, info):
+        oe_openeuler_slice = OeOpeneulerSigGroup(
+            sig_name=info.get("sig_name", ''),
+            description=info.get("description", ''),
+            mailing_list=info.get("mailing_list", ''),
+            created_at=info.get("created_at", ''),
+            is_sig_original=info.get("is_sig_original", ''),
+        )
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                session.add(oe_openeuler_slice)
+                session.commit()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def clear_oe_openeuler_sig_repos(pg_url):
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig_repos;"))
+                session.commit()
+            PostgresDB(pg_url).create_table()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def add_oe_openeuler_sig_repos(pg_url, info):
+        oe_openeuler_slice = OeOpeneulerSigRepos(
+            repo=info.get("repo", ''),
+            url=info.get("url",''),
+            # maintainers=info.get("maintainers", ''),
+            # committers=info.get("committers", ''),
+        )
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                session.add(oe_openeuler_slice)
+                session.commit()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def clear_oe_sig_group_to_repos(pg_url):
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                session.execute(text("DROP TABLE IF EXISTS oe_sig_group_to_repos;"))
+                session.commit()
+            PostgresDB(pg_url).create_table()
+        except Exception as e:
+            return
+    @staticmethod
+    def add_oe_sig_group_to_repos(pg_url, group_name, repo_name):
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                repo = session.query(OeOpeneulerSigRepos).filter_by(repo=repo_name).first()
+                group = session.query(OeOpeneulerSigGroup).filter_by(sig_name=group_name).first()
+                # 插入映射关系
+                relations = OeSigGroupRepo(group_id=group.id, repo_id=repo.id)
+                session.add(relations)
+                session.commit()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def clear_oe_sig_group_to_members(pg_url):
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                session.execute(text("DROP TABLE IF EXISTS oe_sig_group_to_members;"))
+                session.commit()
+            PostgresDB(pg_url).create_table()
+        except Exception as e:
+            return
+    @staticmethod
+    def add_oe_sig_group_to_members(pg_url, group_name, member_name):
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                member = session.query(OeOpeneulerSigMembers).filter_by(gitee_id=member_name).first()
+                group = session.query(OeOpeneulerSigGroup).filter_by(sig_name=group_name).first()
+                # 插入映射关系
+                relations = OeSigGroupMember(member_id=member.id,group_id=group.id)
+                session.add(relations)
+                session.commit()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def clear_oe_sig_repos_to_members(pg_url):
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                session.execute(text("DROP TABLE IF EXISTS oe_sig_repos_to_members;"))
+                session.commit()
+            PostgresDB(pg_url).create_table()
+        except Exception as e:
+            return
+    @staticmethod
+    def add_oe_sig_repos_to_members(pg_url, repo_name, member_name):
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                repo = session.query(OeOpeneulerSigRepos).filter_by(repo=repo_name).first()
+                member = session.query(OeOpeneulerSigMembers).filter_by(name=member_name).first()
+                # 插入映射关系
+                relations = OeSigRepoMember(repo_id=repo.id, member_id=member.id)
+                session.add(relations)
+                session.commit()
+        except Exception as e:
+            return
+    @staticmethod
     def clear_oe_community_organization_structure(pg_url):
         try:
             with PostgresDB(pg_url).get_session() as session:
@@ -424,6 +536,7 @@ class OeMessageManager:
         except Exception as e:
             return
 
+    @staticmethod
     def clear_oe_community_openEuler_version(pg_url):
         try:
             with PostgresDB(pg_url).get_session() as session:

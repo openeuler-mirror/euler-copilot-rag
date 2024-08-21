@@ -1,7 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from threading import Lock
 
-from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine, MetaData
+from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine, MetaData, Sequence
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
@@ -228,6 +228,22 @@ class OeCompatibilityCveDatabase(Base):
     package_list = Column(String())
     details = Column(String())
 
+class OeOpeneulerSig(Base):
+    __tablename__ = 'oe_openeuler_sig'
+    __table_args__ = {'comment': 'openEuler社区特别兴趣小组信息表，存储了SIG的名称、描述、维护者、提交者、仓库列表等'}
+
+    id = Column(BigInteger(), Sequence('sig_info_id_seq'), primary_key=True)
+    sig_name = Column(String(), comment='SIG的名称')
+    description = Column(String(), comment='SIG的描述')
+    mailing_list = Column(String(), comment='SIG的邮件列表')
+    maintainers = Column(String(), comment='SIG的维护者列表')
+    committers = Column(String(), comment='SIG的提交者列表')
+    repos = Column(String(), comment='SIG管理的仓库列表')
+    created_at = Column(TIMESTAMP())
+    is_sig_original = Column(String(), comment='是否为原始SIG')
+    maintainer_info = Column(String(), comment='维护者的详细信息')
+    committer_info = Column(String(), comment='提交者的详细信息')
+    mentors = Column(String(), comment='')
 
 class OeCommunityOrganizationStructure(Base):
     __tablename__ = 'oe_community_organization_structure'
@@ -247,6 +263,7 @@ class OeCommunityOpenEulerVersion(Base):
     kernel_version = Column(String(), comment='openEuler版本的内核版本')
     publish_time = Column(TIMESTAMP(), comment='openEuler版本的发布日期')
     version_type = Column(String(), comment='openEuler社区成员的版本类型')
+
 
 
 class PostgresDBMeta(type):

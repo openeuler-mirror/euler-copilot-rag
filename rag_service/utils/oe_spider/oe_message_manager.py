@@ -1,9 +1,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from sqlalchemy import text
 from pg import PostgresDB
-from pg import OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution, \
-    OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOepkgs, OeCompatibilityOsv, \
-    OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase, OeCommunityOrganizationStructure, OeCommunityOpenEulerVersion
+from pg import (OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution, \
+                OeCompatibilityOpenSourceSoftware, OeCompatibilityCommercialSoftware, OeCompatibilityOepkgs, \
+                OeCompatibilityOsv, OeCompatibilitySecurityNotice, OeCompatibilityCveDatabase,
+                OeCommunityOrganizationStructure, \
+                OeCommunityOpenEulerVersion, OeOpeneulerSig)
 
 
 class OeMessageManager:
@@ -152,7 +154,7 @@ class OeMessageManager:
             company_name=info.get("companyName", ''),
             platform_type_and_server_model=info.get("platformTypeAndServerModel", ''),
             authenticate_link=info.get("authenticateLink", ''),
-            openeuler_version=(info.get("osName", '')+info.get("osVersion", '')).replace(' ', '-'),
+            openeuler_version=(info.get("osName", '') + info.get("osVersion", '')).replace(' ', '-'),
             region=info.get("region", '')
         )
         try:
@@ -222,7 +224,7 @@ class OeMessageManager:
             name=info.get("name", ''),
             summary=info.get("summary", ''),
             repotype=info.get("repoType", ''),
-            openeuler_version=info.get("os", '')+'-'+info.get("osVer", ''),
+            openeuler_version=info.get("os", '') + '-' + info.get("osVer", ''),
             rpmpackurl=info.get("rpmPackUrl", ''),
             srcrpmpackurl=info.get("srcRpmPackUrl", ''),
             arch=info.get("arch", ''),
@@ -363,6 +365,37 @@ class OeMessageManager:
         try:
             with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_compatibility_cve_database_slice)
+                session.commit()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def clear_oe_openeuler_sig(pg_url):
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig;"))
+                session.commit()
+            PostgresDB(pg_url).create_table()
+        except Exception as e:
+            return
+
+    @staticmethod
+    def add_oe_openeuler_sig(pg_url, info):
+        oe_openeuler_slice = OeOpeneulerSig(
+            sig_name=info.get("sig_name", ''),
+            description=info.get("description", ''),
+            mailing_list=info.get("mailing_list", ''),
+            maintainers=info.get("maintainers", ''),
+            committers=info.get("committers", ''),
+            repos=info.get("repos", ''),
+            created_at=info.get("created_at", ''),
+            is_sig_original=info.get("is_sig_original", ''),
+            maintainer_info=info.get("maintainer_info", ''),
+            committer_info=info.get("committer_info", '')
+        )
+        try:
+            with PostgresDB(pg_url).get_session() as session:
+                session.add(oe_openeuler_slice)
                 session.commit()
         except Exception as e:
             return

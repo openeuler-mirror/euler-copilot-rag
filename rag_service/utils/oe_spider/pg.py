@@ -232,14 +232,14 @@ class OeOpeneulerSig(Base):
     __tablename__ = 'oe_openeuler_sig'
     __table_args__ = {'comment': 'openEuler社区特别兴趣小组信息表，存储了SIG的名称、描述、维护者、提交者、仓库列表等'}
 
-    id = Column(BigInteger(), Sequence('sig_info_id_seq'), primary_key=True, comment='SIG的唯一标识符')
+    id = Column(BigInteger(), Sequence('sig_info_id_seq'), primary_key=True)
     sig_name = Column(String(), comment='SIG的名称')
     description = Column(String(), comment='SIG的描述')
     mailing_list = Column(String(), comment='SIG的邮件列表')
     maintainers = Column(String(), comment='SIG的维护者列表')
     committers = Column(String(), comment='SIG的提交者列表')
     repos = Column(String(), comment='SIG管理的仓库列表')
-    created_at = Column(TIMESTAMP(), comment='SIG的创建时间')
+    created_at = Column(TIMESTAMP())
     is_sig_original = Column(String(), comment='是否为原始SIG')
     maintainer_info = Column(String(), comment='维护者的详细信息')
     committer_info = Column(String(), comment='提交者的详细信息')

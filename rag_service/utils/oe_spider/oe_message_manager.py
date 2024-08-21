@@ -398,8 +398,6 @@ class OeMessageManager:
                 session.add(oe_openeuler_slice)
                 session.commit()
         except Exception as e:
-            session.rollback()
-            print(f"Commit failed: {e}")
             return
 
     def clear_oe_community_organization_structure(pg_url):

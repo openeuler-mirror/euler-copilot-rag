@@ -385,7 +385,6 @@ class OeMessageManager:
             name=info.get('name', ''),
             gitee_id=info.get('gitee_id', ''),
             organization=info.get('organization', ''),
-            # member_role=info.get('member_role', ''),
             email=info.get('email', ''),
         )
         try:

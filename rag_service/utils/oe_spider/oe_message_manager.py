@@ -373,7 +373,7 @@ class OeMessageManager:
     def clear_oe_openeuler_sig_members(pg_url):
         try:
             with PostgresDB(pg_url).get_session() as session:
-                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig_members;"))
+                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig_members CASCADE;"))
                 session.commit()
             PostgresDB(pg_url).create_table()
         except Exception as e:
@@ -384,8 +384,8 @@ class OeMessageManager:
         oe_openeuler_slice = OeOpeneulerSigMembers(
             name=info.get('name', ''),
             gitee_id=info.get('gitee_id', ''),
-            orgnization=info.get('orgnization', ''),
-            member_role=info.get('member_role', ''),
+            organization=info.get('organization', ''),
+            # member_role=info.get('member_role', ''),
             email=info.get('email', ''),
         )
         try:
@@ -399,7 +399,7 @@ class OeMessageManager:
     def clear_oe_openeuler_sig_group(pg_url):
         try:
             with PostgresDB(pg_url).get_session() as session:
-                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig_groups;"))
+                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig_groups CASCADE;"))
                 session.commit()
             PostgresDB(pg_url).create_table()
         except Exception as e:
@@ -425,7 +425,7 @@ class OeMessageManager:
     def clear_oe_openeuler_sig_repos(pg_url):
         try:
             with PostgresDB(pg_url).get_session() as session:
-                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig_repos;"))
+                session.execute(text("DROP TABLE IF EXISTS oe_openeuler_sig_repos CASCADE;"))
                 session.commit()
             PostgresDB(pg_url).create_table()
         except Exception as e:
@@ -436,8 +436,6 @@ class OeMessageManager:
         oe_openeuler_slice = OeOpeneulerSigRepos(
             repo=info.get("repo", ''),
             url=info.get("url",''),
-            # maintainers=info.get("maintainers", ''),
-            # committers=info.get("committers", ''),
         )
         try:
             with PostgresDB(pg_url).get_session() as session:
@@ -478,13 +476,13 @@ class OeMessageManager:
         except Exception as e:
             return
     @staticmethod
-    def add_oe_sig_group_to_members(pg_url, group_name, member_name):
+    def add_oe_sig_group_to_members(pg_url, group_name, member_name, role):
         try:
             with PostgresDB(pg_url).get_session() as session:
                 member = session.query(OeOpeneulerSigMembers).filter_by(gitee_id=member_name).first()
                 group = session.query(OeOpeneulerSigGroup).filter_by(sig_name=group_name).first()
                 # 插入映射关系
-                relations = OeSigGroupMember(member_id=member.id,group_id=group.id)
+                relations = OeSigGroupMember(member_id=member.id, group_id=group.id, member_role=role)
                 session.add(relations)
                 session.commit()
         except Exception as e:
@@ -500,13 +498,13 @@ class OeMessageManager:
         except Exception as e:
             return
     @staticmethod
-    def add_oe_sig_repos_to_members(pg_url, repo_name, member_name):
+    def add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role):
         try:
             with PostgresDB(pg_url).get_session() as session:
                 repo = session.query(OeOpeneulerSigRepos).filter_by(repo=repo_name).first()
                 member = session.query(OeOpeneulerSigMembers).filter_by(name=member_name).first()
                 # 插入映射关系
-                relations = OeSigRepoMember(repo_id=repo.id, member_id=member.id)
+                relations = OeSigRepoMember(repo_id=repo.id, member_id=member.id, member_role=role)
                 session.add(relations)
                 session.commit()
         except Exception as e:

@@ -250,12 +250,10 @@ class OeOpeneulerSigMembers(Base):
     name = Column(String(), comment='成员名称')
     gitee_id = Column(String(), comment='成员gitee用户名')
     organization = Column(String(), comment='成员所属组织')
-    member_role = Column(String(), comment='maintainer or committer') # repo_member
     email = Column(String(), comment='成员邮箱地址')
-    # avatar_url = Column(String(), comment='成员头像地址')
+
     groups_member = relationship("OeSigGroupMember", back_populates="member")
     repos_member = relationship("OeSigRepoMember", back_populates="member")
-    # sig_name = Column(String(), comment='成员所属SIG组')
 
 class OeOpeneulerSigRepos(Base):
     __tablename__ = 'oe_openeuler_sig_repos'
@@ -266,17 +264,12 @@ class OeOpeneulerSigRepos(Base):
     url = Column(String(), comment='repo URL')
     groups_repo = relationship("OeSigGroupRepo", back_populates="repo")
     members_repo = relationship("OeSigRepoMember", back_populates="repo")
-    # sig_name = Column(String(), comment='repo所属SIG组')
-    # committers = Column(String(), comment='Committer成员列表')
-    # maintainers = Column(String(), comment='Maintainer成员列表')
-
 class OeSigGroupRepo(Base):
     __tablename__ = 'oe_sig_group_to_repos'
     __table_args__ = {'comment': 'SIG group id包含repos'}
 
     group_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_groups.id'), primary_key=True)
     repo_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_repos.id'), primary_key=True)
-    member_role = Column(String(), comment='成员属性maintainer or committer')  # repo_member
     group = relationship("OeOpeneulerSigGroup", back_populates="repos_group")
     repo = relationship("OeOpeneulerSigRepos", back_populates="groups_repo")
 
@@ -286,7 +279,7 @@ class OeSigRepoMember(Base):
 
     member_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_members.id'), primary_key=True)
     repo_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_repos.id'), primary_key=True)
-
+    member_role = Column(String(), comment='成员属性maintainer or committer')  # repo_member
     member = relationship("OeOpeneulerSigMembers", back_populates="repos_member")
     repo = relationship("OeOpeneulerSigRepos", back_populates="members_repo")
 
@@ -296,6 +289,7 @@ class OeSigGroupMember(Base):
 
     group_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_groups.id'), primary_key=True)
     member_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_members.id'), primary_key=True)
+    member_role = Column(String(), comment='成员属性maintainer or committer')
     group = relationship("OeOpeneulerSigGroup", back_populates="members_group")
     member = relationship("OeOpeneulerSigMembers", back_populates="groups_member")
 

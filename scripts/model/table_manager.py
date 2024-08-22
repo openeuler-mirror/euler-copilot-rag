@@ -14,15 +14,13 @@ from sqlalchemy import (
     Integer,
     DateTime,
     create_engine,
-    func
+    func,
+    MetaData
 )
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.types import TIMESTAMP, UUID
 from sqlalchemy.orm import relationship, declarative_base
 from logger import get_logger
-
-logger = get_logger()
-
 
 class VectorizationJobStatus(Enum):
     PENDING = 'PENDING'
@@ -205,6 +203,7 @@ class UpdatedOriginalDocument(Base):
     job_id = Column(UUID, ForeignKey('vectorization_job.id'))
     vectorization_job = relationship("VectorizationJob", back_populates="updated_original_documents")
 
+
 class VectorizeItems(Base):
     __tablename__ = 'vectorize_items'
 
@@ -217,25 +216,60 @@ class VectorizeItems(Base):
     extended_metadata = Column(String())
     index_name = Column(String())
 
+class TbaleManager():
+    logger = get_logger()
+    @staticmethod
+    def create_db_and_tables(pg_url):
+        try:
+            engine = create_engine(
+                pg_url,
+                pool_size=20,
+                max_overflow=80,
+                pool_recycle=300,
+                pool_pre_ping=True
+            )
+        except Exception as e:
+            print(f'数据库引擎初始化失败，由于原因{e}')
+            TbaleManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            raise e
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS zhparser"))
+                conn.execute(text("ALTER TEXT SEARCH CONFIGURATION zhparser ADD MAPPING FOR n,v,a,i,e,l WITH simple"))
+            Base.metadata.create_all(engine)
+        except Exception as e:
+            print(f'数据库初始化失败，由于原因{e}')
+            TbaleManager.logger.error(f'数据库初始化失败，由于原因{e}')
+            raise e
 
-def create_db_and_tables(pg_host, pg_port, pg_user, pg_pwd):
-    try:
-        pg_url = pg_host+':'+pg_port
-        engine = create_engine(
-            f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_url}',
-            pool_size=20,
-            max_overflow=80,
-            pool_recycle=300,
-            pool_pre_ping=True
-        )
-    except Exception as e:
-        logger.error(f'数据库引擎初始化失败，由于原因{e}')
-        raise e
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS zhparser"))
-        Base.metadata.create_all(engine)
-    except Exception as e:
-        logger.error(f'表格初始化失败，由于原因{e}')
-        raise e
+    @staticmethod
+    def drop_all_tables(pg_url):
+        try:
+            engine = create_engine(
+                pg_url,
+                pool_size=20,
+                max_overflow=80,
+                pool_recycle=300,
+                pool_pre_ping=True
+            )
+        except Exception as e:
+            print(f'数据库引擎初始化失败，由于原因{e}')
+            TbaleManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            raise e
+        metadata = MetaData()
+        metadata.reflect(bind=engine)
+        with engine.begin() as conn:
+            for table in metadata.tables.values():
+                for index in table.indexes:
+                    try:
+                        index.drop(bind=conn)
+                    except Exception as e:
+                        print(f"删除索引失败由于: {e}")
+                        TbaleManager.logger.error(f"删除索引失败由于: {e}")
+                        raise e
+            try:
+                metadata.drop_all(bind=conn)
+            except Exception as e:
+                print(f"清除数据库失败由于: {e}")
+                TbaleManager.logger.error(f"清除数据库失败由于:{e}")

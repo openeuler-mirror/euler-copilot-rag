@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from threading import Lock
 
-from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine, MetaData, Sequence
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine, MetaData, Sequence, ForeignKey
+from sqlalchemy.orm import declarative_base, sessionmaker,relationship
 
 
 Base = declarative_base()
@@ -228,22 +228,70 @@ class OeCompatibilityCveDatabase(Base):
     package_list = Column(String())
     details = Column(String())
 
-class OeOpeneulerSig(Base):
-    __tablename__ = 'oe_openeuler_sig'
-    __table_args__ = {'comment': 'openEuler社区特别兴趣小组信息表，存储了SIG的名称、描述、维护者、提交者、仓库列表等'}
 
-    id = Column(BigInteger(), Sequence('sig_info_id_seq'), primary_key=True)
+class OeOpeneulerSigGroup(Base):
+    __tablename__ = 'oe_openeuler_sig_groups'
+    __table_args__ = {'comment': 'openEuler社区特别兴趣小组信息表，存储了SIG的名称、描述等信息'}
+
+    id = Column(BigInteger(), Sequence('sig_group_id'), primary_key=True)
     sig_name = Column(String(), comment='SIG的名称')
     description = Column(String(), comment='SIG的描述')
-    mailing_list = Column(String(), comment='SIG的邮件列表')
-    maintainers = Column(String(), comment='SIG的维护者列表')
-    committers = Column(String(), comment='SIG的提交者列表')
-    repos = Column(String(), comment='SIG管理的仓库列表')
     created_at = Column(TIMESTAMP())
     is_sig_original = Column(String(), comment='是否为原始SIG')
-    maintainer_info = Column(String(), comment='维护者的详细信息')
-    committer_info = Column(String(), comment='提交者的详细信息')
-    mentors = Column(String(), comment='')
+    mailing_list = Column(String(), comment='SIG的邮件列表')
+    repos_group = relationship("OeSigGroupRepo", back_populates="group")
+    members_group = relationship("OeSigGroupMember", back_populates="group")
+
+class OeOpeneulerSigMembers(Base):
+    __tablename__ = 'oe_openeuler_sig_members'
+    __table_args = { 'comment': 'openEuler社区特别兴趣小组成员信息表，储存了小组成员信息，如gitee用户名、所属组织等'}
+
+    id = Column(BigInteger(), Sequence('sig_members_id'), primary_key=True)
+    name = Column(String(), comment='成员名称')
+    gitee_id = Column(String(), comment='成员gitee用户名')
+    organization = Column(String(), comment='成员所属组织')
+    email = Column(String(), comment='成员邮箱地址')
+
+    groups_member = relationship("OeSigGroupMember", back_populates="member")
+    repos_member = relationship("OeSigRepoMember", back_populates="member")
+
+class OeOpeneulerSigRepos(Base):
+    __tablename__ = 'oe_openeuler_sig_repos'
+    __table_args__ = {'comment': 'openEuler社区特别兴趣小组信息表，存储了SIG的名称、描述等信息'}
+
+    id = Column(BigInteger(), Sequence('sig_repos_id'), primary_key=True)
+    repo = Column(String(), comment='repo地址')
+    url = Column(String(), comment='repo URL')
+    groups_repo = relationship("OeSigGroupRepo", back_populates="repo")
+    members_repo = relationship("OeSigRepoMember", back_populates="repo")
+class OeSigGroupRepo(Base):
+    __tablename__ = 'oe_sig_group_to_repos'
+    __table_args__ = {'comment': 'SIG group id包含repos'}
+
+    group_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_groups.id'), primary_key=True)
+    repo_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_repos.id'), primary_key=True)
+    group = relationship("OeOpeneulerSigGroup", back_populates="repos_group")
+    repo = relationship("OeOpeneulerSigRepos", back_populates="groups_repo")
+
+class OeSigRepoMember(Base):
+    __tablename__ = 'oe_sig_repos_to_members'
+    __table_args__ = {'comment': 'SIG repo id对应维护成员'}
+
+    member_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_members.id'), primary_key=True)
+    repo_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_repos.id'), primary_key=True)
+    member_role = Column(String(), comment='成员属性maintainer or committer')  # repo_member
+    member = relationship("OeOpeneulerSigMembers", back_populates="repos_member")
+    repo = relationship("OeOpeneulerSigRepos", back_populates="members_repo")
+
+class OeSigGroupMember(Base):
+    __tablename__ = 'oe_sig_group_to_members'
+    __table_args__ = {'comment': 'SIG group id对应包含成员id'}
+
+    group_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_groups.id'), primary_key=True)
+    member_id = Column(BigInteger(), ForeignKey('oe_openeuler_sig_members.id'), primary_key=True)
+    member_role = Column(String(), comment='成员属性maintainer or committer')
+    group = relationship("OeOpeneulerSigGroup", back_populates="members_group")
+    member = relationship("OeOpeneulerSigMembers", back_populates="groups_member")
 
 class OeCommunityOrganizationStructure(Base):
     __tablename__ = 'oe_community_organization_structure'

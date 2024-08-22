@@ -1,3 +1,5 @@
+import multiprocessing
+
 import requests
 import json
 import copy
@@ -36,7 +38,7 @@ class PullMessageFromOeWeb:
 
         print('All pre-job down')
 
-        for i in process:
+        for p in process:
             p.join()
 
         print('All processes done')
@@ -253,8 +255,9 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_compatibility_open_source_software(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(results[i][key]) == dict or type(
-                        results[i][key]) == tuple:
+                if type(results[i][key]) == list or type(
+                        results[i][key]) == dict or type(
+                    results[i][key]) == tuple:
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_open_source_software(pg_url, results[i])
 
@@ -405,7 +408,8 @@ class PullMessageFromOeWeb:
         for i in range(len(results)):
             for key in results[i]:
                 if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(results[i][key]) == tuple:
+                        results[i][key]) == dict or type(
+                    results[i][key]) == tuple:
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_osv(pg_url, results[i])
 
@@ -541,7 +545,7 @@ class PullMessageFromOeWeb:
 
     @staticmethod
     def pull_oe_openeuler_sig(pg_url):
-        url_base = 'https://www.openeuler.org/api-dsapi/query/sig/info'
+        sig_url_base = 'https://www.openeuler.org/api-dsapi/query/sig/info'
         headers = {
             'Content-Type': 'application/json'
         }
@@ -551,14 +555,13 @@ class PullMessageFromOeWeb:
             "pageSize": 12,
             "search": "fuzzy"
         }
-        url = url_base + '?' + urllib.parse.urlencode(data)
+        sig_url = sig_url_base + '?' + urllib.parse.urlencode(data)
         response = requests.post(
-            url,
+            sig_url,
             headers=headers,
             json=data
         )
-
-        results = []
+        results_all = []
         total_num = response.json()["data"][0]["total"]
         for i in range(total_num // 12 + (total_num % 12 != 0)):
             data = {
@@ -567,22 +570,121 @@ class PullMessageFromOeWeb:
                 "pageSize": 12,
                 "search": "fuzzy"
             }
-            url = url_base + '?' + urllib.parse.urlencode(data)
+            sig_url = sig_url_base + '?' + urllib.parse.urlencode(data)
             response = requests.post(
-                url,
+                sig_url,
                 headers=headers,
                 json=data
             )
-            results += response.json()["data"][0]["data"]
+            results_all += response.json()["data"][0]["data"]
 
-        OeMessageManager.clear_oe_openeuler_sig(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(
-                    results[i][key]) == tuple:
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_openeuler_sig(pg_url, results[i])
+        results_members = []
+        results_repos = []
+        for i in range(len(results_all)):
+            temp_members = []
+            sig_name = results_all[i]['sig_name']
+            repos_url_base = 'https://www.openeuler.org/api-dsapi/query/sig/repo/committers'
+            repos_url = repos_url_base + '?community=openeuler&sig=' + sig_name
+            response = requests.get(repos_url)
+            results = response.json()["data"]
+            committers = results['committers']
+            maintainers = results['maintainers']
+            if committers is None:
+                committers = []
+            if maintainers is None:
+                maintainers = []
+            results_all[i]['committers'] = committers
+            results_all[i]['maintainers'] = maintainers
+            for key in results_all[i]:
+                if key == "committer_info" or key == "maintainer_info":  # solve with members
+                    if results_all[i][key] is not None:
+                        for member in results_all[i][key]:
+                            member['sig_name'] = results_all[i]['sig_name']
+                            temp_members.append(member)
+                elif key == "repos":  # solve with repos
+                    if results_all[i][key] is not None:
+                        for repo in results_all[i][key]:
+                            results_repos.append({'repo': repo, 'url': 'https://gitee.com/' + repo,
+                                                  'sig_name': sig_name,
+                                                  'committers': committers,
+                                                  'maintainers': maintainers})
+                else:   # solve others
+                    if isinstance(results_all[i][key], (dict, list, tuple)):
+                        results_all[i][key] = json.dumps(results_all[i][key])
+
+            results_members += temp_members
+
+        temp_results_members = []
+        seen = set()
+        for d in results_members:
+            if d['gitee_id'] not in seen:
+                seen.add(d['gitee_id'])
+                temp_results_members.append(d)
+        results_members = temp_results_members
+
+        OeMessageManager.clear_oe_openeuler_sig_group(pg_url)
+        for i in range(len(results_all)):
+            for key in results_all[i]:
+                if type(results_all[i][key]) == list or type(
+                        results_all[i][key]) == dict or type(
+                    results_all[i][key]) == tuple:
+                    results_all[i][key] = json.dumps(results_all[i][key])
+            OeMessageManager.add_oe_openeuler_sig_group(pg_url, results_all[i])
+
+        OeMessageManager.clear_oe_openeuler_sig_members(pg_url)
+        for i in range(len(results_members)):
+            for key in results_members[i]:
+                if type(results_members[i][key]) == list or type(
+                        results_members[i][key]) == dict or type(
+                    results_members[i][key]) == tuple:
+                    results_members[i][key] = json.dumps(results_members[i][key])
+            OeMessageManager.add_oe_openeuler_sig_members(pg_url, results_members[i])
+
+        OeMessageManager.clear_oe_openeuler_sig_repos(pg_url)
+        for i in range(len(results_repos)):
+            for key in results_repos[i]:
+                if type(results_repos[i][key]) == list or type(
+                        results_repos[i][key]) == dict or type(
+                    results_repos[i][key]) == tuple:
+                    results_repos[i][key] = json.dumps(results_repos[i][key])
+            OeMessageManager.add_oe_openeuler_sig_repos(pg_url, results_repos[i])
+
+        OeMessageManager.clear_oe_sig_group_to_repos(pg_url)
+        for i in range(len(results_repos)):
+            repo_name = results_repos[i]['repo']
+            group_name = results_repos[i]['sig_name']
+            OeMessageManager.add_oe_sig_group_to_repos(pg_url, group_name, repo_name)
+
+        OeMessageManager.clear_oe_sig_group_to_members(pg_url)
+        for i in range(len(results_all)):
+            committers = json.loads(results_all[i]['committers'])
+            maintainers = json.loads(results_all[i]['maintainers'])
+            group_name = results_all[i]['sig_name']
+            for member_name in committers:
+                print(group_name, member_name)
+                if member_name not in maintainers:
+                    OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='committer')
+                else:
+                    OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='committer and '
+                                                                                                       'maintainer')
+            for member_name in maintainers:
+                if member_name not in committers:
+                    OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='maintainer')
+
+        OeMessageManager.clear_oe_sig_repos_to_members(pg_url)
+        for i in range(len(results_repos)):
+            repo_name = results_repos[i]['repo']
+            committers = json.loads(results_repos[i]['committers'])
+            maintainers = json.loads(results_repos[i]['maintainers'])
+            for member_name in committers:
+                if member_name not in maintainers:
+                    OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='committer')
+                else:
+                    OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='committer and '
+                                                                                                      'maintainer')
+            for member_name in maintainers:
+                if member_name not in committers:
+                    OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='maintainer')
 
     @staticmethod
     def oe_organize_message_handler(pg_url):
@@ -633,10 +735,9 @@ def work(args):
                 'overall_unit': PullMessageFromOeWeb.pull_oe_compatibility_overall_unit,
                 'security_notice': PullMessageFromOeWeb.pull_oe_compatibility_security_notice,
                 'osv': PullMessageFromOeWeb.pull_oe_compatibility_osv,
-                'cve_database': PullMessageFromOeWeb.pull_oe_compatibility_cve_database,
                 'openeuler_version_message': PullMessageFromOeWeb.oe_openeuler_version_message_handler,
                 'organize_message': PullMessageFromOeWeb.oe_organize_message_handler,
-                'openeuler_sig':PullMessageFromOeWeb.pull_oe_openeuler_sig}
+                'openeuler_sig': PullMessageFromOeWeb.pull_oe_openeuler_sig}
     prompt_map = {'card': 'openEuler支持的板卡信息',
                   'commercial_software': 'openEuler支持的商业软件',
                   'cve_database': 'openEuler的cve信息',
@@ -645,7 +746,6 @@ def work(args):
                   'overall_unit': 'openEuler支持的整机信息',
                   'security_notice': 'openEuler官网的安全公告',
                   'osv': 'openEuler相关的osv厂商',
-                  'cve_database': 'openEuler的cve漏洞',
                   'openeuler_version_message': 'openEuler的版本信息',
                   'organize_message': 'openEuler社区成员组织架构',
                   'openeuler_sig': 'openeuler_sig（openEuler SIG组成员信息）'}

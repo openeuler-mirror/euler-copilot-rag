@@ -12,6 +12,36 @@ import urllib.parse
 
 class PullMessageFromOeWeb:
     @staticmethod
+    def solve_with_result(pg_url, results, dataset_name):
+        dataset_name_map = {
+            'clear':{
+                'oe_compatibility_overall_unit': OeMessageManager.clear_oe_compatibility_overall_unit
+            },
+            'add':{
+                'oe_compatibility_overall_unit': OeMessageManager.add_oe_compatibility_overall_unit
+            }
+        }
+
+        process = []
+        dataset_name_map['clear'][dataset_name](pg_url)
+        for i in range(len(results)):
+            for key in results[i]:
+                if type(results[i][key]) == list or type(
+                        results[i][key]) == dict or type(
+                    results[i][key]) == tuple:
+                    results[i][key] = json.dumps(results[i][key])
+            p = multiprocessing.Process(target=dataset_name_map['add'][dataset_name], args=pg_url)
+            process.append(p)
+            p.start()
+
+        print('All pre-job down')
+
+        for i in process:
+            p.join()
+
+        print('All processes done')
+
+    @staticmethod
     def pull_oe_compatibility_overall_unit(pg_url):
         url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/hardwarecomp/findAll'
         headers = {

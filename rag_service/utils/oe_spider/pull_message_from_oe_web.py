@@ -579,7 +579,6 @@ class PullMessageFromOeWeb:
                                                   'committers': committers,
                                                   'maintainers': maintainers})
                 else:   # solve others
-                    # print("#")
                     if isinstance(results_all[i][key], (dict, list, tuple)):
                         results_all[i][key] = json.dumps(results_all[i][key])
 
@@ -621,7 +620,6 @@ class PullMessageFromOeWeb:
             OeMessageManager.add_oe_openeuler_sig_repos(pg_url, results_repos[i])
 
         OeMessageManager.clear_oe_sig_group_to_repos(pg_url)
-        print('repos_len:',len(results_repos))
         for i in range(len(results_repos)):
             repo_name = results_repos[i]['repo']
             group_name = results_repos[i]['sig_name']

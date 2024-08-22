@@ -5,14 +5,11 @@ import os
 import shutil
 import json
 
-from drop_all_table import drop_all_tables
-from init_all_table import create_db_and_tables
-from upload_courpus import upload_corpus
-from delete_courpus import delete_corpus
-from query_corpus import query_corpus
-from stop_all_job import stop_embedding_job
-from init_asset import init_asset
-from change_doucument_to_para import change_document_to_para
+from scripts.model.table_manager import TbaleManager
+from scripts.kb.kb_manager import KbManager
+from scripts.kb_asset.kb_asset_manager import KbAssetManager
+from scripts.corpus.handler.corpus_handler import CorpusHandler
+from scripts.corpus.manager.corpus_manager import CorpusManager
 from logger import get_logger
 
 logger = get_logger()
@@ -22,33 +19,15 @@ def work(args):
     config_dir = './config'
     if not os.path.exists(config_dir):
         os.mkdir(config_dir)
-    if os.path.exists(os.path.join(config_dir, 'pg_info.json')):
-        with open(os.path.join(config_dir, 'pg_info.json'), 'r', encoding='utf-8') as f:
-            pg_info = json.load(f)
-        pg_host = pg_info.get('pg_host', '')
-        pg_port = pg_info.get('pg_port', '')
-        pg_user = pg_info.get('pg_user', '')
-        pg_pwd = pg_info.get('pg_pwd', '')
-    if os.path.exists(os.path.join(config_dir, 'rag_info.json')):
-        with open(os.path.join(config_dir, 'rag_info.json'), 'r', encoding='utf-8') as f:
-            rag_info = json.load(f)
-        rag_host = rag_info.get('rag_host', '')
-        rag_port = rag_info.get('rag_port', '')
-
     choice = args['method']
-    if args['pg_host'] is not None:
-        pg_host = args['pg_host']
-    if args['pg_port'] is not None:
-        pg_port = args['pg_port']
-    if args['pg_user'] is not None:
-        pg_user = args['pg_user']
-    if args['pg_pwd'] is not None:
-        pg_pwd = args['pg_pwd']
+    pg_host = args['pg_host']
+    pg_port = args['pg_port']
+    pg_user = args['pg_user']
+    pg_pwd = args['pg_pwd']
+    pg_database = args['pg_database']
     ssl_enable = args['ssl_enable']
-    if args['rag_host'] is not None:
-        rag_host = args['rag_host']
-    if args['rag_port'] is not None:
-        rag_port = str(args['rag_port'])
+    rag_host = args['rag_host']
+    rag_port = str(args['rag_port'])
     kb_name = args['kb_name']
     kb_asset_name = args['kb_asset_name']
     corpus_dir = args['corpus_dir']
@@ -57,6 +36,28 @@ def work(args):
     up_chunk = args['up_chunk']
     embedding_model = args['embedding_model']
     vector_dim = args['vector_dim']
+    if choice != 'init_pg_info' or choice != 'init_rag_info':
+        if os.path.exists(os.path.join(config_dir, 'pg_info.json')):
+            with open(os.path.join(config_dir, 'pg_info.json'), 'r', encoding='utf-8') as f:
+                pg_info = json.load(f)
+            pg_host = pg_info.get('pg_host', '')+':'+pg_info.get('pg_port', '')
+            pg_user = pg_info.get('pg_user', '')
+            pg_pwd = pg_info.get('pg_pwd', '')
+            pg_database = pg_info.get('pg_database', '')
+            pg_url = f'postgresql+psycopg2://{pg_user}:{pg_pwd}@{pg_host}/{pg_database}'
+        else:
+            print('请配置postgres信息')
+            exit()
+        if os.path.exists(os.path.join(config_dir, 'rag_info.json')):
+            with open(os.path.join(config_dir, 'rag_info.json'), 'r', encoding='utf-8') as f:
+                rag_info = json.load(f)
+            rag_url = rag_info.get('rag_host', '')+':'+rag_info.get('rag_port', '')
+            if ssl_enable:
+                rag_url = 'https://'+rag_url
+        else:
+            print('请配置rag信息')
+            exit()
+
     if choice == 'init_pg_info':
         logger.info('用户初始化postgres配置')
         pg_info = {}
@@ -64,6 +65,7 @@ def work(args):
         pg_info['pg_port'] = pg_port
         pg_info['pg_user'] = pg_user
         pg_info['pg_pwd'] = pg_pwd
+        pg_info['pg_database'] = pg_database
         with open(os.path.join(config_dir, 'pg_info.json'), 'w', encoding='utf-8') as f:
             json.dump(pg_info, f)
     elif choice == "init_rag_info":
@@ -75,29 +77,39 @@ def work(args):
             json.dump(rag_info, f)
     elif choice == "init_pg":
         try:
-            create_db_and_tables(pg_host, pg_port, pg_user, pg_pwd)
-            print("数据库和表格已初始化")
+            TbaleManager.create_db_and_tables(pg_url)
         except Exception as e:
-            print(f'数据库初始化失败：{e}')
-    elif choice == "init_corpus_asset":
-        try:
-            init_asset(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, embedding_model, vector_dim)
-            print("资产已初始化")
-        except Exception as e:
-            print(f'资产始化失败：{e}')
+            exit()
     elif choice == "clear_pg":
         while 1:
             choose = input("确认清除数据库：[Y/N]")
             if choose == 'Y':
                 try:
-                    drop_all_tables(pg_host, pg_port, pg_user, pg_pwd)
-                    print("数据库内容已清空")
+                    TbaleManager.drop_all_tables(pg_url)
                 except Exception as e:
-                    print(f'数据库内容清除失败：{e}')
+                    exit()
                 break
             elif choose == 'N':
                 print("取消清除数据库")
                 break
+    elif choice == "create_kb":
+        try:
+            KbManager.create_kb(pg_url, kb_name)
+        except Exception as e:
+            exit()
+    elif choice == "del_kb":
+        pass
+    elif choice == "query_kb":
+        pass
+    elif choice == "create_kb_asset":
+        try:
+            KbAssetManager.create_kb_asset(pg_url, kb_name, kb_asset_name, embedding_model, vector_dim)
+        except Exception as e:
+            exit()
+    elif choice == "del_kb_asset":
+        pass
+    elif choice == "query_kb_asset":
+        pass
     elif choice == "up_corpus":
         para_dir = os.path.join('./', secrets.token_hex(16))
         if os.path.exists(para_dir):
@@ -105,19 +117,18 @@ def work(args):
                 os.unlink(para_dir)
             shutil.rmtree(para_dir)
         os.mkdir(para_dir)
-        corpus_name_list = change_document_to_para(corpus_dir, para_dir, corpus_chunk)
+        corpus_name_list = CorpusHandler.change_document_to_para(corpus_dir, para_dir, corpus_chunk)
         try:
             for corpus_name in corpus_name_list:
-                delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corpus_name)
+                CorpusManager.delete_corpus(pg_url, kb_name, kb_asset_name, corpus_name)
         except:
             pass
         try:
-            upload_corpus(pg_host, pg_port, pg_user, pg_pwd, ssl_enable,
-                          rag_host, rag_port, kb_name, kb_asset_name, para_dir, up_chunk)
+            CorpusManager.upload_corpus(pg_url, rag_url, kb_name, kb_asset_name, para_dir, up_chunk)
             print("语料已上传")
         except Exception as e:
             for corpus_name in corpus_name_list:
-                delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corpus_name)
+                CorpusManager.delete_corpus(pg_url, kb_name, kb_asset_name, corpus_name)
             print(f'语料上传失败:{e}')
         finally:
             if os.path.islink(para_dir):
@@ -131,13 +142,9 @@ def work(args):
             choose = input("确认删除：[Y/N]")
             if choose == 'Y':
                 try:
-                    del_flag = delete_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corpus_name)
-                    if del_flag:
-                        print("语料已删除")
-                    else:
-                        print("语料删除失败，未查询到相关语料")
+                    CorpusManager.delete_corpus(pg_url, kb_name, kb_asset_name, corpus_name)
                 except Exception as e:
-                    print(f'语料删除失败:{e}')
+                    exit()
                 break
             elif choose == 'N':
                 print("取消删除")
@@ -147,9 +154,9 @@ def work(args):
     elif choice == "query_corpus":
         corpus_name_list = []
         try:
-            corpus_name_list = query_corpus(pg_host, pg_port, pg_user, pg_pwd, kb_name, kb_asset_name, corpus_name)
+            corpus_name_list = CorpusManager.query_corpus(pg_url, kb_name, kb_asset_name, corpus_name)
         except Exception as e:
-            print(f"语料查询失败：{e}")
+            exit()
         if len(corpus_name_list) == 0:
             print("未查询到语料")
         else:
@@ -157,12 +164,11 @@ def work(args):
         for corpus_name, time in corpus_name_list:
             print('语料名 ', corpus_name, ' 上传时间 ', time)
 
-    elif choice == "stop_embdding_jobs":
+    elif choice == "stop_corpus_uploading_job":
         try:
-            stop_embedding_job(pg_host, pg_port, pg_user, pg_pwd)
-            print("所有向量化任务已停止")
+            CorpusManager.stop_corpus_uploading_job(pg_url)
         except Exception as e:
-            print(f"向量化任务停止失败：{e}")
+            exit()
     else:
         print("无效的选择")
         exit(1)
@@ -170,17 +176,21 @@ def work(args):
 
 def init_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", type=str, required=True,
-                        choices=['init_pg_info', 'init_rag_info', 'init_pg', 'init_corpus_asset', 'clear_pg',
-                                 'up_corpus', 'del_corpus', 'query_corpus', 'stop_embdding_jobs'],
-                        help='''
-                                                                     脚本使用模式，有初始化数据库配置、初始化数据库、初始化语料资产、
-                                                                     清除数据库所有内容、上传语料(当前支持txt、html、pdf、docx和md格式)、删除语料、查询语
-                                                                     料和停止当前上传任务''')
-    parser.add_argument("--pg_host", default=None, required=False, help="语料库所在postres的ip")
-    parser.add_argument("--pg_port", default=None, required=False, help="语料库所在postres的端口")
-    parser.add_argument("--pg_user", default=None, required=False, help="语料库所在postres的用户")
-    parser.add_argument("--pg_pwd", default=None, required=False, help="语料库所在postres的密码")
+    parser.add_argument(
+        "--method", type=str, required=True,
+        choices=['init_pg_info', 'init_rag_info', 'init_pg', 'clear_pg', 'create_kb', 'del_kb', 'query_kb',
+                 'create_kb_asset', 'del_kb_asset', 'query_kb_asset', 'up_corpus', 'del_corpus', 'query_corpus',
+                 'stop_corpus_uploading_job'],
+        help=''' 
+        脚本使用模式，有init_pg_inf(初始化数据库配置)、init_pg(初始化数据库)、clear_pg（清除数据库）、create_kb(创建资产)、
+        del_kb(删除资产)、query_kb(查询资产)、create_kb_asset(创建资产库)、del_kb_asset(删除资产库)、query_kb_asset(查询
+        资产库)、up_corpus(上传语料,当前支持txt、html、pdf、docx和md格式)、del_corpus(删除语料)、query_corpus(查询语料)和
+        stop_corpus_uploading_job(上传语料失败后，停止当前上传任务)''')
+    parser.add_argument("--pg_host", default=None, required=False, help="语料资产所在postres的ip")
+    parser.add_argument("--pg_port", default=None, required=False, help="语料资产所在postres的端口")
+    parser.add_argument("--pg_user", default=None, required=False, help="语料资产所在postres的用户")
+    parser.add_argument("--pg_pwd", default=None, required=False, help="语料资产所在postres的密码")
+    parser.add_argument("--pg_database", default=None, required=False, help="语料资产所在postres的数据库")
     parser.add_argument("--rag_host", default=None, required=False, help="rag服务的ip")
     parser.add_argument("--rag_port", default=None, required=False, help="rag服务的port")
     parser.add_argument("--kb_name", type=str, default='default_test', required=False, help="资产名称")

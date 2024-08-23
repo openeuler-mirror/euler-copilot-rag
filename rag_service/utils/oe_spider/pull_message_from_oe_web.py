@@ -1,4 +1,5 @@
 import multiprocessing
+import time
 
 import requests
 import json
@@ -10,37 +11,101 @@ from yaml import SafeLoader
 from oe_message_manager import OeMessageManager
 import argparse
 import urllib.parse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 class PullMessageFromOeWeb:
     @staticmethod
-    def solve_with_result(pg_url, results, dataset_name):
+    def add_to_DB(pg_url, results, dataset_name):
         dataset_name_map = {
-            'clear':{
-                'oe_compatibility_overall_unit': OeMessageManager.clear_oe_compatibility_overall_unit
+            'clear': {
+                'oe_compatibility_overall_unit': OeMessageManager.clear_oe_compatibility_overall_unit,
+                'oe_openeuler_sig_group': OeMessageManager.clear_oe_openeuler_sig_group,
+                'oe_openeuler_sig_members': OeMessageManager.clear_oe_openeuler_sig_members,
+                'oe_openeuler_sig_repos': OeMessageManager.clear_oe_openeuler_sig_repos,
             },
-            'add':{
-                'oe_compatibility_overall_unit': OeMessageManager.add_oe_compatibility_overall_unit
+            'add': {
+                'oe_compatibility_overall_unit': OeMessageManager.add_oe_compatibility_overall_unit,
+                'oe_openeuler_sig_group': OeMessageManager.add_oe_openeuler_sig_group,
+                'oe_openeuler_sig_members': OeMessageManager.add_oe_openeuler_sig_members,
+                'oe_openeuler_sig_repos': OeMessageManager.add_oe_openeuler_sig_repos,
             }
         }
 
+        # print(dataset_name_map['add'][dataset_name])
+        #
+        # print(dataset_name,'begin')
+        try:
+            for i in range(len(results)):
+                for key in results[i]:
+                    if isinstance(results[i][key], (dict, list, tuple)):
+                        results[i][key] = json.dumps(results[i][key])
+                dataset_name_map['add'][dataset_name](pg_url, results[i])
+        except Exception as e:
+            print(e)
+
+        # print(dataset_name,'down')
+
+    @staticmethod
+    def save_result(pg_url, results, dataset_name):
+        dataset_name_map = {
+            'oe_compatibility_overall_unit': OeMessageManager.clear_oe_compatibility_overall_unit,
+            'oe_openeuler_sig_group': OeMessageManager.clear_oe_openeuler_sig_group,
+            'oe_openeuler_sig_members': OeMessageManager.clear_oe_openeuler_sig_members,
+            'oe_openeuler_sig_repos': OeMessageManager.clear_oe_openeuler_sig_repos,
+        }
         process = []
-        dataset_name_map['clear'][dataset_name](pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(
-                    results[i][key]) == tuple:
-                    results[i][key] = json.dumps(results[i][key])
-            p = multiprocessing.Process(target=dataset_name_map['add'][dataset_name], args=pg_url)
-            process.append(p)
-            p.start()
+        max_workers = multiprocessing.cpu_count() // 2
+        if max_workers > 0:
+            max_workers = 8
+
+        print(len(results))
+        print("pre_workers begin")
+        dataset_name_map[dataset_name](pg_url)
+        step = 1000
+        sub_results = [results[i:i+step] for i in range(0, len(results), step)]
+        # print(sub_results)
+        # print(type(sub_results))
+        for sub_result in sub_results:
+            # print(type(sub_result))
+            # print(results[i]['sig_name'])
+
+            # p = multiprocessing.Process(target=PullMessageFromOeWeb.add_to_DB,
+            #                             args=(pg_url, sub_result, dataset_name))
+            # process.append(p)
+            # p.start()
+            # if len(process) >= max_workers:
+            #     for p in process:
+            #         p.join()
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                p = executor.submit(PullMessageFromOeWeb.add_to_DB, pg_url, sub_result, dataset_name)
+                process.append(p)
+            # if len(process) > max_workers:
+                # for p in as_completed(process):
+                #     process.remove(p)
+                # print('down',max_workers)
 
         print('All pre-job down')
 
-        for p in process:
-            p.join()
+        cnt = 0
+        # for p in process:
+        #     if cnt % 100 == 0:
+        #         print(cnt)
+        #     cnt += 1
+        #     p.join()
 
+        for p in as_completed(process):
+            # process.remove(p)
+            try:
+                p.result(timeout=20)
+            except Exception as e:
+                print(f"Error processing result: {e}")
+                for _ in range(3):  # 重试3次
+                    try:
+                        p.result(timeout=20)
+                        break
+                    except Exception as e:
+                        print(f"Retry failed: {e}")
         print('All processes done')
 
     @staticmethod
@@ -581,6 +646,7 @@ class PullMessageFromOeWeb:
         results_members = []
         results_repos = []
         for i in range(len(results_all)):
+            print('sig:', i, 'begin')
             temp_members = []
             sig_name = results_all[i]['sig_name']
             repos_url_base = 'https://www.openeuler.org/api-dsapi/query/sig/repo/committers'
@@ -608,11 +674,12 @@ class PullMessageFromOeWeb:
                                                   'sig_name': sig_name,
                                                   'committers': committers,
                                                   'maintainers': maintainers})
-                else:   # solve others
+                else:  # solve others
                     if isinstance(results_all[i][key], (dict, list, tuple)):
                         results_all[i][key] = json.dumps(results_all[i][key])
 
             results_members += temp_members
+            # break
 
         temp_results_members = []
         seen = set()
@@ -622,46 +689,57 @@ class PullMessageFromOeWeb:
                 temp_results_members.append(d)
         results_members = temp_results_members
 
-        OeMessageManager.clear_oe_openeuler_sig_group(pg_url)
-        for i in range(len(results_all)):
-            for key in results_all[i]:
-                if type(results_all[i][key]) == list or type(
-                        results_all[i][key]) == dict or type(
-                    results_all[i][key]) == tuple:
-                    results_all[i][key] = json.dumps(results_all[i][key])
-            OeMessageManager.add_oe_openeuler_sig_group(pg_url, results_all[i])
+        PullMessageFromOeWeb.save_result(pg_url, results=results_all, dataset_name='oe_openeuler_sig_group')
+        PullMessageFromOeWeb.save_result(pg_url, results=results_repos, dataset_name='oe_openeuler_sig_repos')
+        PullMessageFromOeWeb.save_result(pg_url, results=results_members, dataset_name='oe_openeuler_sig_members')
+        # OeMessageManager.clear_oe_openeuler_sig_group(pg_url)
+        # for i in range(len(results_all)):
+        #     for key in results_all[i]:
+        #         if type(results_all[i][key]) == list or type(
+        #                 results_all[i][key]) == dict or type(
+        #             results_all[i][key]) == tuple:
+        #             results_all[i][key] = json.dumps(results_all[i][key])
+        #     OeMessageManager.add_oe_openeuler_sig_group(pg_url, results_all[i])
 
-        OeMessageManager.clear_oe_openeuler_sig_members(pg_url)
-        for i in range(len(results_members)):
-            for key in results_members[i]:
-                if type(results_members[i][key]) == list or type(
-                        results_members[i][key]) == dict or type(
-                    results_members[i][key]) == tuple:
-                    results_members[i][key] = json.dumps(results_members[i][key])
-            OeMessageManager.add_oe_openeuler_sig_members(pg_url, results_members[i])
+        # OeMessageManager.clear_oe_openeuler_sig_members(pg_url)
+        # for i in range(len(results_members)):
+        #     for key in results_members[i]:
+        #         if type(results_members[i][key]) == list or type(
+        #                 results_members[i][key]) == dict or type(
+        #             results_members[i][key]) == tuple:
+        #             results_members[i][key] = json.dumps(results_members[i][key])
+        #     OeMessageManager.add_oe_openeuler_sig_members(pg_url, results_members[i])
+        #
 
-        OeMessageManager.clear_oe_openeuler_sig_repos(pg_url)
-        for i in range(len(results_repos)):
-            for key in results_repos[i]:
-                if type(results_repos[i][key]) == list or type(
-                        results_repos[i][key]) == dict or type(
-                    results_repos[i][key]) == tuple:
-                    results_repos[i][key] = json.dumps(results_repos[i][key])
-            OeMessageManager.add_oe_openeuler_sig_repos(pg_url, results_repos[i])
+        # start_time = time.time()
+        # print('multi-time is', time.time() - start_time)
+        #
+        # start_time = time.time()
+        # OeMessageManager.clear_oe_openeuler_sig_repos(pg_url)
+        # for i in range(len(results_repos)):
+        #     for key in results_repos[i]:
+        #         if type(results_repos[i][key]) == list or type(
+        #                 results_repos[i][key]) == dict or type(
+        #             results_repos[i][key]) == tuple:
+        #             results_repos[i][key] = json.dumps(results_repos[i][key])
+        #     OeMessageManager.add_oe_openeuler_sig_repos(pg_url, results_repos[i])
+        # print('time is', time.time() - start_time)
 
-        OeMessageManager.clear_oe_sig_group_to_repos(pg_url)
-        for i in range(len(results_repos)):
-            repo_name = results_repos[i]['repo']
-            group_name = results_repos[i]['sig_name']
-            OeMessageManager.add_oe_sig_group_to_repos(pg_url, group_name, repo_name)
 
+        #
+        # OeMessageManager.clear_oe_sig_group_to_repos(pg_url)
+        # for i in range(len(results_repos)):
+        #     repo_name = results_repos[i]['repo']
+        #     group_name = results_repos[i]['sig_name']
+        #     OeMessageManager.add_oe_sig_group_to_repos(pg_url, group_name, repo_name)
+        #
         OeMessageManager.clear_oe_sig_group_to_members(pg_url)
         for i in range(len(results_all)):
             committers = json.loads(results_all[i]['committers'])
             maintainers = json.loads(results_all[i]['maintainers'])
             group_name = results_all[i]['sig_name']
             for member_name in committers:
-                print(group_name, member_name)
+                # print(group_name, member_name)
                 if member_name not in maintainers:
                     OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='committer')
                 else:

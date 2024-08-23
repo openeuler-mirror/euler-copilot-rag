@@ -1,4 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import time
+
 from sqlalchemy import text
 from pg import PostgresDB, OeSigGroupRepo, OeSigGroupMember, OeSigRepoMember
 from pg import (OeCompatibilityOverallUnit, OeCompatibilityCard, OeCompatibilitySolution,
@@ -381,7 +383,7 @@ class OeMessageManager:
 
     @staticmethod
     def add_oe_openeuler_sig_members(pg_url, info):
-        oe_openeuler_slice = OeOpeneulerSigMembers(
+        oe_openeuler_sig_members_slice = OeOpeneulerSigMembers(
             name=info.get('name', ''),
             gitee_id=info.get('gitee_id', ''),
             organization=info.get('organization', ''),
@@ -389,7 +391,7 @@ class OeMessageManager:
         )
         try:
             with PostgresDB(pg_url).get_session() as session:
-                session.add(oe_openeuler_slice)
+                session.add(oe_openeuler_sig_members_slice)
                 session.commit()
         except Exception as e:
             return
@@ -406,16 +408,18 @@ class OeMessageManager:
 
     @staticmethod
     def add_oe_openeuler_sig_group(pg_url, info):
-        oe_openeuler_slice = OeOpeneulerSigGroup(
+        oe_openeuler_sig_group_slice = OeOpeneulerSigGroup(
             sig_name=info.get("sig_name", ''),
             description=info.get("description", ''),
             mailing_list=info.get("mailing_list", ''),
             created_at=info.get("created_at", ''),
             is_sig_original=info.get("is_sig_original", ''),
         )
+        # max_retries = 10
+        # for retry in range(max_retries):
         try:
             with PostgresDB(pg_url).get_session() as session:
-                session.add(oe_openeuler_slice)
+                session.add(oe_openeuler_sig_group_slice)
                 session.commit()
         except Exception as e:
             return
@@ -432,15 +436,16 @@ class OeMessageManager:
 
     @staticmethod
     def add_oe_openeuler_sig_repos(pg_url, info):
-        oe_openeuler_slice = OeOpeneulerSigRepos(
+        oe_openeuler_sig_repo_slice = OeOpeneulerSigRepos(
             repo=info.get("repo", ''),
             url=info.get("url",''),
         )
         try:
             with PostgresDB(pg_url).get_session() as session:
-                session.add(oe_openeuler_slice)
+                session.add(oe_openeuler_sig_repo_slice)
                 session.commit()
         except Exception as e:
+            print(e)
             return
 
     @staticmethod

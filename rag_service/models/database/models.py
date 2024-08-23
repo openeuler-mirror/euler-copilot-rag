@@ -188,8 +188,17 @@ class VectorizeItems(Base):
     index_name = Column(String())
 
 
+if config["POSTGRES_CERT"]:
+    engine_connect_args = {
+        'sslmode': 'verify-ca',
+        'sslrootcert': config["POSTGRES_CERT"]
+    }
+else:
+    engine_connect_args = {}
 engine = create_engine(
-    f'postgresql+psycopg2://{config["POSTGRES_USER"]}:{config["POSTGRES_PWD"]}@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}',
+    f'postgresql+psycopg2://{config["POSTGRES_USER"]}:{config["POSTGRES_PWD"]}'
+    f'@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}',
+    connect_args=engine_connect_args,
     pool_size=20,   # 连接池的基本大小
     max_overflow=80,  # 在连接池已满时允许的最大连接数
     pool_recycle=300,

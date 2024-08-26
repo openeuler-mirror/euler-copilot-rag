@@ -98,7 +98,7 @@ def keyword_search(session, index_names, question, top_k):
 
         # 安全地绑定参数
         params = {
-            'language': 'zhparser',
+            'language': {config['PARSER_AGENT']},
             'question': question,
             'top_k': top_k,
         }

@@ -18,18 +18,10 @@ class PullMessageFromOeWeb:
     @staticmethod
     def add_to_DB(pg_url, results, dataset_name):
         dataset_name_map = {
-            'clear': {
-                'oe_compatibility_overall_unit': OeMessageManager.clear_oe_compatibility_overall_unit,
-                'oe_openeuler_sig_group': OeMessageManager.clear_oe_openeuler_sig_group,
-                'oe_openeuler_sig_members': OeMessageManager.clear_oe_openeuler_sig_members,
-                'oe_openeuler_sig_repos': OeMessageManager.clear_oe_openeuler_sig_repos,
-            },
-            'add': {
-                'oe_compatibility_overall_unit': OeMessageManager.add_oe_compatibility_overall_unit,
-                'oe_openeuler_sig_group': OeMessageManager.add_oe_openeuler_sig_group,
-                'oe_openeuler_sig_members': OeMessageManager.add_oe_openeuler_sig_members,
-                'oe_openeuler_sig_repos': OeMessageManager.add_oe_openeuler_sig_repos,
-            }
+            'oe_compatibility_overall_unit': OeMessageManager.add_oe_compatibility_overall_unit,
+            'oe_openeuler_sig_group': OeMessageManager.add_oe_openeuler_sig_group,
+            'oe_openeuler_sig_members': OeMessageManager.add_oe_openeuler_sig_members,
+            'oe_openeuler_sig_repos': OeMessageManager.add_oe_openeuler_sig_repos,
         }
 
         # print(dataset_name_map['add'][dataset_name])
@@ -40,7 +32,7 @@ class PullMessageFromOeWeb:
                 for key in results[i]:
                     if isinstance(results[i][key], (dict, list, tuple)):
                         results[i][key] = json.dumps(results[i][key])
-                dataset_name_map['add'][dataset_name](pg_url, results[i])
+                dataset_name_map[dataset_name](pg_url, results[i])
         except Exception as e:
             print(e)
 
@@ -64,48 +56,16 @@ class PullMessageFromOeWeb:
         dataset_name_map[dataset_name](pg_url)
         step = 1000
         sub_results = [results[i:i+step] for i in range(0, len(results), step)]
-        # print(sub_results)
-        # print(type(sub_results))
         for sub_result in sub_results:
-            # print(type(sub_result))
-            # print(results[i]['sig_name'])
-
-            # p = multiprocessing.Process(target=PullMessageFromOeWeb.add_to_DB,
-            #                             args=(pg_url, sub_result, dataset_name))
-            # process.append(p)
-            # p.start()
-            # if len(process) >= max_workers:
-            #     for p in process:
-            #         p.join()
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
                 p = executor.submit(PullMessageFromOeWeb.add_to_DB, pg_url, sub_result, dataset_name)
                 process.append(p)
-            # if len(process) > max_workers:
-                # for p in as_completed(process):
-                #     process.remove(p)
-                # print('down',max_workers)
 
         print('All pre-job down')
 
-        cnt = 0
-        # for p in process:
-        #     if cnt % 100 == 0:
-        #         print(cnt)
-        #     cnt += 1
-        #     p.join()
 
         for p in as_completed(process):
-            # process.remove(p)
-            try:
-                p.result(timeout=20)
-            except Exception as e:
-                print(f"Error processing result: {e}")
-                for _ in range(3):  # 重试3次
-                    try:
-                        p.result(timeout=20)
-                        break
-                    except Exception as e:
-                        print(f"Retry failed: {e}")
+            p.result()
         print('All processes done')
 
     @staticmethod

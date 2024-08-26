@@ -39,7 +39,7 @@ class CorpusManager():
                                file.read(),
                                'application/octet-stream')))
         data = {'kb_sn': kb_name, 'asset_name': kb_asset_name}
-        res = requests.post(url=rag_url, data=data, files=upload_files_list, verify=False)
+        res = requests.post(url=rag_url+'/kba/update', data=data, files=upload_files_list, verify=False)
         while CorpusManager.is_rag_busy(engine):
             print('等待任务完成中')
             time.sleep(5)
@@ -53,10 +53,10 @@ class CorpusManager():
             return False
 
     @staticmethod
-    def upload_corpus(pg_url, rag_url, kb_name, kb_asset_name, corpus_dir, up_chunk):
+    def upload_corpus(database_url, rag_url, kb_name, kb_asset_name, corpus_dir, up_chunk):
         try:
             engine = create_engine(
-                pg_url,
+                database_url,
                 pool_size=20,
                 max_overflow=80,
                 pool_recycle=300,
@@ -92,10 +92,11 @@ class CorpusManager():
                 file_paths.clear()
 
     @staticmethod
-    def delete_corpus(pg_url, kb_name, kb_asset_name, corpus_name):
+    def delete_corpus(database_url, kb_name, kb_asset_name, corpus_name):
+        corpus_name = os.path.basename(corpus_name)
         try:
             engine = create_engine(
-                pg_url,
+                database_url,
                 pool_size=20,
                 max_overflow=80,
                 pool_recycle=300,
@@ -107,21 +108,30 @@ class CorpusManager():
             raise e
         try:
             with sessionmaker(bind=engine)() as session:
-                default_kb = session.query(KnowledgeBase).filter_by(sn=kb_name).first()
-                default_kba = session.query(KnowledgeBaseAsset).filter(
-                    KnowledgeBaseAsset.kb_id == default_kb.id,
+                kb_count = session.query(func.count(KnowledgeBase.id)).filter(KnowledgeBase.sn == kb_name).scalar()
+                if kb_count == 0:
+                    print(f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}删除失败,资产{kb_name}不存在')
+                    CorpusManager.logger.error(f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}删除失败,资产{kb_name}不存在')
+                    return
+                kb_id = session.query(KnowledgeBase.id).filter(KnowledgeBase.sn == kb_name).one()[0]
+                kb_asset_count = session.query(func.count(KnowledgeBaseAsset.id)).filter(
+                    and_(KnowledgeBaseAsset.kb_id == kb_id, KnowledgeBaseAsset.name == kb_asset_name)).scalar()
+                if kb_asset_count == 0:
+                    print(f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}删除失败,资产库{kb_asset_name}不存在')
+                    CorpusManager.logger.error(
+                        f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}删除失败,资产库{kb_asset_name}不存在')
+                    return
+                kba_id = session.query(KnowledgeBaseAsset.id).filter(
+                    KnowledgeBaseAsset.kb_id == kb_id,
                     KnowledgeBaseAsset.name == kb_asset_name
-                ).first()
+                ).first()[0]
                 vector_itmes_id = session.query(VectorStore.name).filter(
-                    VectorStore.kba_id == default_kba.id
+                    VectorStore.kba_id == kba_id
                 ).first()[0]
                 vector_itmes_table_name = 'vectorize_items_'+vector_itmes_id
                 metadata = MetaData()
                 table = Table(vector_itmes_table_name, metadata, autoload_with=engine)
-                file_name = os.path.splitext(corpus_name)[0]
-                file_type = os.path.splitext(corpus_name)[1]
-                pattern = '^'+file_name + r'_\d+\.docx$'
-
+                pattern = '^'+os.path.splitext(corpus_name)[0] + r'_片段\d+\.docx$'
                 query = (
                     select(table.c.source)
                     .where(table.c.source.regexp_match(pattern))
@@ -135,7 +145,7 @@ class CorpusManager():
                     file_name = os.path.splitext(corpus_name_list[i][0])[0]
                     index = file_name[::-1].index('_')
                     file_name = file_name[:len(file_name)-index-1]
-                    if file_name+file_type == corpus_name:
+                    if file_name+os.path.splitext(corpus_name)[1] == corpus_name:
                         delete_stmt = delete(table).where(table.c.source == corpus_name_list[i][0])
                         session.execute(delete_stmt)
                         session.commit()
@@ -148,10 +158,10 @@ class CorpusManager():
             raise e
 
     @staticmethod
-    def query_corpus(pg_url, kb_name, kb_asset_name, corpus_name):
+    def query_corpus(database_url, kb_name, kb_asset_name, corpus_name):
         try:
             engine = create_engine(
-                pg_url,
+                database_url,
                 pool_size=20,
                 max_overflow=80,
                 pool_recycle=300,
@@ -164,13 +174,25 @@ class CorpusManager():
         corpus_name_list = []
         try:
             with sessionmaker(bind=engine)() as session:
-                default_kb = session.query(KnowledgeBase).filter_by(sn=kb_name).first()
-                default_kba = session.query(KnowledgeBaseAsset).filter(
-                    KnowledgeBaseAsset.kb_id == default_kb.id,
+                kb_count = session.query(func.count(KnowledgeBase.id)).filter(KnowledgeBase.sn == kb_name).scalar()
+                if kb_count == 0:
+                    print(f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}查询失败,资产{kb_name}不存在')
+                    CorpusManager.logger.error(f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}查询失败,资产{kb_name}不存在')
+                    return
+                kb_id = session.query(KnowledgeBase.id).filter(KnowledgeBase.sn == kb_name).one()[0]
+                kb_asset_count = session.query(func.count(KnowledgeBaseAsset.id)).filter(
+                    and_(KnowledgeBaseAsset.kb_id == kb_id, KnowledgeBaseAsset.name == kb_asset_name)).scalar()
+                if kb_asset_count == 0:
+                    print(f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}查询失败,资产库{kb_asset_name}不存在')
+                    CorpusManager.logger.error(
+                        f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}查询失败,资产库{kb_asset_name}不存在')
+                    return
+                kba_id = session.query(KnowledgeBaseAsset.id).filter(
+                    KnowledgeBaseAsset.kb_id == kb_id,
                     KnowledgeBaseAsset.name == kb_asset_name
-                ).first()
+                ).first()[0]
                 vector_itmes_id = session.query(VectorStore.name).filter(
-                    VectorStore.kba_id == default_kba.id
+                    VectorStore.kba_id == kba_id
                 ).first()[0]
                 vector_itmes_table_name = 'vectorize_items_'+vector_itmes_id
                 metadata = MetaData()
@@ -180,9 +202,9 @@ class CorpusManager():
                     select(table.c.source, table.c.mtime)
                     .where(table.c.source.ilike('%' + corpus_name + '%'))
                 )
-
                 corpus_name_list = session.execute(query).fetchall()
         except Exception as e:
+            print(f'语料查询失败由于原因{e}')
             CorpusManager.logger.error(f'语料查询失败由于原因{e}')
             raise e
         t_dict = {}
@@ -197,6 +219,7 @@ class CorpusManager():
                 else:
                     t_dict[file_name+file_type] = min(t_dict[file_name+file_type], corpus_name_list[i][1])
             except Exception as e:
+                print(f'片段名转换失败由于{e}')
                 CorpusManager.logger.error(f'片段名转换失败由于{e}')
                 continue
         corpus_name_list = []
@@ -209,10 +232,10 @@ class CorpusManager():
         return corpus_name_list
 
     @staticmethod
-    def stop_corpus_uploading_job(pg_url):
+    def stop_corpus_uploading_job(database_url):
         try:
             engine = create_engine(
-                pg_url,
+                database_url,
                 pool_size=20,
                 max_overflow=80,
                 pool_recycle=300,
@@ -242,4 +265,43 @@ class CorpusManager():
         except subprocess.CalledProcessError as e:
             print(f'停止语料上传任务时发生意外：{e}')
             CorpusManager.logger.error(f'停止语料上传任务时发生意外：{e}')
+            raise e
+
+    @staticmethod
+    def get_uploading_para_cnt(database_url, kb_name, kb_asset_name, para_name_list):
+        try:
+            engine = create_engine(
+                database_url,
+                pool_size=20,
+                max_overflow=80,
+                pool_recycle=300,
+                pool_pre_ping=True
+            )
+        except Exception as e:
+            print(f'数据库引擎初始化失败，由于原因{e}')
+            CorpusManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            raise e
+        try:
+            with sessionmaker(bind=engine)() as session:
+                kb_id = session.query(KnowledgeBase.id).filter(KnowledgeBase.sn == kb_name).one()[0]
+                kba_id = session.query(KnowledgeBaseAsset.id).filter(
+                    KnowledgeBaseAsset.kb_id == kb_id,
+                    KnowledgeBaseAsset.name == kb_asset_name
+                ).one()[0]
+                vector_itmes_id = session.query(VectorStore.name).filter(
+                    VectorStore.kba_id == kba_id
+                ).one()[0]
+                vector_itmes_table_name = 'vectorize_items_'+vector_itmes_id
+                metadata = MetaData()
+                table = Table(vector_itmes_table_name, metadata, autoload_with=engine)
+                query = (
+                    select(func.count())
+                    .select_from(table)
+                    .where(table.c.source.in_(para_name_list))
+                )
+                cnt = session.execute(query).scalar()
+                return cnt
+        except Exception as e:
+            print(f'统计语料上传片段数量时发生意外：{e}')
+            CorpusManager.logger.error(f'统计语料上传片段数量时发生意外：{e}')
             raise e

@@ -211,7 +211,7 @@ def create_vectorize_items(_INDEX_NAME: str, dim: int):
 
 
 engine = create_engine(
-    f'postgresql+psycopg2://{config["POSTGRES_USER"]}:{config["POSTGRES_PWD"]}@{config["POSTGRES_HOST"]}/{config["POSTGRES_DATABASE"]}',
+    config['DATABASE_URL'],
     pool_size=20,   # 连接池的基本大小
     max_overflow=80,  # 在连接池已满时允许的最大连接数
     pool_recycle=300,

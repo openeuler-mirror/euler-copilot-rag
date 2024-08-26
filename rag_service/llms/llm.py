@@ -96,11 +96,11 @@ class Spark(LLM):
 
 class OpenAi(LLM):
     def __init__(self, method):
-        self.client = ChatOpenAI(model_name=config[method+"_MODEL"],
-                                 openai_api_base=config[method+"_URL"],
-                                 openai_api_key=config[method+"_KEY"],
-                                 request_timeout=config[method+"_TIMEOUT"],
-                                 max_tokens=config[method+"_MAX_TOKENS"],
+        self.client = ChatOpenAI(model_name=config["LLM_MODEL"],
+                                 openai_api_base=config["LLM_URL"],
+                                 openai_api_key=config["LLM_KEY"],
+                                 request_timeout=config["LLM_TIMEOUT"],
+                                 max_tokens=config["LLM__MAX_TOKENS"],
                                  temperature=0.01)
 
     def assemble_prompt(self, prompt: str, question: str, history: List = None):
@@ -114,6 +114,6 @@ class OpenAi(LLM):
 def select_llm(req: QueryRequest) -> LLM:
     method = req.model_name
     method = method.upper()
-    if method == "SPARK":
+    if method == "spark":
         return Spark()
     return OpenAi(method)

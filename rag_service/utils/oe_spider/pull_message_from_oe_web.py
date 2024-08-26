@@ -1,4 +1,4 @@
-import multiprocessing
+from multiprocessing import Process
 import time
 
 import requests
@@ -47,25 +47,29 @@ class PullMessageFromOeWeb:
             'oe_openeuler_sig_repos': OeMessageManager.clear_oe_openeuler_sig_repos,
         }
         process = []
-        max_workers = multiprocessing.cpu_count() // 2
-        if max_workers > 0:
-            max_workers = 8
+        num_cores = os.cpu_count() // 2
+        if num_cores > 0:
+            num_cores = 8
 
         print(len(results))
         print("pre_workers begin")
         dataset_name_map[dataset_name](pg_url)
-        step = 1000
-        sub_results = [results[i:i+step] for i in range(0, len(results), step)]
-        for sub_result in sub_results:
-            with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                p = executor.submit(PullMessageFromOeWeb.add_to_DB, pg_url, sub_result, dataset_name)
-                process.append(p)
+        step = len(results) // num_cores
+        process = []
+        for i in range(num_cores):
+            begin = i * step
+            end = begin + step
+            if i == num_cores - 1:
+                end = len(results)
+            sub_result = results[begin:end]
+            p = Process(target=PullMessageFromOeWeb.add_to_DB, args=(pg_url, sub_result, dataset_name))
+            process.append(p)
+            p.start()
 
         print('All pre-job down')
 
-
-        for p in as_completed(process):
-            p.result()
+        for p in process:
+            p.join()
         print('All processes done')
 
     @staticmethod
@@ -649,9 +653,11 @@ class PullMessageFromOeWeb:
                 temp_results_members.append(d)
         results_members = temp_results_members
 
-        PullMessageFromOeWeb.save_result(pg_url, results=results_all, dataset_name='oe_openeuler_sig_group')
+        start_time = time.time()
+        # PullMessageFromOeWeb.save_result(pg_url, results=results_all, dataset_name='oe_openeuler_sig_group')
         PullMessageFromOeWeb.save_result(pg_url, results=results_repos, dataset_name='oe_openeuler_sig_repos')
-        PullMessageFromOeWeb.save_result(pg_url, results=results_members, dataset_name='oe_openeuler_sig_members')
+        # PullMessageFromOeWeb.save_result(pg_url, results=results_members, dataset_name='oe_openeuler_sig_members')
+        print('multi-time is', time.time() - start_time)
         # OeMessageManager.clear_oe_openeuler_sig_group(pg_url)
         # for i in range(len(results_all)):
         #     for key in results_all[i]:
@@ -671,20 +677,17 @@ class PullMessageFromOeWeb:
         #     OeMessageManager.add_oe_openeuler_sig_members(pg_url, results_members[i])
         #
 
-        # start_time = time.time()
-        # print('multi-time is', time.time() - start_time)
         #
-        # start_time = time.time()
-        # OeMessageManager.clear_oe_openeuler_sig_repos(pg_url)
-        # for i in range(len(results_repos)):
-        #     for key in results_repos[i]:
-        #         if type(results_repos[i][key]) == list or type(
-        #                 results_repos[i][key]) == dict or type(
-        #             results_repos[i][key]) == tuple:
-        #             results_repos[i][key] = json.dumps(results_repos[i][key])
-        #     OeMessageManager.add_oe_openeuler_sig_repos(pg_url, results_repos[i])
-        # print('time is', time.time() - start_time)
-
+        start_time = time.time()
+        OeMessageManager.clear_oe_openeuler_sig_repos(pg_url)
+        for i in range(len(results_repos)):
+            for key in results_repos[i]:
+                if type(results_repos[i][key]) == list or type(
+                        results_repos[i][key]) == dict or type(
+                    results_repos[i][key]) == tuple:
+                    results_repos[i][key] = json.dumps(results_repos[i][key])
+            OeMessageManager.add_oe_openeuler_sig_repos(pg_url, results_repos[i])
+        print('time is', time.time() - start_time)
 
         #
         # OeMessageManager.clear_oe_sig_group_to_repos(pg_url)
@@ -693,36 +696,36 @@ class PullMessageFromOeWeb:
         #     group_name = results_repos[i]['sig_name']
         #     OeMessageManager.add_oe_sig_group_to_repos(pg_url, group_name, repo_name)
         #
-        OeMessageManager.clear_oe_sig_group_to_members(pg_url)
-        for i in range(len(results_all)):
-            committers = json.loads(results_all[i]['committers'])
-            maintainers = json.loads(results_all[i]['maintainers'])
-            group_name = results_all[i]['sig_name']
-            for member_name in committers:
-                # print(group_name, member_name)
-                if member_name not in maintainers:
-                    OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='committer')
-                else:
-                    OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='committer and '
-                                                                                                       'maintainer')
-            for member_name in maintainers:
-                if member_name not in committers:
-                    OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='maintainer')
-
-        OeMessageManager.clear_oe_sig_repos_to_members(pg_url)
-        for i in range(len(results_repos)):
-            repo_name = results_repos[i]['repo']
-            committers = json.loads(results_repos[i]['committers'])
-            maintainers = json.loads(results_repos[i]['maintainers'])
-            for member_name in committers:
-                if member_name not in maintainers:
-                    OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='committer')
-                else:
-                    OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='committer and '
-                                                                                                      'maintainer')
-            for member_name in maintainers:
-                if member_name not in committers:
-                    OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='maintainer')
+        # OeMessageManager.clear_oe_sig_group_to_members(pg_url)
+        # for i in range(len(results_all)):
+        #     committers = json.loads(results_all[i]['committers'])
+        #     maintainers = json.loads(results_all[i]['maintainers'])
+        #     group_name = results_all[i]['sig_name']
+        #     for member_name in committers:
+        #         # print(group_name, member_name)
+        #         if member_name not in maintainers:
+        #             OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='committer')
+        #         else:
+        #             OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='committer and '
+        #                                                                                                'maintainer')
+        #     for member_name in maintainers:
+        #         if member_name not in committers:
+        #             OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='maintainer')
+        #
+        # OeMessageManager.clear_oe_sig_repos_to_members(pg_url)
+        # for i in range(len(results_repos)):
+        #     repo_name = results_repos[i]['repo']
+        #     committers = json.loads(results_repos[i]['committers'])
+        #     maintainers = json.loads(results_repos[i]['maintainers'])
+        #     for member_name in committers:
+        #         if member_name not in maintainers:
+        #             OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='committer')
+        #         else:
+        #             OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='committer and '
+        #                                                                                               'maintainer')
+        #     for member_name in maintainers:
+        #         if member_name not in committers:
+        #             OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='maintainer')
 
     @staticmethod
     def oe_organize_message_handler(pg_url):

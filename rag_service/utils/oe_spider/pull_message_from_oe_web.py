@@ -71,9 +71,7 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_compatibility_overall_unit(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(
-                    results[i][key]) == tuple:
+                if isinstance(results[i][key], (dict, list, tuple)):
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_overall_unit(pg_url, results[i])
 
@@ -134,9 +132,7 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_compatibility_card(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(
-                    results[i][key]) == tuple:
+                if isinstance(results[i][key], (dict, list, tuple)):
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_card(pg_url, results[i])
 
@@ -189,8 +185,7 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_compatibility_commercial_software(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(results[i][key]) == dict or type(
-                        results[i][key]) == tuple:
+                if isinstance(results[i][key], (dict, list, tuple)):
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_commercial_software(pg_url, results[i])
 
@@ -225,9 +220,7 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_compatibility_open_source_software(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(
-                    results[i][key]) == tuple:
+                if isinstance(results[i][key], (dict, list, tuple)):
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_open_source_software(pg_url, results[i])
 
@@ -266,8 +259,7 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_compatibility_oepkgs(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(results[i][key]) == dict or type(
-                        results[i][key]) == tuple:
+                if isinstance(results[i][key], (dict, list, tuple)):
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_oepkgs(pg_url, results[i])
 
@@ -328,9 +320,7 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_compatibility_solution(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(
-                    results[i][key]) == tuple:
+                if isinstance(results[i][key], (dict, list, tuple)):
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_solution(pg_url, results[i])
 
@@ -377,9 +367,7 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_compatibility_osv(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(
-                    results[i][key]) == tuple:
+                if isinstance(results[i][key], (dict, list, tuple)):
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_osv(pg_url, results[i])
 
@@ -451,9 +439,7 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_compatibility_security_notice(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(
-                    results[i][key]) == tuple:
+                if isinstance(results[i][key], (dict, list, tuple)):
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_security_notice(pg_url, results[i])
 
@@ -507,9 +493,7 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_compatibility_cve_database(pg_url)
         for i in range(len(results)):
             for key in results[i]:
-                if type(results[i][key]) == list or type(
-                        results[i][key]) == dict or type(
-                    results[i][key]) == tuple:
+                if isinstance(results[i][key], (dict, list, tuple)):
                     results[i][key] = json.dumps(results[i][key])
             OeMessageManager.add_oe_compatibility_cve_database(pg_url, results[i])
 
@@ -569,7 +553,7 @@ class PullMessageFromOeWeb:
                 if key == "committer_info" or key == "maintainer_info":  # solve with members
                     if results_all[i][key] is not None:
                         for member in results_all[i][key]:
-                            member['sig_name'] = results_all[i]['sig_name']
+                            member['sig_name'] = sig_name
                             temp_members.append(member)
                 elif key == "repos":  # solve with repos
                     if results_all[i][key] is not None:
@@ -578,7 +562,7 @@ class PullMessageFromOeWeb:
                                                   'sig_name': sig_name,
                                                   'committers': committers,
                                                   'maintainers': maintainers})
-                else:   # solve others
+                else:  # solve others
                     if isinstance(results_all[i][key], (dict, list, tuple)):
                         results_all[i][key] = json.dumps(results_all[i][key])
 
@@ -621,33 +605,40 @@ class PullMessageFromOeWeb:
 
         OeMessageManager.clear_oe_sig_group_to_members(pg_url)
         for i in range(len(results_all)):
-            committers = json.loads(results_all[i]['committers'])
-            maintainers = json.loads(results_all[i]['maintainers'])
+            committers = set(json.loads(results_all[i]['committers']))
+            maintainers = set(json.loads(results_all[i]['maintainers']))
             group_name = results_all[i]['sig_name']
-            for member_name in committers:
-                if member_name not in maintainers:
-                    OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='committer')
-                else:
-                    OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='committer and '
-                                                                                                       'maintainer')
-            for member_name in maintainers:
-                if member_name not in committers:
-                    OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role='maintainer')
+
+            all_members = committers.union(maintainers)
+
+            for member_name in all_members:
+                if member_name in committers and member_name in maintainers:
+                    role = 'committer & maintainer'
+                elif member_name in committers:
+                    role = 'committer'
+                elif member_name in maintainers:
+                    role = 'maintainer'
+
+                OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role=role)
+
 
         OeMessageManager.clear_oe_sig_repos_to_members(pg_url)
         for i in range(len(results_repos)):
             repo_name = results_repos[i]['repo']
-            committers = json.loads(results_repos[i]['committers'])
-            maintainers = json.loads(results_repos[i]['maintainers'])
-            for member_name in committers:
-                if member_name not in maintainers:
-                    OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='committer')
-                else:
-                    OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='committer and '
-                                                                                                      'maintainer')
-            for member_name in maintainers:
-                if member_name not in committers:
-                    OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role='maintainer')
+            committers = set(json.loads(results_repos[i]['committers']))
+            maintainers = set(json.loads(results_repos[i]['maintainers']))
+
+            all_members = committers.union(maintainers)
+
+            for member_name in all_members:
+                if member_name in committers and member_name in maintainers:
+                    role = 'committer & maintainer'
+                elif member_name in committers:
+                    role = 'committer'
+                elif member_name in maintainers:
+                    role = 'maintainer'
+
+                OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role=role)
 
     @staticmethod
     def oe_organize_message_handler(pg_url):

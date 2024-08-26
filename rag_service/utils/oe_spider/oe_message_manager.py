@@ -392,6 +392,7 @@ class OeMessageManager:
                 session.add(oe_openeuler_slice)
                 session.commit()
         except Exception as e:
+            print(e)
             return
 
     @staticmethod

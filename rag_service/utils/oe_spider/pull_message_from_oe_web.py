@@ -595,27 +595,21 @@ class PullMessageFromOeWeb:
         OeMessageManager.clear_oe_openeuler_sig_group(pg_url)
         for i in range(len(results_all)):
             for key in results_all[i]:
-                if type(results_all[i][key]) == list or type(
-                        results_all[i][key]) == dict or type(
-                    results_all[i][key]) == tuple:
+                if isinstance(results_all[i][key], (dict, list, tuple)):
                     results_all[i][key] = json.dumps(results_all[i][key])
             OeMessageManager.add_oe_openeuler_sig_group(pg_url, results_all[i])
 
         OeMessageManager.clear_oe_openeuler_sig_members(pg_url)
         for i in range(len(results_members)):
             for key in results_members[i]:
-                if type(results_members[i][key]) == list or type(
-                        results_members[i][key]) == dict or type(
-                    results_members[i][key]) == tuple:
+                if isinstance(results_members[i][key], (dict, list, tuple)):
                     results_members[i][key] = json.dumps(results_members[i][key])
             OeMessageManager.add_oe_openeuler_sig_members(pg_url, results_members[i])
 
         OeMessageManager.clear_oe_openeuler_sig_repos(pg_url)
         for i in range(len(results_repos)):
             for key in results_repos[i]:
-                if type(results_repos[i][key]) == list or type(
-                        results_repos[i][key]) == dict or type(
-                    results_repos[i][key]) == tuple:
+                if isinstance(results_repos[i][key], (dict, list, tuple)):
                     results_repos[i][key] = json.dumps(results_repos[i][key])
             OeMessageManager.add_oe_openeuler_sig_repos(pg_url, results_repos[i])
 

@@ -17,30 +17,31 @@ class ConfigModel(BaseModel):
     LOG: str = Field(None, description="日志级别")
     DEFAULT_LLM_MODEL: str = Field(None, description="默认使用的大模型")
     VERSION_EXPERT_LLM_MODEL: str = Field(None, description="版本专家所使用的大模型")
-    
+
     # Postgres
-    POSTGRES_HOST: str = Field(None, description="PostgreSQL数据库主机地址")
-    POSTGRES_DATABASE: str = Field(None, description="PostgreSQL数据库名")
-    POSTGRES_USER: str = Field(None, description="PostgreSQL数据库用户名")
-    POSTGRES_PWD: str = Field(None, description="PostgreSQL数据库用户密码")
+    DATABASE_URL: str = Field(None, description="数据库url")
 
     # QWEN
-    QWEN_KEY: str = Field(None, description="语言模型访问密钥")
-    QWEN_URL: str = Field(None, description="语言模型服务的基础URL")
-    QWEN_MAX_TOKENS: int = Field(None, description="单次请求中允许的最大Token数")
-    QWEN_MODEL: str = Field(None, description="使用的语言模型名称或版本")
-    QWEN_MAX_TOKENS: int= Field(None, description="")
-    
+    LLM_KEY: str = Field(None, description="语言模型访问密钥")
+    LLM_URL: str = Field(None, description="语言模型服务的基础URL")
+    LLM_MAX_TOKENS: int = Field(None, description="单次请求中允许的最大Token数")
+    LLM_MODEL: str = Field(None, description="使用的语言模型名称或版本")
+    LLM_MAX_TOKENS: int = Field(None, description="")
+
     # Spark AI
-    SPARK_APP_ID: str = Field(None,description="星火大模型App ID")
-    SPARK_APP_KEY: str = Field(None,description="星火大模型API Key")
-    SPARK_APP_SECRET: str = Field(None,description="星火大模型App Secret")
+    SPARK_APP_ID: str = Field(None, description="星火大模型App ID")
+    SPARK_APP_KEY: str = Field(None, description="星火大模型API Key")
+    SPARK_APP_SECRET: str = Field(None, description="星火大模型App Secret")
     SPARK_GPT_URL: str = Field(None, description="星火大模型URL")
-    SPARK_APP_DOMAIN: str = Field(None,description="星火大模型版本")
+    SPARK_APP_DOMAIN: str = Field(None, description="星火大模型版本")
 
     # Vectorize
     REMOTE_RERANKING_ENDPOINT: str = Field(None, description="远程重排序服务的Endpoint")
     REMOTE_EMBEDDING_ENDPOINT: str = Field(None, description="远程嵌入向量生成服务的Endpoint")
+    
+    # Parser agent
+    PARSER_AGENT: str = Field(None, description="数据库配置的分词器")
+
 
 class Config:
     config: ConfigModel

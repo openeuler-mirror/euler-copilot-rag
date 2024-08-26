@@ -41,13 +41,15 @@ if not os.path.exists(LOG_DIR):
 handlers = {
     'default': {
         'formatter': 'default',
-        'class': 'apps.logger.SizedTimedRotatingFileHandler',
+        'class': 'rag_service.logger.SizedTimedRotatingFileHandler',
         'filename': f"{LOG_DIR}/app.log",
         'backup_count': 30,
         'when': 'MIDNIGHT',
-        'max_bytes': 5000000
+        'max_bytes': 5000000,
+        'filters': ['correlation_id']
     }
 }
+
 
 log_config = {
     "version": 1,
@@ -83,8 +85,13 @@ log_config = {
 def get_logger():
     logger = logging.getLogger('uvicorn')
     logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt='%Y-%m-%d %H:%M:%S', style='{')
     rotate_handler = SizedTimedRotatingFileHandler(
         filename=f'{LOG_DIR}/app.log', when='MIDNIGHT', backup_count=30, max_bytes=5000000)
+    rotate_handler.setFormatter(formatter)
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
     logger.addHandler(rotate_handler)
     logger.propagate = False
     return logger

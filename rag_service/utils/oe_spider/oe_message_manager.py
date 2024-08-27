@@ -37,7 +37,7 @@ class OeMessageManager:
             hardware_model=info.get("hardwareModel", ''),
             host_bus_adapter=info.get("hostBusAdapter", ''),
             lang=info.get("lang", ''),
-            main_board_bodel=info.get("mainboardModel", ''),
+            main_board_model=info.get("mainboardModel", ''),
             openeuler_version=info.get("osVersion", '').replace(' ', '-'),
             ports_bus_types=info.get("portsBusTypes", ''),
             product_information=info.get("productInformation", ''),

@@ -98,7 +98,7 @@ def keyword_search(session, index_names, question, top_k):
 
         # 安全地绑定参数
         params = {
-            'language': {config['PARSER_AGENT']},
+            'language': config['PARSER_AGENT'],
             'question': question,
             'top_k': top_k,
         }
@@ -113,7 +113,7 @@ def keyword_search(session, index_names, question, top_k):
 def to_tsquery(session, question: str):
     query = text("select * from to_tsquery(:language, :question)")
     params = {
-        'language': 'zhparser',
+        'language': config['PARSER_AGENT'],
         'question': question
     }
     results = session.execute(query, params).fetchall()

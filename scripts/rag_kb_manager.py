@@ -33,6 +33,18 @@ def work(args):
     embedding_model = args['embedding_model']
     vector_dim = args['vector_dim']
     num_cores = args['num_cores']
+    if int(up_chunk)<=0 or int(up_chunk)>8096:
+        print('文件切割尺寸负数或者过大')
+        logger.error('文件切割尺寸负数或者过大')
+        return
+    if int(corpus_chunk )<=0 or int(corpus_chunk )>8096:
+        print('文件单次上传个数为负数或者过大')
+        logger.error('文件单次上传个数为负数或者过大')
+        return
+    if int(num_cores)<=0:
+        print('线程核数不能为负数')
+        logger.error('线程核数不能为负数')
+        return
     if choice != 'init_database_info' and choice != 'init_rag_info':
         if os.path.exists(os.path.join(config_dir, 'database_info.json')):
             with open(os.path.join(config_dir, 'database_info.json'), 'r', encoding='utf-8') as f:

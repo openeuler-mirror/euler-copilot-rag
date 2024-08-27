@@ -685,6 +685,7 @@ def work(args):
                 'commercial_software': PullMessageFromOeWeb.pull_oe_compatibility_commercial_software,
                 'cve_database': PullMessageFromOeWeb.pull_oe_compatibility_cve_database,
                 'oepkgs': PullMessageFromOeWeb.pull_oe_compatibility_oepkgs,
+                'solution':PullMessageFromOeWeb.pull_oe_compatibility_solution,
                 'open_source_software': PullMessageFromOeWeb.pull_oe_compatibility_open_source_software,
                 'overall_unit': PullMessageFromOeWeb.pull_oe_compatibility_overall_unit,
                 'security_notice': PullMessageFromOeWeb.pull_oe_compatibility_security_notice,
@@ -696,6 +697,7 @@ def work(args):
                   'commercial_software': 'openEuler支持的商业软件',
                   'cve_database': 'openEuler的cve信息',
                   'oepkgs': 'openEuler支持的软件包信息',
+                  'solution':'openEuler支持的解决方案',
                   'open_source_software': 'openEuler支持的开源软件信息',
                   'overall_unit': 'openEuler支持的整机信息',
                   'security_notice': 'openEuler官网的安全公告',
@@ -793,11 +795,11 @@ def init_args():
     parser.add_argument("--oepkgs_pwd", default=None, required=False, help="语料库所在postres的端口")
     parser.add_argument(
         "--oe_spider_method", default='all', required=False,
-        choices=['all', 'card', 'commercial_software', 'cve_database', 'oepkgs', 'open_source_software',
+        choices=['all', 'card', 'commercial_software', 'cve_database', 'oepkgs','solution','open_source_software',
                  'overall_unit', 'security_notice', 'osv', 'cve_database', 'openeuler_version_message',
                  'organize_message', 'openeuler_sig'],
         help="需要爬取的openEuler数据类型，有all(所有内容)，card（openEuler支持的板卡信息）,commercial_software（openEuler支持的商业软件）,"
-             "cve_database（openEuler的cve信息）,oepkgs（openEuler支持的软件包信息）,open_source_software（openEuler支持的开源软件信息）,"
+             "cve_database（openEuler的cve信息）,oepkgs（openEuler支持的软件包信息）,solution(openEuler支持的解决方案),open_source_software（openEuler支持的开源软件信息）,"
              "overall_unit（openEuler支持的整机信息）,security_notice（openEuler官网的安全公告）,osv（openEuler相关的osv厂商）,"
              "cve_database（openEuler的cve漏洞）,openeuler_version_message（openEuler的版本信息）,"
              "organize_message（openEuler社区成员组织架构）,openeuler_sig（openEuler SIG组成员信息）")

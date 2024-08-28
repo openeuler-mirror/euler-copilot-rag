@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import PyPDF2
 from docx import Document
 import markdown
+from openpyxl import load_workbook
 from multiprocessing import Process, Manager
 
 nltk_data_path = "./scripts/nltk_data"
@@ -144,6 +145,37 @@ class DocumentHandler():
         return tokens
 
     @staticmethod
+    def tokenize_xlsx(file_path):
+        workbook = load_workbook(filename=file_path)
+        table_list = []
+        for sheet_name in workbook.sheetnames:
+            sheet = workbook[sheet_name]
+            merged_ranges = sheet.merged_cells.ranges
+            max_column = sheet.max_column
+            merged_cells_map = {}
+            for merged_range in merged_ranges:
+                min_col, min_row, max_col, max_row = merged_range.bounds
+                for row in range(min_row, max_row + 1):
+                    for col in range(min_col, max_col + 1):
+                        merged_cells_map[(row, col)] = (min_row, min_col)
+
+            headers = [cell.value for cell in next(sheet.iter_rows(max_col=max_column))]
+            row_list = ["| " + " | ".join(headers) + " |\n"]
+            row_list.append("| " + " | ".join(['---'] * len(headers)) + " |\n")
+
+            for row_idx, row in enumerate(sheet.iter_rows(min_row=2, max_col=max_column, values_only=True), start=2):
+                row_data = []
+                for idx, cell_value in enumerate(row):
+                    cell_position = (row_idx, idx + 1)
+                    if cell_position in merged_cells_map:
+                        top_left_cell_pos = merged_cells_map[cell_position]
+                        cell_value = sheet.cell(row=top_left_cell_pos[0], column=top_left_cell_pos[1]).value
+                    row_data.append(str(cell_value) if cell_value is not None else '')
+                row_list.append("| " + " | ".join(row_data) + " |\n")
+            table_list.append(row_list)
+        return table_list
+
+    @staticmethod
     def split_into_paragraphs(words, max_paragraph_length=1024):
         if max_paragraph_length == -1:
             return words
@@ -165,7 +197,7 @@ class DocumentHandler():
         if file_extension == '.txt':
             with open(file_path, 'r', encoding='utf-8', errors="ignore") as file:
                 text = file.read()
-                tokens = list(text)
+                tokens = DocumentHandler.tokenize_text(text)
                 paragraphs = DocumentHandler.split_into_paragraphs(tokens, max_paragraph_length)
                 return paragraphs
         elif file_extension == '.html':
@@ -185,6 +217,12 @@ class DocumentHandler():
         elif file_extension == '.md':
             tokens = DocumentHandler.tokenize_md(file_path)
             paragraphs = DocumentHandler.split_into_paragraphs(tokens, max_paragraph_length)
+            return paragraphs
+        elif file_extension == '.xlsx':
+            table_list = DocumentHandler.tokenize_xlsx(file_path)
+            paragraphs = []
+            for table in table_list:
+                paragraphs += DocumentHandler.split_into_paragraphs(table, max_paragraph_length)
             return paragraphs
         else:
             return []

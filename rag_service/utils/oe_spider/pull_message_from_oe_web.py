@@ -486,30 +486,50 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["cveDatabaseList"]
-            break
+
+        data_cnt=0
         new_results=[]
         for i in range(len(results)):
+            id1=results[i]['cveId']
             results[i]['details'] = 'https://www.openeuler.org/zh/security/cve/detail/?cveId=' + \
                                     results[i]['cveId'] + '&packageName=' + results[i]['packageName']
             url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/cvedatabase/getByCveIdAndPackageName?cveId=' + \
                                     results[i]['cveId'] + '&packageName=' + results[i]['packageName']
-            response = requests.get(
-            url,
-            headers=headers
-            )
-            for key in response.json()["result"].keys():
-                results[i][key]=response.json()["result"][key]
-            url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/cvedatabase/getCVEProductPackageList?cveId='+ \
-                                    results[i]['cveId'] + '&packageName=' + results[i]['packageName']
-            response = requests.get(
-            url,
-            headers=headers
-            )
-            for i in range(len(response.json()["result"])):
-                tmp=copy.deepcopy(results[i])
-                for key in response.json()["result"][i].keys():
-                    tmp[key]=response.json()["result"][i][key]
-                new_results.append(tmp)
+            try:
+                response = requests.get(
+                url,
+                headers=headers
+                )
+                for key in response.json()["result"].keys():
+                    if key not in results[i].keys() or results[i][key]=='':
+                        results[i][key] = response.json()["result"][key]
+                url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/cvedatabase/getCVEProductPackageList?cveId='+ \
+                                        results[i]['cveId'] + '&packageName=' + results[i]['packageName']
+                response = requests.get(
+                url,
+                headers=headers
+                )
+            except:
+                pass
+            try:
+                for j in range(len(response.json()["result"])):
+                    tmp=copy.deepcopy(results[i])
+                    for key in response.json()["result"][j].keys():
+                        if key not in tmp.keys() or tmp[key]=='':
+                            tmp[key] = response.json()["result"][j][key]
+                    try:
+                        date_str = tmp['updateTime']
+                        date_format = "%Y-%m-%d %H:%M:%S"
+                        dt = datetime.strptime(date_str, date_format)
+                        year_month_day = dt.strftime("%Y-%m-%d")
+                        tmp['announcementTime']= year_month_day
+                    except:
+                        pass
+                    tmp['id']=str(data_cnt)
+                    data_cnt+=1
+                    new_results.append(tmp)
+            except:
+                pass
         results=new_results
            
         OeMessageManager.clear_oe_compatibility_cve_database(pg_url)

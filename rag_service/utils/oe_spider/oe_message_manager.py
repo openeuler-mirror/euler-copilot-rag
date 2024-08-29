@@ -328,7 +328,7 @@ class OeMessageManager:
     def add_oe_compatibility_cve_database(pg_url, info):
         oe_compatibility_cve_database_slice = OeCompatibilityCveDatabase(
             id=info.get("id", ''),
-            affected_product=info.get("affectedProduct", ''),
+            affected_product=info.get("productName", ''),
             announcement_time=info.get("announcementTime", ''),
             attack_complexity_nvd=info.get("attackComplexityNVD", ''),
             attack_complexity_oe=info.get("attackVectorNVD", ''),

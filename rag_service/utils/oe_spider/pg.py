@@ -195,7 +195,7 @@ class OeCompatibilityCveDatabase(Base):
 
     id = Column(String(), primary_key=True,)
     affected_product = Column(String())
-    announcement_time = Column(String(), comment='openEuler社区组cve漏洞的公告时间')
+    announcement_time = Column(TIMESTAMP(), comment='openEuler社区组cve漏洞的公告时间')
     attack_complexity_nvd = Column(String())
     attack_complexity_oe = Column(String())
     attack_vector_nvd = Column(String())

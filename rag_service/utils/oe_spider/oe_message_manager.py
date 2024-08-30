@@ -39,7 +39,7 @@ class OeMessageManager:
             hardware_model=info.get("hardwareModel", ''),
             host_bus_adapter=info.get("hostBusAdapter", ''),
             lang=info.get("lang", ''),
-            main_board_bodel=info.get("mainboardModel", ''),
+            main_board_model=info.get("mainboardModel", ''),
             openeuler_version=info.get("osVersion", '').replace(' ', '-'),
             ports_bus_types=info.get("portsBusTypes", ''),
             product_information=info.get("productInformation", ''),
@@ -330,7 +330,7 @@ class OeMessageManager:
     def add_oe_compatibility_cve_database(pg_url, info):
         oe_compatibility_cve_database_slice = OeCompatibilityCveDatabase(
             id=info.get("id", ''),
-            affected_product=info.get("affectedProduct", ''),
+            affected_product=info.get("productName", ''),
             announcement_time=info.get("announcementTime", ''),
             attack_complexity_nvd=info.get("attackComplexityNVD", ''),
             attack_complexity_oe=info.get("attackVectorNVD", ''),
@@ -394,6 +394,7 @@ class OeMessageManager:
                 session.add(oe_openeuler_sig_members_slice)
                 session.commit()
         except Exception as e:
+            print(e)
             return
 
     @staticmethod

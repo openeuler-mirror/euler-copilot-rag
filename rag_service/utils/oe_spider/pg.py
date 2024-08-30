@@ -26,7 +26,7 @@ class OeCompatibilityOverallUnit(Base):
     hardware_model = Column(String(), comment='openEuler支持的整机信息的硬件型号')
     host_bus_adapter = Column(String())
     lang = Column(String())
-    main_board_bodel = Column(String())
+    main_board_model = Column(String())
     openeuler_version = Column(String(), comment='openEuler支持的整机信息的相关的openEuler版本')
     ports_bus_types = Column(String())
     product_information = Column(String())
@@ -195,7 +195,7 @@ class OeCompatibilityCveDatabase(Base):
 
     id = Column(String(), primary_key=True,)
     affected_product = Column(String())
-    announcement_time = Column(String(), comment='openEuler社区组cve漏洞的公告时间')
+    announcement_time = Column(TIMESTAMP(), comment='openEuler社区组cve漏洞的公告时间')
     attack_complexity_nvd = Column(String())
     attack_complexity_oe = Column(String())
     attack_vector_nvd = Column(String())

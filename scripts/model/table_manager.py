@@ -254,9 +254,9 @@ class TableManager():
                     f"ALTER TEXT SEARCH CONFIGURATION {parser_agent_name} ADD MAPPING FOR n,v,a,i,e,l WITH simple")
                 session.execute(create_vector_sql)
                 session.commit()
-            TableManager.logger.info('zhparser插件加载成功')
+            TableManager.logger.info(f'{parser_agent_name}插件加载成功')
         except Exception as e:
-            TableManager.logger.error(f'插件zhparser加载失败，由于原因{e}')
+            TableManager.logger.error(f'插件{parser_agent_name}加载失败，由于原因{e}')
         try:
             Base.metadata.create_all(engine)
             print('数据库表格初始化成功')

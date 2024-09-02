@@ -217,7 +217,7 @@ def init_args():
         stop_corpus_uploading_job(上传语料失败后，停止当前上传任务)''')
     parser.add_argument("--database_url", default=None, required=False, help="语料资产所在数据库的url")
     parser.add_argument("--vector_agent_name", default='vector', required=False, help="向量化插件名称")
-    parser.add_argument("--parser_agent_name", default='zhparser', required=False, help="分词插件名称")
+    parser.add_argument("--parser_agent_name", default='english', required=False, help="分词插件名称")
     parser.add_argument("--rag_url", default=None, required=False, help="rag服务的url")
     parser.add_argument("--kb_name", type=str, default='default_test', required=False, help="资产名称")
     parser.add_argument("--kb_asset_name", type=str, default='default_test_asset', required=False, help="资产库名称")

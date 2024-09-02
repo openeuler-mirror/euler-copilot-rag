@@ -31,7 +31,7 @@ class CorpusHandler():
                 document.add_paragraph('<'+name+'>'+'\n')
                 para = CorpusHandler.clean_string(para)
                 document.add_paragraph(para)
-                document.save(os.path.join(tar_dir, name+'_片段'+str(para_cnt)+'.docx'))
+                document.save(os.path.join(tar_dir, name+'_paragraph'+str(para_cnt)+'.docx'))
                 para_cnt += 1
             except Exception as e:
                 logger.error(f'片段写入失败由于{e}')

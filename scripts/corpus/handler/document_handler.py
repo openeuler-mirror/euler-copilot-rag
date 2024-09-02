@@ -182,8 +182,10 @@ class DocumentHandler():
         paragraphs = []
         current_paragraph = ""
         for word in words:
-            if len(current_paragraph) + len(word) <= max_paragraph_length:
-                current_paragraph += word
+            if len(current_paragraph) + len(word)+1 <= max_paragraph_length:
+                if len(current_paragraph)>0:
+                    current_paragraph+=' '
+                current_paragraph +=word
             else:
                 paragraphs.append(current_paragraph)
                 current_paragraph = word

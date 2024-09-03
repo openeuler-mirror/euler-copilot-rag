@@ -268,7 +268,6 @@ class OeMessageManager:
         )
         try:
             with PostgresDB(pg_url).get_session() as session:
-                # session.execute(text('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE'))
                 session.add(oe_compatibility_osv_slice)
                 session.commit()
         except Exception as e:

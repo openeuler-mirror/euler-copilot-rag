@@ -238,6 +238,7 @@ class OeMessageManager:
                 session.add(oe_compatibility_oepkgs_slice)
                 session.commit()
         except Exception as e:
+            print(e)
             return
 
     @staticmethod
@@ -252,6 +253,7 @@ class OeMessageManager:
 
     @staticmethod
     def add_oe_compatibility_osv(pg_url, info):
+        print("!")
         oe_compatibility_osv_slice = OeCompatibilityOsv(
             id=info.get("id", ''),
             arch=info.get("arch", ''),

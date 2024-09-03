@@ -333,7 +333,6 @@ class PostgresDB(metaclass=PostgresDBMeta):
             echo=False,
             pool_pre_ping=True)
         self.create_table()
-        # self.engine.execute('SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE')
 
     def create_table(self):
         Base.metadata.create_all(self.engine)

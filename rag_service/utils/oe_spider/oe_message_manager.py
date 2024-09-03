@@ -241,7 +241,7 @@ class OeMessageManager:
             return
 
     @staticmethod
-    def clear_compatibility_osv(pg_url):
+    def clear_oe_compatibility_osv(pg_url):
         try:
             with PostgresDB(pg_url).get_session() as session:
                 session.execute(text("DROP TABLE IF EXISTS oe_compatibility_osv;"))
@@ -268,6 +268,7 @@ class OeMessageManager:
         )
         try:
             with PostgresDB(pg_url).get_session() as session:
+                # session.execute(text('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE'))
                 session.add(oe_compatibility_osv_slice)
                 session.commit()
         except Exception as e:
@@ -394,7 +395,6 @@ class OeMessageManager:
                 session.add(oe_openeuler_sig_members_slice)
                 session.commit()
         except Exception as e:
-            print(e)
             return
 
     @staticmethod

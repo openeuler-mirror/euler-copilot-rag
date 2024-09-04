@@ -67,6 +67,7 @@ class RerankingRequest(BaseModel):
 
 class QueryRequest(BaseModel):
     question: str
+    language: str = Field('zh', description="The language for the request", regex=r"^(zh|en)$")
     kb_sn: str
     top_k: int = Field(5, ge=3, le=10)
     fetch_source: bool = False
@@ -127,7 +128,6 @@ class UpdateKnowledgeBaseAssetReq(BaseModel):
     kb_sn: str
     asset_name: str
     delete_original_documents: Optional[str] = None
-
 
 class TaskCenterResponse(BaseModel):
     kb_name: str

@@ -9,7 +9,7 @@ from rag_service.llms.llm import select_llm
 from rag_service.security.config import config
 from rag_service.models.api import QueryRequest
 from rag_service.models.database import yield_session
-from rag_service.constant.prompt_manageer import prompt_template_dict
+from rag_service.constant.prompt_manager import prompt_template_dict
 from rag_service.llms.version_expert import version_expert_search_data
 from rag_service.vectorstore.postgresql.manage_pg import pg_search_data
 from rag_service.rag_app.service.vectorize_service import vectorize_reranking
@@ -33,7 +33,7 @@ def get_query_context(documents_info) -> str:
 def intent_detect(req: QueryRequest):
     if not req.history:
         return req.question
-    prompt = prompt_template_dict['INTENT_DETECT_PROMPT_TEMPLATE']
+    prompt = prompt_template_dict[req.language]['INTENT_DETECT_PROMPT_TEMPLATE']
     history_prompt = ""
     q_cnt = 0
     a_cnt = 0
@@ -66,18 +66,18 @@ def get_rag_document_info(req: QueryRequest):
     rewrite_req.model_name = config['VERSION_EXPERT_LLM_MODEL']
     rewrite_query = intent_detect(rewrite_req)
     rewrite_req.question = rewrite_query
-    req.question = prompt_template_dict['QUESTION_PROMPT_TEMPLATE'].format(
+    req.question = prompt_template_dict[req.language]['QUESTION_PROMPT_TEMPLATE'].format(
         question=req.question, question_after_expend=rewrite_query)
     rewrite_req.history = []
     documents_info = []
-    documents_info.extend(rag_search_and_rerank(raw_question=rewrite_query, kb_sn=req.kb_sn,
+    documents_info.extend(rag_search_and_rerank(language=req.language,raw_question=rewrite_query, kb_sn=req.kb_sn,
                                                 top_k=req.top_k-len(documents_info)))
     return documents_info
 
 
-def rag_search_and_rerank(raw_question: str, kb_sn: str, top_k: int) -> List[tuple]:
+def rag_search_and_rerank(language:str,raw_question: str, kb_sn: str, top_k: int) -> List[tuple]:
     with yield_session() as session:
-        pg_results = pg_search_data(raw_question, kb_sn, top_k, session)
+        pg_results = pg_search_data(language,raw_question, kb_sn, top_k, session)
     if len(pg_results) == 0:
         return []
 

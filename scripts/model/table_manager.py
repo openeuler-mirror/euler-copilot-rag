@@ -96,6 +96,7 @@ class KnowledgeBaseAsset(Base):
     )
 
     id = Column(UUID, default=uuid4, primary_key=True)
+    language = Column(String)
     name = Column(String)
     asset_type = Column(SAEnum(AssetType))
     asset_uri = Column(String, nullable=True)

@@ -166,7 +166,7 @@ def insert_update_record(
 def fetch_updated_original_documents(
         updated_original_documents: List[OriginalDocument]
 ) -> List[OriginalDocument]:
-    chunk_size=100
+    chunk_size = 100
     for idx, chunked_update_original_documents in enumerate(
             chunked(updated_original_documents, chunk_size)
     ):
@@ -197,13 +197,15 @@ def embedding_update_documents(
         knowledge_base_asset = get_knowledge_base_asset(knowledge_base_serial_number,
                                                         knowledge_base_asset_name, session)
         vector_stores = knowledge_base_asset.vector_stores
+        language = knowledge_base_asset.language
         index = 0
         embeddings = []
         while index < len(documents):
             try:
                 tmp = vectorize_embedding(
-                        [documents[index].page_content],
-                        knowledge_base_asset.embedding_model
+                    language,
+                    [documents[index].page_content],
+                    knowledge_base_asset.embedding_model
                 )
                 embeddings.extend(tmp)
                 index += 1

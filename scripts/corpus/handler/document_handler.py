@@ -1,4 +1,5 @@
 import os
+import re
 import nltk
 from nltk.tokenize import word_tokenize
 from bs4 import BeautifulSoup
@@ -181,11 +182,15 @@ class DocumentHandler():
             return words
         paragraphs = []
         current_paragraph = ""
-        for word in words:
-            if len(current_paragraph) + len(word)+1 <= max_paragraph_length:
-                if len(current_paragraph)>0:
+        for i in range(len(words)):
+            word=words[i]
+            contains_english_or_digits = bool(re.search(r'[a-zA-Z0-9]', word))
+            if i==0 or not bool(re.search(r'[a-zA-Z0-9]', words[i-1])):
+                contains_english_or_digits=False 
+            if len(current_paragraph) + len(word)+contains_english_or_digits <= max_paragraph_length:
+                if contains_english_or_digits:
                     current_paragraph+=' '
-                current_paragraph +=word
+                current_paragraph += word
             else:
                 paragraphs.append(current_paragraph)
                 current_paragraph = word

@@ -77,11 +77,10 @@ async def update_knowledge_base_asset(
             knowledge_base_asset.asset_type
         )
     _save_deleted_original_document_to_json(knowledge_base_asset, req)
-
     knowledge_base_asset.vectorization_jobs.append(
         VectorizationJob(
             status=VectorizationJobStatus.PENDING,
-            job_type=VectorizationJobType.INCREMENTAL
+            job_type=VectorizationJobType.INCREMENTAL,
         )
     )
     try:

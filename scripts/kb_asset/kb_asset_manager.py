@@ -15,7 +15,7 @@ class KbAssetManager():
     logger = get_logger()
 
     @staticmethod
-    def create_kb_asset(database_url, kb_name, kb_asset_name, embedding_model, vector_dim):
+    def create_kb_asset(database_url, kb_name, kb_asset_name, embedding_model, language,vector_dim):
         try:
             engine = create_engine(
                 database_url,
@@ -57,7 +57,7 @@ class KbAssetManager():
                     KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,资产{kb_name}下存在重名资产')
                     return
                 new_knowledge_base_asset = KnowledgeBaseAsset(
-                    name=kb_asset_name, asset_type="UPLOADED_ASSET", kb_id=kb_id)
+                    name=kb_asset_name, asset_type="UPLOADED_ASSET", kb_id=kb_id,language=language)
                 session.add(new_knowledge_base_asset)
                 session.commit()
 

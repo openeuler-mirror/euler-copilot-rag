@@ -10,11 +10,11 @@ from rag_service.models.enums import EmbeddingModel
 
 
 
-def vectorize_embedding(texts: List[str],
+def vectorize_embedding(language,texts: List[str],
                         embedding_model: str = EmbeddingModel.BGE_MIXED_MODEL.value) -> List[List[float]]:
     data = {
         "texts": texts,
-        "language":'en'
+        "language":language
     }
     res = requests.post(url=config["REMOTE_EMBEDDING_ENDPOINT"], json=data, verify=False)
     if res.status_code != 200:

@@ -40,7 +40,8 @@ class ConfigModel(BaseModel):
     REMOTE_EMBEDDING_ENDPOINT: str = Field(None, description="远程嵌入向量生成服务的Endpoint")
     
     # Parser agent
-    PARSER_AGENT: str = Field(None, description="数据库配置的分词器")
+    EN_PARSER_AGENT: str = Field(None, description="数据库配置的英文分词器")
+    ZH_PARSER_AGENT: str = Field(None, description="数据库配置的中文分词器")
 
 
 class Config:

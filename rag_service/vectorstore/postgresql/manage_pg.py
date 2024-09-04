@@ -21,7 +21,7 @@ from rag_service.models.enums import EmbeddingModel, VectorizationJobType, Vecto
 logger = get_logger()
 
 
-def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
+def pg_search_data(language: str, question: str, knowledge_base_sn: str, top_k: int, session):
     """
     knowledge_base_sn，检索vector_store_name中的所有资产，再检索资产之下的所有vector_store，并进行联合检索
     """
@@ -54,12 +54,12 @@ def pg_search_data(question: str, knowledge_base_sn: str, top_k: int, session):
             vectors.extend(asset_term.vector_stores)
         index_names = [vector.name for vector in vectors]
         st = time.time()
-        vectors = vectorize_embedding([question], embedding_name.value)[0]
+        vectors = vectorize_embedding(language, [question], embedding_name.value)[0]
         et = time.time()
         logger.info(f"问题向量化耗时 = {et-st}")
 
         st = time.time()
-        result = pg_search(session, question, vectors, index_names, top_k)
+        result = pg_search(language, session, question, vectors, index_names, top_k)
         et = time.time()
         logger.info(f"postgres语料检索耗时 = {et-st}")
         results.extend(result)
@@ -79,7 +79,7 @@ def semantic_search(session, index_names, vectors, top_k):
     return results
 
 
-def keyword_search(session, index_names, question, top_k):
+def keyword_search(language, session, index_names, question, top_k):
     # 将参数作为bind param添加
     results = []
     for index_name in index_names:
@@ -98,7 +98,7 @@ def keyword_search(session, index_names, question, top_k):
 
         # 安全地绑定参数
         params = {
-            'language': config['PARSER_AGENT'],
+            'language': config[language.upper()+'_PARSER_AGENT'],
             'question': question,
             'top_k': top_k,
         }
@@ -110,20 +110,10 @@ def keyword_search(session, index_names, question, top_k):
     return results
 
 
-def to_tsquery(session, question: str):
-    query = text("select * from to_tsquery(:language, :question)")
-    params = {
-        'language': config['PARSER_AGENT'],
-        'question': question
-    }
-    results = session.execute(query, params).fetchall()
-    return [res[0].replace("'", "") for res in results]
-
-
-def pg_search(session, question, vectors, index_names, top_k):
+def pg_search(language, session, question, vectors, index_names, top_k):
     results = []
     try:
-        results.extend(keyword_search(session, index_names, question, int(1.5*top_k)))
+        results.extend(keyword_search(language, session, index_names, question, int(1.5*top_k)))
         results.extend(semantic_search(session, index_names, vectors, 2*top_k-len(results)))
         return results
     except Exception:

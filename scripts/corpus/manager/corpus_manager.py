@@ -43,6 +43,7 @@ class CorpusManager():
         while CorpusManager.is_rag_busy(engine):
             print('等待任务完成中')
             time.sleep(5)
+        print(res.text)
         if res.status_code == 200:
             print(f'上传片段{str(upload_file_paths)}成功')
             CorpusManager.logger.info(f'上传片段{str(upload_file_paths)}成功')
@@ -76,7 +77,8 @@ class CorpusManager():
                 if index == up_chunk:
                     index = 0
                     batch_count += 1
-                    upload_res = CorpusManager.upload_files(file_paths, engine, rag_url, kb_name, kb_asset_name)
+                    upload_res = CorpusManager.upload_files(
+                        file_paths, engine, rag_url, kb_name, kb_asset_name)
                     if upload_res:
                         print(f'第{batch_count}批次文件片段上传成功')
                     else:

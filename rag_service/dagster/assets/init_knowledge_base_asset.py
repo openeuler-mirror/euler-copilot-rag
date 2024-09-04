@@ -80,11 +80,13 @@ def embedding_documents(
                 KnowledgeBase.sn == knowledge_base_serial_number,
                 KnowledgeBaseAsset.name == knowledge_base_asset_name
         ).one()
+    language=knowledge_base_asset.language
     chunk_size=10000
     embeddings = list(
             itertools.chain.from_iterable(
                 [
                     vectorize_embedding(
+                        language,
                         [document.page_content for document in chunked_documents],
                         knowledge_base_asset.embedding_model
                     ) for chunked_documents in chunked(documents, chunk_size)

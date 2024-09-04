@@ -33,15 +33,16 @@ def work(args):
     embedding_model = args['embedding_model']
     vector_dim = args['vector_dim']
     num_cores = args['num_cores']
-    if int(up_chunk)<=0 or int(up_chunk)>8096:
+    language = args['language']
+    if int(up_chunk) <= 0 or int(up_chunk) > 8096:
         print('文件切割尺寸负数或者过大')
         logger.error('文件切割尺寸负数或者过大')
         return
-    if int(corpus_chunk )<=0 or int(corpus_chunk )>8096:
+    if int(corpus_chunk) <= 0 or int(corpus_chunk) > 8096:
         print('文件单次上传个数为负数或者过大')
         logger.error('文件单次上传个数为负数或者过大')
         return
-    if int(num_cores)<=0:
+    if int(num_cores) <= 0:
         print('线程核数不能为负数')
         logger.error('线程核数不能为负数')
         return
@@ -113,7 +114,7 @@ def work(args):
                 print(kb_name, ' ', create_time)
     elif choice == "create_kb_asset":
         try:
-            KbAssetManager.create_kb_asset(database_url, kb_name, kb_asset_name, embedding_model, vector_dim)
+            KbAssetManager.create_kb_asset(database_url, kb_name, kb_asset_name, embedding_model, language,vector_dim)
         except Exception as e:
             exit()
     elif choice == "del_kb_asset":
@@ -157,7 +158,7 @@ def work(args):
         for corpus_dir, para_list in file_to_para_dict.items():
             para_name_list = []
             for i in range(len(para_list)):
-                para_name_list.append(os.path.splitext(os.path.basename(str(corpus_dir)))[0]+'_片段'+str(i)+'.docx')
+                para_name_list.append(os.path.splitext(os.path.basename(str(corpus_dir)))[0]+'_paragraph'+str(i)+'.docx')
             cnt = CorpusManager.get_uploading_para_cnt(database_url, kb_name, kb_asset_name, para_name_list)
             logger.info(f'文件{corpus_dir}产生{str(len(para_name_list))}个片段，成功上传{cnt}个片段')
         if os.path.islink(para_dir):
@@ -217,7 +218,7 @@ def init_args():
         stop_corpus_uploading_job(上传语料失败后，停止当前上传任务)''')
     parser.add_argument("--database_url", default=None, required=False, help="语料资产所在数据库的url")
     parser.add_argument("--vector_agent_name", default='vector', required=False, help="向量化插件名称")
-    parser.add_argument("--parser_agent_name", default='english', required=False, help="分词插件名称")
+    parser.add_argument("--parser_agent_name", default='zhparser', required=False, help="分词插件名称")
     parser.add_argument("--rag_url", default=None, required=False, help="rag服务的url")
     parser.add_argument("--kb_name", type=str, default='default_test', required=False, help="资产名称")
     parser.add_argument("--kb_asset_name", type=str, default='default_test_asset', required=False, help="资产库名称")
@@ -231,6 +232,7 @@ def init_args():
         help="初始化资产时决定使用的嵌入模型")
     parser.add_argument("--vector_dim", type=int, default=1024, required=False, help="向量化维度")
     parser.add_argument("--num_cores", type=int, default=8, required=False, help="语料处理使用核数")
+    parser.add_argument("--language", type=str, default='zh', choices=['zh', 'en'], help="创建资产库时选择的语言类型")
     args = parser.parse_args()
     return args
 

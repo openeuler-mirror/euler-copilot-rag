@@ -7,7 +7,7 @@ import random
 from rag_service.logger import get_logger
 from rag_service.llms.llm import select_llm
 from rag_service.models.api import QueryRequest
-from rag_service.constant.prompt_manageer import prompt_template_dict
+from rag_service.constant.prompt_manager import prompt_template_dict
 from rag_service.utils.rag_document_util import get_query_context, get_rag_document_info
 
 logger = get_logger()
@@ -16,7 +16,7 @@ logger = get_logger()
 def domain_classifier(req: QueryRequest) -> bool:
     documents_info = get_rag_document_info(req=req)
     query_context = get_query_context(documents_info)
-    res = select_llm(req).nonstream(req, prompt=prompt_template_dict['DOMAIN_CLASSIFIER_PROMPT_TEMPLATE'].format(
+    res = select_llm(req).nonstream(req, prompt=prompt_template_dict[req.language]['DOMAIN_CLASSIFIER_PROMPT_TEMPLATE'].format(
         question=req.question, context=query_context)).content
     return re.fullmatch("其他领域", res)
 

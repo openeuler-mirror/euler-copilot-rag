@@ -415,6 +415,8 @@ class OeMessageManager:
             created_at=info.get("created_at", ''),
             is_sig_original=info.get("is_sig_original", ''),
         )
+        # max_retries = 10
+        # for retry in range(max_retries):
         try:
             with PostgresDB(pg_url).get_session() as session:
                 session.add(oe_openeuler_sig_group_slice)

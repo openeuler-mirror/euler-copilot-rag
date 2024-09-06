@@ -52,7 +52,10 @@ class PullMessageFromOeWeb:
                       'osv': 'openEuler相关的osv厂商',
                       'openeuler_version_message': 'openEuler的版本信息',
                       'organize_message': 'openEuler社区成员组织架构',
-                      'openeuler_sig': 'openeuler_sig（openEuler SIG组成员信息）'}
+                      'openeuler_sig': 'openeuler_sig（openEuler SIG组成员信息）',
+                      'sig_group': 'openEuler SIG组信息',
+                      'sig_members': 'openEuler SIG组成员信息',
+                      'sig_repos': 'openEuler SIG组仓库信息'}
         dataset_name_map = {
             'overall_unit': OeMessageManager.clear_oe_compatibility_overall_unit,
             'card': OeMessageManager.clear_oe_compatibility_card,
@@ -701,7 +704,7 @@ class PullMessageFromOeWeb:
                 OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role=role)
 
     @staticmethod
-    def oe_organize_message_handler(pg_url):
+    def oe_organize_message_handler(pg_url, oe_spider_method):
         f = open('./doc/organize.txt', 'r', encoding='utf-8')
         lines = f.readlines()
         st = 0
@@ -726,7 +729,7 @@ class PullMessageFromOeWeb:
             en = st
 
     @staticmethod
-    def oe_openeuler_version_message_handler(pg_url):
+    def oe_openeuler_version_message_handler(pg_url, oe_spider_method):
         f = open('./docs/openeuler_version.txt', 'r', encoding='utf-8')
         lines = f.readlines()
         filed_list = ['openeuler_version', 'kernel_version', 'publish_time', 'version_type']

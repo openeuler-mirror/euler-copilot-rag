@@ -106,7 +106,7 @@ def work(args):
         except:
             exit()
         if len(kb_list) == 0:
-            print('为查询到任何资产')
+            print('未查询到任何资产')
         else:
             print('资产名 创建时间')
             for kb_name, create_time in kb_list:

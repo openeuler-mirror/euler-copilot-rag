@@ -15,7 +15,7 @@ class KbAssetManager():
     logger = get_logger()
 
     @staticmethod
-    def create_kb_asset(database_url, kb_name, kb_asset_name, embedding_model, language,vector_dim):
+    def create_kb_asset(language, database_url, kb_name, kb_asset_name, embedding_model, kb_asset_use_language,vector_dim):
         try:
             engine = create_engine(
                 database_url,
@@ -25,8 +25,12 @@ class KbAssetManager():
                 pool_pre_ping=True
             )
         except Exception as e:
-            print(f'数据库引擎初始化失败，由于原因{e}')
-            KbAssetManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            if language == 'zh':
+                print(f'数据库引擎初始化失败，由于原因{e}')
+                KbAssetManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            else:
+                print(f'Database engine initialization failed due to reason {e}')
+                KbAssetManager.logger.error(f'Database engine initialization failed due to reason {e}')
             raise e
         try:
             with sessionmaker(bind=engine)() as session:
@@ -40,24 +44,37 @@ class KbAssetManager():
                         exist = True
                         break
                 if not exist:
-                    print(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,由于暂不支持当前向量化模型{embedding_model}')
-                    KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,由于暂不支持当前向量化模型{embedding_model}')
+                    if language == 'zh':
+                        print(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,由于暂不支持当前向量化模型{embedding_model}')
+                        KbAssetManager.logger.error(
+                            f'资产{kb_name}下的资产库{kb_asset_name}创建失败,由于暂不支持当前向量化模型{embedding_model}')
+                    else:
+                        print(f'The creation of knowledge base asset {kb_asset_name} under konwledge base {kb_name} failed due to the current vectorized model {embedding_model} not being supported at the moment')
+                        KbAssetManager.logger.error(f'The creation of knowledge base asset {kb_asset_name} under konwledge base {kb_name} failed due to the current vectorized model {embedding_model} not being supported at the moment')
                     return
 
                 kb_count = session.query(func.count(KnowledgeBase.id)).filter(KnowledgeBase.sn == kb_name).scalar()
                 if kb_count == 0:
-                    print(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,资产{kb_name}不存在')
-                    KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,资产{kb_name}不存在')
+                    if language == 'zh':
+                        print(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,资产{kb_name}不存在')
+                        KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,资产{kb_name}不存在')
+                    else:
+                        print(f'The creation of knowledge base asset {kb_asset_name} under knowledge base {kb_name} failed, and knowledge base {kb_name} does not exist')
+                        KbAssetManager.logger.error(f'The creation of knowledge base asset {kb_asset_name} under knowledge base {kb_name} failed, and knowledge base {kb_name} does not exist')
                     return
                 kb_id = session.query(KnowledgeBase.id).filter(KnowledgeBase.sn == kb_name).one()[0]
                 kb_asset_count = session.query(func.count(KnowledgeBaseAsset.id)).filter(
                     and_(KnowledgeBaseAsset.kb_id == kb_id, KnowledgeBaseAsset.name == kb_asset_name)).scalar()
                 if kb_asset_count != 0:
-                    print(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,资产{kb_name}下存在重名资产')
-                    KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,资产{kb_name}下存在重名资产')
+                    if language == 'zh':
+                        print(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,资产{kb_name}下存在重名资产')
+                        KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}创建失败,资产{kb_name}下存在重名资产')
+                    else:
+                        print(f'The creation of knowledge base asset {kb_asset_name} under knowledge base {kb_name} failed, as there are duplicate named knowledge base asset under knowledge base {kb_name}')
+                        KbAssetManager.logger.error(f'The creation of knowledge base asset {kb_asset_name} under knowledge base {kb_name} failed, as there are duplicate named knowledge base asset under knowledge base {kb_name}')
                     return
                 new_knowledge_base_asset = KnowledgeBaseAsset(
-                    name=kb_asset_name, asset_type="UPLOADED_ASSET", kb_id=kb_id,language=language)
+                    name=kb_asset_name, asset_type="UPLOADED_ASSET", kb_id=kb_id, language=kb_asset_use_language)
                 session.add(new_knowledge_base_asset)
                 session.commit()
 
@@ -125,15 +142,23 @@ class KbAssetManager():
                     )
 
                 metadata.create_all(engine)
-            print(f'资产{kb_name}下的资产库{kb_asset_name}创建成功')
-            KbAssetManager.logger.info(f'资产{kb_name}下的资产库{kb_asset_name}创建成功')
+            if language == 'zh':
+                print(f'资产{kb_name}下的资产库{kb_asset_name}创建成功')
+                KbAssetManager.logger.info(f'资产{kb_name}下的资产库{kb_asset_name}创建成功')
+            else:
+                print(f'The knowledge base asset {kb_asset_name} under konwledge base {kb_name} has been successfully created')
+                KbAssetManager.logger.info(f'The knowledge base asset {kb_asset_name} under konwledge base {kb_name} has been successfully created')
         except Exception as e:
-            print(f'资产{kb_name}下的资产库{kb_asset_name}创建失败由于：{e}')
-            KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}创建失败由于：{e}')
+            if language == 'zh':
+                print(f'资产{kb_name}下的资产库{kb_asset_name}创建失败由于：{e}')
+                KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}创建失败由于：{e}')
+            else:
+                print(f'The creation of knowledge base asset {kb_asset_name} under konwledge base {kb_name} failed due to: {e}')
+                KbAssetManager.logger.error(f'The creation of knowledge base asset {kb_asset_name} under konwledge base {kb_name} failed due to: {e}')
             raise e
 
     @staticmethod
-    def query_kb_asset(database_url, kb_name):
+    def query_kb_asset(language, database_url, kb_name):
         try:
             engine = create_engine(
                 database_url,
@@ -143,29 +168,42 @@ class KbAssetManager():
                 pool_pre_ping=True
             )
         except Exception as e:
-            print(f'数据库引擎初始化失败，由于原因{e}')
-            KbAssetManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            if language == 'zh':
+                print(f'数据库引擎初始化失败，由于原因{e}')
+                KbAssetManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            else:
+                print(f'Database engine initialization failed due to reason {e}')
+                KbAssetManager.logger.error(f'Database engine initialization failed due to reason {e}')
             raise e
         kb_asset_list = []
+        print(kb_name)
         try:
             with sessionmaker(bind=engine)() as session:
                 kb_count = session.query(func.count(KnowledgeBase.id)).filter(KnowledgeBase.sn == kb_name).scalar()
                 if kb_count == 0:
-                    print(f'资产{kb_name}下的资产库查询失败,资产{kb_name}不存在')
-                    KbAssetManager.logger.error(f'资产{kb_name}下的资产库查询失败,资产{kb_name}不存在')
+                    if language == 'zh':
+                        print(f'资产{kb_name}下的资产库查询失败,资产{kb_name}不存在')
+                        KbAssetManager.logger.error(f'资产{kb_name}下的资产库查询失败,资产{kb_name}不存在')
+                    else:
+                        print(f'Knowledge base asset query failed under knowledge base {kb_name}, knowledge base {kb_name} does not exist')
+                        KbAssetManager.logger.error(f'Knowledge base asset query failed under knowledge base {kb_name}, knowledge base {kb_name} does not exist')
                     return
                 kb_id = session.query(KnowledgeBase.id).filter(KnowledgeBase.sn == kb_name).one()[0]
                 kb_asset_list = session.query(
                     KnowledgeBaseAsset.name, KnowledgeBaseAsset.created_at).filter(
                     KnowledgeBaseAsset.kb_id == kb_id).order_by(KnowledgeBaseAsset.created_at).all()
         except Exception as e:
-            print(f'资产{kb_name}下的资产库查询失败：{e}')
-            KbAssetManager.logger.error(f'资产{kb_name}下的资产库查询失败：{e}')
+            if language == 'zh':
+                print(f'资产{kb_name}下的资产库查询失败：{e}')
+                KbAssetManager.logger.error(f'资产{kb_name}下的资产库查询失败：{e}')
+            else:
+                print(f'Failed to query knowledge base asset under knowledge base {kb_name} due : {e}')
+                KbAssetManager.logger.error(f'Failed to query knowledge base asset under knowledge base {kb_name} due : {e}')
             raise e
         return kb_asset_list
 
     @staticmethod
-    def del_kb_asset(database_url, kb_name, kb_asset_name):
+    def del_kb_asset(language, database_url, kb_name, kb_asset_name):
         try:
             engine = create_engine(
                 database_url,
@@ -175,22 +213,33 @@ class KbAssetManager():
                 pool_pre_ping=True
             )
         except Exception as e:
-            print(f'数据库引擎初始化失败，由于原因{e}')
-            KbAssetManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            if language == 'zh':
+                print(f'数据库引擎初始化失败，由于原因{e}')
+                KbAssetManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            else:
+                print(f'Database engine initialization failed due to reason {e}')
+                KbAssetManager.logger.error(f'Database engine initialization failed due to reason {e}')
             raise e
         try:
             with sessionmaker(bind=engine)() as session:
                 kb_count = session.query(func.count(KnowledgeBase.id)).filter(KnowledgeBase.sn == kb_name).scalar()
                 if kb_count == 0:
-                    print(f'资产{kb_name}下的资产库删除资产库{kb_asset_name}失败,资产{kb_name}不存在')
-                    KbAssetManager.logger.error(f'资产{kb_name}下的资产库删除资产库{kb_asset_name}失败,资产{kb_name}不存在')
+                    if language == 'zh':
+                        print(f'资产{kb_name}下的资产库删除资产库{kb_asset_name}失败,资产{kb_name}不存在')
+                        KbAssetManager.logger.error(f'资产{kb_name}下的资产库删除资产库{kb_asset_name}失败,资产{kb_name}不存在')
+                    else:
+                        pass
                     return
                 kb_id = session.query(KnowledgeBase.id).filter(KnowledgeBase.sn == kb_name).one()[0]
                 kb_asset_count = session.query(func.count(KnowledgeBaseAsset.id)).filter(
                     and_(KnowledgeBaseAsset.kb_id == kb_id, KnowledgeBaseAsset.name == kb_asset_name)).scalar()
                 if kb_asset_count == 0:
-                    print(f'资产{kb_name}下的资产库删除资产库{kb_asset_name}失败,资产库{kb_asset_name}不存在')
-                    KbAssetManager.logger.error(f'资产{kb_name}下的资产库删除资产库{kb_asset_name}失败,资产库{kb_asset_name}不存在')
+                    if language == 'zh':
+                        print(f'资产{kb_name}下的资产库删除资产库{kb_asset_name}失败,资产库{kb_asset_name}不存在')
+                        KbAssetManager.logger.error(f'资产{kb_name}下的资产库删除资产库{kb_asset_name}失败,资产库{kb_asset_name}不存在')
+                    else:
+                        print(f'Failed to delete knowledge base asset {kb_asset_name} under knowledge base {kb_name},knowledge base asset {kb_asset_name} does not exist')
+                        KbAssetManager.logger.error(f'Failed to delete knowledge base asset {kb_asset_name} under knowledge base {kb_name},knowledge base asset {kb_asset_name} does not exist')
                     return
                 kba_id = session.query(KnowledgeBaseAsset.id).filter(
                     and_(KnowledgeBaseAsset.kb_id == kb_id, KnowledgeBaseAsset.name == kb_asset_name)).one()[0]
@@ -221,8 +270,16 @@ class KbAssetManager():
                 session.query(KnowledgeBaseAsset).filter(
                     KnowledgeBaseAsset.id == kba_id).delete()
                 session.commit()
-            print(f'资产{kb_name}下的资产库{kb_asset_name}删除成功')
-            KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}删除成功')
+            if language == 'zh':
+                print(f'资产{kb_name}下的资产库{kb_asset_name}删除成功')
+                KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}删除成功')
+            else:
+                print(f'The knowledge base asset {kb_asset_name} under knowledge base {kb_name} has been successfully deleted')
+                KbAssetManager.logger.error(f'The knowledge base asset {kb_asset_name} under knowledge base {kb_name} has been successfully deleted')
         except Exception as e:
-            print(f'资产{kb_name}下的资产库{kb_asset_name}删除失败由于：{e}')
-            KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}删除失败由于：{e}')
+            if language == 'zh':
+                print(f'资产{kb_name}下的资产库{kb_asset_name}删除失败由于：{e}')
+                KbAssetManager.logger.error(f'资产{kb_name}下的资产库{kb_asset_name}删除失败由于：{e}')
+            else:
+                print(f'The deletion of knowledge base asset {kb_asset_name} under konwledge base {kb_name} failed due to: {e}')
+                KbAssetManager.logger.error(f'The deletion of knowledge base asset {kb_asset_name} under konwledge base {kb_name} failed due to: {e}')

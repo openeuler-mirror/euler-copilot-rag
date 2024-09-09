@@ -223,7 +223,7 @@ class TableManager():
     logger = get_logger()
 
     @staticmethod
-    def create_db_and_tables(database_url, vector_agent_name, parser_agent_name):
+    def create_db_and_tables(language, database_url, vector_agent_name, parser_agent_name):
         try:
             engine = create_engine(
                 database_url,
@@ -233,17 +233,27 @@ class TableManager():
                 pool_pre_ping=True
             )
         except Exception as e:
-            print(f'数据库引擎初始化失败，由于原因{e}')
-            TableManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            if language == 'zh':
+                print(f'数据库引擎初始化失败，由于原因{e}')
+                TableManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            else:
+                print(f'Database engine initialization failed due to reason {e}')
+                TableManager.logger.error(f'Database engine initialization failed due to reason {e}')
             raise e
         try:
             with sessionmaker(bind=engine)() as session:
                 create_vector_sql = text(f"CREATE EXTENSION IF NOT EXISTS {vector_agent_name}")
                 session.execute(create_vector_sql)
                 session.commit()
-            TableManager.logger.info('vector插件加载成功')
+            if language=='zh':
+                TableManager.logger.info('vector插件加载成功')
+            else:
+                TableManager.logger.info('Vector plugin loaded successfully')
         except Exception as e:
-            TableManager.logger.error(f'插件vector加载失败，由于原因{e}')
+            if language=='zh':
+                TableManager.logger.error(f'插件vector加载失败，由于原因{e}')
+            else:
+                TableManager.logger.error(f'Plugin vector loading failed due to reason {e}')
         try:
             with sessionmaker(bind=engine)() as session:
                 create_vector_sql = text(f"CREATE EXTENSION IF NOT EXISTS {parser_agent_name}")
@@ -255,22 +265,40 @@ class TableManager():
                     f"ALTER TEXT SEARCH CONFIGURATION {parser_agent_name} ADD MAPPING FOR n,v,a,i,e,l WITH simple")
                 session.execute(create_vector_sql)
                 session.commit()
-            TableManager.logger.info(f'{parser_agent_name}插件加载成功')
+            if language == 'zh':
+                TableManager.logger.info(f'{parser_agent_name}插件加载成功')
+            else:
+                TableManager.logger.info(f'{parser_agent_name} plugin loaded successfully')
         except Exception as e:
-            TableManager.logger.error(f'插件{parser_agent_name}加载失败，由于原因{e}')
+            if language == 'zh':
+                TableManager.logger.error(f'插件{parser_agent_name}加载失败，由于原因{e}')
+            else:
+                TableManager.logger.error(f'Plugin {parser_agent_name} failed to load due to reason {e}')
         try:
             Base.metadata.create_all(engine)
-            print('数据库表格初始化成功')
-            TableManager.logger.info('数据库表格初始化成功')
+            if language == 'zh':
+                print('数据库表格初始化成功')
+                TableManager.logger.info('数据库表格初始化成功')
+            else:
+                print('Database table initialization successful')
+                TableManager.logger.info('Database table initialization successful')
         except Exception as e:
-            print(f'数据库表格初始化失败，由于原因{e}')
-            TableManager.logger.error(f'数据库表格初始化失败，由于原因{e}')
+            if language == 'zh':
+                print(f'数据库表格初始化失败，由于原因{e}')
+                TableManager.logger.error(f'数据库表格初始化失败，由于原因{e}')
+            else:
+                print(f'Database table initialization failed due to reason {e}')
+                TableManager.logger.error(f'Database table initialization failed due to reason {e}')
             raise e
-        print("数据库初始化成功")
-        TableManager.logger.info("数据库初始化成功")
+        if language == 'zh':
+            print("数据库初始化成功")
+            TableManager.logger.info("数据库初始化成功")
+        else:
+            print("Database initialization successful")
+            TableManager.logger.info("Database initialization successful")
 
     @staticmethod
-    def drop_all_tables(database_url):
+    def drop_all_tables(language, database_url):
         try:
             engine = create_engine(
                 database_url,
@@ -280,8 +308,12 @@ class TableManager():
                 pool_pre_ping=True
             )
         except Exception as e:
-            print(f'数据库引擎初始化失败，由于原因{e}')
-            TableManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            if language == 'zh':
+                print(f'数据库引擎初始化失败，由于原因{e}')
+                TableManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
+            else:
+                print(f'Database engine initialization failed due to reason {e}')
+                TableManager.logger.error(f'Database engine initialization failed due to reason {e}')
             raise e
         metadata = MetaData()
         metadata.reflect(bind=engine)
@@ -291,13 +323,25 @@ class TableManager():
                     try:
                         index.drop(bind=conn)
                     except Exception as e:
-                        print(f"删除索引失败由于: {e}")
-                        TableManager.logger.error(f"删除索引失败由于: {e}")
+                        if language == 'zh':
+                            print(f"删除索引失败由于: {e}")
+                            TableManager.logger.error(f"删除索引失败由于: {e}")
+                        else:
+                            print(f"Delete index failed due to: {e}")
+                            TableManager.logger.error(f"Delete index failed due to: {e}")
                         raise e
             try:
                 metadata.drop_all(bind=conn)
             except Exception as e:
-                print(f"数据库清除失败由于: {e}")
-                TableManager.logger.error(f"数据库清除失败由于:{e}")
-            print("数据库清除成功")
-            TableManager.logger.info("数据库清除成功")
+                if language == 'zh':
+                    print(f"数据库清除失败由于: {e}")
+                    TableManager.logger.error(f"Database cleanup failed due to: {e}")
+                else:
+                    print(f"数据库清除失败由于: {e}")
+                    TableManager.logger.error(f"Database cleanup failed due to: {e}")
+            if language == 'zh':
+                print("数据库清除成功")
+                TableManager.logger.info("数据库清除成功")
+            else:
+                print("Database cleared successfully")
+                TableManager.logger.info("Database cleared successfully")

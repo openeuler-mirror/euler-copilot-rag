@@ -123,7 +123,7 @@ def work(args):
             return
     elif choice == "query_kb_asset":
         try:
-            kb_asset_list = KbAssetManager.query_kb_asset(database_url, 'default_test')
+            kb_asset_list = KbAssetManager.query_kb_asset(database_url, kb_name)
         except:
             exit()
         if len(kb_asset_list) != 0:

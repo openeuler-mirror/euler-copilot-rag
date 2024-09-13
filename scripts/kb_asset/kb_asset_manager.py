@@ -153,7 +153,7 @@ class KbAssetManager():
                 if kb_count == 0:
                     print(f'资产{kb_name}下的资产库查询失败,资产{kb_name}不存在')
                     KbAssetManager.logger.error(f'资产{kb_name}下的资产库查询失败,资产{kb_name}不存在')
-                    return
+                    exit()
                 kb_id = session.query(KnowledgeBase.id).filter(KnowledgeBase.sn == kb_name).one()[0]
                 kb_asset_list = session.query(
                     KnowledgeBaseAsset.name, KnowledgeBaseAsset.created_at).filter(

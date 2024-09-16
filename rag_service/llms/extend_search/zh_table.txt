@@ -1,0 +1,34 @@
+表名：oe_community_organization_structure
+表的注释：openEuler社区组织架构信息表，存储了openEuler社区成员所属的委员会、职位、姓名和个人信息
+字段名称：committee_name 字段类型：character varying 字段注释：openEuler社区成员所属的委员会
+字段名称：role 字段类型：character varying 字段注释：openEuler社区成员的职位
+字段名称：name 字段类型：character varying 字段注释：openEuler社区成员的姓名
+字段名称：personal_message 字段类型：character varying 字段注释：openEuler社区成员的个人信息
+
+表名：oe_compatibility_overall_unit
+表的注释：openEuler支持的整机信息表，存储了openEuler支持的整机的架构、CPU型号、硬件厂家、硬件型号和相关的openEuler版本
+字段名称：architecture 字段类型：character varying 字段注释：openEuler支持的整机信息的架构
+字段名称：cpu 字段类型：character varying 字段注释：openEuler支持的整机信息的CPU型号
+字段名称：hardware_factory 字段类型：character varying 字段注释：openEuler支持的整机信息的硬件厂家
+字段名称：hardware_model 字段类型：character varying 字段注释：openEuler支持的整机信息的硬件型号
+字段名称：openeuler_version 字段类型：character varying 字段注释：openEuler支持的整机信息的相关的openEuler版本
+
+表名：oe_compatibility_oepkgs
+表的注释：openEuler支持的软件包信息表，存储了openEuler支持软件包的名称、简介、是否为官方版本标识、相关的openEuler版本、rpm包下载链接、源码包下载链接、支持的架构、版本
+字段名称：name 字段类型：character varying 字段注释：openEuler支持的软件包的版本
+字段名称：summary 字段类型：character varying 字段注释：openEuler支持的软件包的简介
+字段名称：repotype 字段类型：character varying 字段注释：openEuler支持的软件包的是否为官方版本标识
+字段名称：openeuler_version 字段类型：character varying 字段注释：openEuler支持的软件包的相关的openEuler版本
+字段名称：rpmpackurl 字段类型：character varying 字段注释：openEuler支持的软件包的rpm包下载链接
+字段名称：srcrpmpackurl 字段类型：character varying 字段注释：openEuler支持的软件包的源码包下载链接
+字段名称：arch 字段类型：character varying 字段注释：openEuler支持的软件包的支持的架构
+字段名称：version 字段类型：character varying 字段注释：openEuler支持的软件包的版本
+
+表名：oe_community_openeuler_version
+表的注释：openEuler社区openEuler版本信息表，存储了openEuler版本的版本、内核版本、发布日期和版本类型
+字段名称：openeuler_version 字段类型：character varying 字段注释：openEuler版本的版本号
+字段名称：kernel_version 字段类型：character varying 字段注释：openEuler版本的内核版本
+字段名称：publish_time 字段类型：timestamp without time zone 字段注释：openEuler版本的发布日期
+字段名称：version_type 字段类型：character varying 字段注释：openEuler社区成员的版本类型
+
+

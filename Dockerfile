@@ -5,7 +5,7 @@ WORKDIR /rag-service
 
 ENV PYTHONPATH /rag-service
 ENV DAGSTER_HOME /dagster_home
-#ENV DAGSTER_DB_CONNECTION 
+ENV DAGSTER_DB_CONNECTION postgresql+psycopg2://postgres:123456@0.0.0.0:5444/postgres
 
 USER root
 RUN mkdir /dagster_home && cp /rag-service/dagster.yaml /rag-service/workspace.yaml /dagster_home && \

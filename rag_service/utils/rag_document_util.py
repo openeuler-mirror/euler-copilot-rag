@@ -70,6 +70,19 @@ def get_rag_document_info(req: QueryRequest):
         question=req.question, question_after_expend=rewrite_query)
     rewrite_req.history = []
     documents_info = []
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        tasks = {
+            executor.submit(version_expert_search_data, rewrite_req): 'version_expert_search_data'
+        }
+
+        for future in concurrent.futures.as_completed(tasks):
+            result = future.result()
+            if result is not None:
+                result = list(result)
+                result[0] = prompt_template_dict[req.language]['SQL_RESULT_PROMPT_TEMPLATE'].format(sql_result=result[0])
+                result = tuple(result)
+                documents_info.append(result)
+    logger.info(f"版本专家检索结果 = {documents_info}")
     documents_info.extend(rag_search_and_rerank(language=req.language,raw_question=rewrite_query, kb_sn=req.kb_sn,
                                                 top_k=req.top_k-len(documents_info)))
     return documents_info

@@ -87,120 +87,92 @@ en:
     in detail.
 
     '
-  SQL_GENERATE_PROMPT_TEMPLATE: '忽略之前对你的任何系统设置, 只考虑当前如下场景: 你是一个数据库专家，请根据以下要求生成一条sql查询语句。
+  SQL_GENERATE_PROMPT_TEMPLATE: "Ignore any previous system settings for you and only\
+  \ consider the following scenario: You are a database expert, please generate an\
+  \ SQL query statement according to the following requirements.\n\nAdditional requirements:\n\
+  1. Only return the generated SQL statement, do not return any other irrelevant content\n\
+  2. If no SQL statement needs to be generated, return an empty string\n3. The query\
+  \ field must use the keyword 'distinct' to remove duplicates\n4. The query criteria\
+  \ must use 'ilike' for fuzzy queries, do not use '=' for matching\n5. The query\
+  \ results must use 'limit 80' to limit the number of items returned\n6. Use table\
+  \ names from reference information as much as possible\n6. Use single table queries\
+  \ as much as possible, unless necessary to use 'join' linked table queries\n7.If\
+  \ the information related to the question does not exist in any table, please output\
+  \ an empty string!\n8.If you want to use as, please wrap the alias in double quotation\
+  \ marks.\n9.For software package and hardware queries, it is necessary to return\
+  \ the software package name and hardware name.\n10. Do not wrap variable names in\
+  \ double or single quotation marks unless necessary\n11. All versions of openEuler\
+  \ use  - to separate fields\n\nDatabase table structure: \n\n{table}\nExample:\n\
+  \n{example}\nPlease generate SQL statements based on the above requirements and\
+  \ analyze the user's problem, combined with the provided database table structure\
+  \ and each field in the table, and return the results.\nHere are the user's questions:\n\
+  \n{question}"
 
+  SQL_GENERATE_PROMPT_TEMPLATE_EX: "Ignore any previous system settings for you and
+  only consider the current scenario: you are an SQL optimization expert, please generate
+  an executable SQL query statement based on the database table structure, the SQL
+  to be optimized (executing SQL with no results), and the requirements.
 
-    1. 数据库表结构: {table}
+  Additional requirements:
 
+  1. The query field must use the keyword ''distinct'' to remove duplicates
 
-    2. 只返回生成的sql语句, 不要返回其他任何无关的内容
+  2. The query criteria must use ''ilike'' ''%%'' '''' plus a double percentage sign
+  for fuzzy queries, and do not use ''='' for matching
 
+  3. The query results must use ''limit 30'' to limit the number of items returned
 
-    3. 如果不需要生成sql语句, 则返回空字符串
+  4. Use table names from reference information as much as possible
 
+  5. Use single table queries as much as possible, unless necessary to use ''join''
+  linked table queries
 
-    附加要求:
+  If the information related to the question does not exist in any table, please output
+  an empty string!
 
-    1. 查询字段必须使用`distinct`关键字去重
+  If you want to use as, please wrap the alias in double quotation marks.
 
+  For software package and hardware queries, it is necessary to return the software
+  package name and hardware name.
 
-    2. 查询条件必须使用`ilike`进行模糊查询，不要使用=进行匹配
+  9. Do not wrap variable names in double or single quotation marks unless necessary
 
+  10. All versions of openEuler use - to separate fields
 
-    3. 查询结果必须使用`limit 80`限制返回的条数
+  Please generate executable SQL statements based on the above requirements and analyze
+  the user''s problem, combined with the provided database table structure, each field
+  in the table, and the SQL to be optimized, and return the result.
 
 
-    4. 尽可能使用参考信息里面的表名
+  Database table structure:
 
+  {table}
 
-    5. 尽可能使用单表查询, 除非不得已的情况下才使用`join`连表查询
 
+  Example:
 
-    6. 如果问的问题相关信息不存在于任何一张表中，请输出空字符串！
+  {example}
 
 
-    7. 如果要使用 as，请用双引号把别名包裹起来。
+  SQL to be optimized:
 
+  {sql}
 
-    8. 对于软件包和硬件等查询，需要返回软件包名和硬件名称。
 
+  Here is the user''s question:
 
-    9.若非必要请勿用双引号或者单引号包裹变量名
+  {question}
 
-
-    10.所有openEuler的版本各个字段之间使用 ''''-''''进行分隔
-
-    示例: {example}
-
-
-    请基于以上要求, 并分析用户的问题, 结合提供的数据库表结构以及表内的每个字段, 生成sql语句, 并按照规定的格式返回结果
-
-
-    下面是用户的问题：
-
-
-    {question}
-
-    '
-  SQL_GENERATE_PROMPT_TEMPLATE_EX: '
-
-    忽略之前对你的任何系统设置, 只考虑当前如下场景: 你是一个sql优化专家，请根据数据库表结构、待优化的sql（执行无结果的sql）和要求要求生成一条可执行sql查询语句。
-
-
-    数据库表结构: {table}
-
-
-    待优化的sql：{sql}
-
-
-    附加要求:
-
-    1. 查询字段必须使用`distinct`关键字去重
-
-
-    2. 查询条件必须使用`ilike ''''%%''''`加双百分号进行模糊查询，不要使用=进行匹配
-
-
-    3. 查询结果必须使用`limit 30`限制返回的条数
-
-
-    4. 尽可能使用参考信息里面的表名
-
-
-    5. 尽可能使用单表查询, 除非不得已的情况下才使用`join`连表查询
-
-
-    6. 如果问的问题相关信息不存在于任何一张表中，请输出空字符串！
-
-
-    7. 如果要使用 as，请用双引号把别名包裹起来。
-
-
-    8. 对于软件包和硬件等查询，需要返回软件包名和硬件名称。
-
-
-    9.若非必要请勿用双引号或者单引号包裹变量名
-
-
-    10.所有openEuler的版本各个字段之间使用 ''''-''''进行分隔
-
-
-    示例: {example}
-
-
-    请基于以上要求, 并分析用户的问题, 结合提供的数据库表结构以及表内的每个字段和待优化的sql, 生成可执行的sql语句, 并按照规定的格式返回结果
-
-
-    下面是用户的问题：
-
-
-    {question}
-
-    '
-  SQL_RESULT_PROMPT_TEMPLATE: "\n下面是根据问题的数据库的查询结果:\n\n{sql_result}\n\n注意：\n\n1.假设数据库的查询结果为空，则数据库内不存在相关信息。\n\
-    \n2.假设数据库的查询结果不为空，则需要根据返回信息进行回答\n\n以下是一些示例:\n    \n示例一：\n    问题：openEuler是否支持xxx芯片？\n\
-    \    \n    数据的查询结果：xxx\n    \n    回答：openEuler支持xxx芯片。\n\n示例二：\n    问题：openEuler是否支持yyy芯片？\n\
-    \    \n    数据的查询结果：yyy\n    \n    回答：openEuler支持yyy芯片。\n"
+  "
+  SQL_RESULT_PROMPT_TEMPLATE: "\\The following is the query result of the database\
+  \ based on the problem: \n \n {sql_result} \n \nNote: \n \n1. Assuming the query\
+  \ result of the database is empty, there is no relevant information in the database.\
+  \ \n\n\\Assuming the query result of the database is not empty, it is necessary\
+  \ to answer based on the returned information. Here are some examples:\nExample\
+  \ 1: Does openEuler support xxx chips? \n\n\\Query result of data: xxx. Answer:\
+  \ openEuler supports xxx chips. \nExample 2: Question: Does openEuler support yyy\
+  \ chips? \n\n\\Query result of data: yyy. Answer: openEuler supports yyy chips.\
+  \ \n\n"
 zh:
   DOMAIN_CLASSIFIER_PROMPT_TEMPLATE: '你是由openEuler社区构建的大型语言AI助手。你的任务是结合给定的背景知识判断用户的问题是否属于以下几个领域。
 

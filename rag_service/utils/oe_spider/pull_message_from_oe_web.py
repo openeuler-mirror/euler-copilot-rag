@@ -1,4 +1,5 @@
-import multiprocessing
+from multiprocessing import Process, set_start_method
+import time
 
 import requests
 import json
@@ -10,11 +11,90 @@ from yaml import SafeLoader
 from oe_message_manager import OeMessageManager
 import argparse
 import urllib.parse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 class PullMessageFromOeWeb:
     @staticmethod
-    def pull_oe_compatibility_overall_unit(pg_url):
+    def add_to_DB(pg_url, results, dataset_name):
+        dataset_name_map = {
+            'overall_unit': OeMessageManager.add_oe_compatibility_overall_unit,
+            'card': OeMessageManager.add_oe_compatibility_card,
+            'open_source_software': OeMessageManager.add_oe_compatibility_open_source_software,
+            'commercial_software': OeMessageManager.add_oe_compatibility_commercial_software,
+            'solution': OeMessageManager.add_oe_compatibility_solution,
+            'oepkgs': OeMessageManager.add_oe_compatibility_oepkgs,
+            'osv': OeMessageManager.add_oe_compatibility_osv,
+            'security_notice': OeMessageManager.add_oe_compatibility_security_notice,
+            'cve_database': OeMessageManager.add_oe_compatibility_cve_database,
+            'sig_group': OeMessageManager.add_oe_openeuler_sig_group,
+            'sig_members': OeMessageManager.add_oe_openeuler_sig_members,
+            'sig_repos': OeMessageManager.add_oe_openeuler_sig_repos,
+        }
+
+        for i in range(len(results)):
+            for key in results[i]:
+                if isinstance(results[i][key], (dict, list, tuple)):
+                    results[i][key] = json.dumps(results[i][key])
+            dataset_name_map[dataset_name](pg_url, results[i])
+
+
+    @staticmethod
+    def save_result(pg_url, results, dataset_name):
+        prompt_map = {'card': 'openEuler支持的板卡信息',
+                      'commercial_software': 'openEuler支持的商业软件',
+                      'cve_database': 'openEuler的cve信息',
+                      'oepkgs': 'openEuler支持的软件包信息',
+                      'solution': 'openEuler支持的解决方案',
+                      'open_source_software': 'openEuler支持的开源软件信息',
+                      'overall_unit': 'openEuler支持的整机信息',
+                      'security_notice': 'openEuler官网的安全公告',
+                      'osv': 'openEuler相关的osv厂商',
+                      'openeuler_version_message': 'openEuler的版本信息',
+                      'organize_message': 'openEuler社区成员组织架构',
+                      'openeuler_sig': 'openeuler_sig（openEuler SIG组成员信息）',
+                      'sig_group': 'openEuler SIG组信息',
+                      'sig_members': 'openEuler SIG组成员信息',
+                      'sig_repos': 'openEuler SIG组仓库信息'}
+        dataset_name_map = {
+            'overall_unit': OeMessageManager.clear_oe_compatibility_overall_unit,
+            'card': OeMessageManager.clear_oe_compatibility_card,
+            'open_source_software': OeMessageManager.clear_oe_compatibility_open_source_software,
+            'commercial_software': OeMessageManager.clear_oe_compatibility_commercial_software,
+            'solution': OeMessageManager.clear_oe_compatibility_solution,
+            'oepkgs': OeMessageManager.clear_oe_compatibility_oepkgs,
+            'osv': OeMessageManager.clear_oe_compatibility_osv,
+            'security_notice': OeMessageManager.clear_oe_compatibility_security_notice,
+            'cve_database': OeMessageManager.clear_oe_compatibility_cve_database,
+            'sig_group': OeMessageManager.clear_oe_openeuler_sig_group,
+            'sig_members': OeMessageManager.clear_oe_openeuler_sig_members,
+            'sig_repos': OeMessageManager.clear_oe_openeuler_sig_repos,
+        }
+        process = []
+        num_cores = (os.cpu_count()+1) // 2
+        if num_cores > 8:
+            num_cores = 8
+
+        print(f"{prompt_map[dataset_name]}录入中")
+        dataset_name_map[dataset_name](pg_url)
+        step = len(results) // num_cores
+        process = []
+        for i in range(num_cores):
+            begin = i * step
+            end = begin + step
+            if i == num_cores - 1:
+                end = len(results)
+            sub_result = results[begin:end]
+            p = Process(target=PullMessageFromOeWeb.add_to_DB, args=(pg_url, sub_result, dataset_name))
+            process.append(p)
+            p.start()
+
+        for p in process:
+            p.join()
+        print('数据插入完成')
+
+    @staticmethod
+    def pull_oe_compatibility_overall_unit(pg_url, dataset_name):
         url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/hardwarecomp/findAll'
         headers = {
             'Content-Type': 'application/json'
@@ -68,15 +148,11 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["hardwareCompList"]
-        OeMessageManager.clear_oe_compatibility_overall_unit(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if isinstance(results[i][key], (dict, list, tuple)):
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_compatibility_overall_unit(pg_url, results[i])
+
+        PullMessageFromOeWeb.save_result(pg_url, results, dataset_name)
 
     @staticmethod
-    def pull_oe_compatibility_card(pg_url):
+    def pull_oe_compatibility_card(pg_url, dataset_name):
         url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/drivercomp/findAll'
         headers = {
             'Content-Type': 'application/json'
@@ -129,15 +205,11 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["driverCompList"]
-        OeMessageManager.clear_oe_compatibility_card(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if isinstance(results[i][key], (dict, list, tuple)):
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_compatibility_card(pg_url, results[i])
+        PullMessageFromOeWeb.save_result(pg_url, results, dataset_name)
+
 
     @staticmethod
-    def pull_oe_compatibility_commercial_software(pg_url):
+    def pull_oe_compatibility_commercial_software(pg_url, dataset_name):
         url = 'https://www.openeuler.org/certification/software/communityChecklist'
         headers = {
             'Content-Type': 'application/json'
@@ -182,15 +254,10 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["data"]
-        OeMessageManager.clear_oe_compatibility_commercial_software(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if isinstance(results[i][key], (dict, list, tuple)):
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_compatibility_commercial_software(pg_url, results[i])
+        PullMessageFromOeWeb.save_result(pg_url, results, dataset_name)
 
     @staticmethod
-    def pull_oe_compatibility_open_source_software(pg_url):
+    def pull_oe_compatibility_open_source_software(pg_url, dataset_name):
         url = 'https://www.openeuler.org/compatibility/api/web_backend/compat_software_info'
         headers = {
             'Content-Type': 'application/json'
@@ -217,15 +284,10 @@ class PullMessageFromOeWeb:
                 data=data
             )
             results += response.json()["info"]
-        OeMessageManager.clear_oe_compatibility_open_source_software(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if isinstance(results[i][key], (dict, list, tuple)):
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_compatibility_open_source_software(pg_url, results[i])
+        PullMessageFromOeWeb.save_result(pg_url, results, dataset_name)
 
     @staticmethod
-    def pull_oe_compatibility_oepkgs(pg_url, oepkgs_info):
+    def pull_oe_compatibility_oepkgs(pg_url, oepkgs_info, dataset_name):
         headers = {
             'Content-Type': 'application/json'
         }
@@ -256,15 +318,11 @@ class PullMessageFromOeWeb:
             data_list = data['list']
             results += data_list
             totalHits -= 1000
-        OeMessageManager.clear_oe_compatibility_oepkgs(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if isinstance(results[i][key], (dict, list, tuple)):
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_compatibility_oepkgs(pg_url, results[i])
+
+        PullMessageFromOeWeb.save_result(pg_url, results, dataset_name)
 
     @staticmethod
-    def pull_oe_compatibility_solution(pg_url):
+    def pull_oe_compatibility_solution(pg_url, dataset_name):
         url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/solutioncomp/findAll'
         headers = {
             'Content-Type': 'application/json'
@@ -317,15 +375,10 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["solutionCompList"]
-        OeMessageManager.clear_oe_compatibility_solution(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if isinstance(results[i][key], (dict, list, tuple)):
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_compatibility_solution(pg_url, results[i])
+        PullMessageFromOeWeb.save_result(pg_url, results, dataset_name)
 
     @staticmethod
-    def pull_oe_compatibility_osv(pg_url):
+    def pull_oe_compatibility_osv(pg_url, dataset_name):
         url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/osv/findAll'
         headers = {
             'Content-Type': 'application/json'
@@ -364,15 +417,11 @@ class PullMessageFromOeWeb:
             results += response.json()["result"]["osvList"]
         for i in range(len(results)):
             results[i]['details'] = 'https://www.openeuler.org/zh/approve/approve-info/?id=' + str(results[i]['id'])
-        OeMessageManager.clear_compatibility_osv(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if isinstance(results[i][key], (dict, list, tuple)):
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_compatibility_osv(pg_url, results[i])
+
+        PullMessageFromOeWeb.save_result(pg_url, results, dataset_name)
 
     @staticmethod
-    def pull_oe_compatibility_security_notice(pg_url):
+    def pull_oe_compatibility_security_notice(pg_url, dataset_name):
         url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/securitynotice/findAll'
         headers = {
             'Content-Type': 'application/json'
@@ -436,15 +485,10 @@ class PullMessageFromOeWeb:
                                              tmp_dict['securityNoticeNo']
                             cnt += 1
         results = new_results
-        OeMessageManager.clear_oe_compatibility_security_notice(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if isinstance(results[i][key], (dict, list, tuple)):
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_compatibility_security_notice(pg_url, results[i])
+        PullMessageFromOeWeb.save_result(pg_url, results, dataset_name)
 
     @staticmethod
-    def pull_oe_compatibility_cve_database(pg_url):
+    def pull_oe_compatibility_cve_database(pg_url, dataset_name):
         url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/cvedatabase/findAll'
         headers = {
             'Content-Type': 'application/json'
@@ -486,9 +530,11 @@ class PullMessageFromOeWeb:
                 json=data
             )
             results += response.json()["result"]["cveDatabaseList"]
+
         data_cnt=0
         new_results=[]
         for i in range(len(results)):
+            id1=results[i]['cveId']
             results[i]['details'] = 'https://www.openeuler.org/zh/security/cve/detail/?cveId=' + \
                                     results[i]['cveId'] + '&packageName=' + results[i]['packageName']
             url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/cvedatabase/getByCveIdAndPackageName?cveId=' + \
@@ -503,13 +549,13 @@ class PullMessageFromOeWeb:
                         results[i][key] = response.json()["result"][key]
                 url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/cvedatabase/getCVEProductPackageList?cveId='+ \
                                         results[i]['cveId'] + '&packageName=' + results[i]['packageName']
-            except:
-                pass
-            try:
                 response = requests.get(
                 url,
                 headers=headers
                 )
+            except:
+                pass
+            try:
                 for j in range(len(response.json()["result"])):
                     tmp=copy.deepcopy(results[i])
                     for key in response.json()["result"][j].keys():
@@ -529,13 +575,8 @@ class PullMessageFromOeWeb:
             except:
                 pass
         results=new_results
-           
-        OeMessageManager.clear_oe_compatibility_cve_database(pg_url)
-        for i in range(len(results)):
-            for key in results[i]:
-                if isinstance(results[i][key], (dict, list, tuple)):
-                    results[i][key] = json.dumps(results[i][key])
-            OeMessageManager.add_oe_compatibility_cve_database(pg_url, results[i])
+
+        PullMessageFromOeWeb.save_result(pg_url, results, dataset_name)
 
     @staticmethod
     def pull_oe_openeuler_sig(pg_url):
@@ -616,26 +657,9 @@ class PullMessageFromOeWeb:
                 temp_results_members.append(d)
         results_members = temp_results_members
 
-        OeMessageManager.clear_oe_openeuler_sig_group(pg_url)
-        for i in range(len(results_all)):
-            for key in results_all[i]:
-                if isinstance(results_all[i][key], (dict, list, tuple)):
-                    results_all[i][key] = json.dumps(results_all[i][key])
-            OeMessageManager.add_oe_openeuler_sig_group(pg_url, results_all[i])
-
-        OeMessageManager.clear_oe_openeuler_sig_members(pg_url)
-        for i in range(len(results_members)):
-            for key in results_members[i]:
-                if isinstance(results_members[i][key], (dict, list, tuple)):
-                    results_members[i][key] = json.dumps(results_members[i][key])
-            OeMessageManager.add_oe_openeuler_sig_members(pg_url, results_members[i])
-
-        OeMessageManager.clear_oe_openeuler_sig_repos(pg_url)
-        for i in range(len(results_repos)):
-            for key in results_repos[i]:
-                if isinstance(results_repos[i][key], (dict, list, tuple)):
-                    results_repos[i][key] = json.dumps(results_repos[i][key])
-            OeMessageManager.add_oe_openeuler_sig_repos(pg_url, results_repos[i])
+        PullMessageFromOeWeb.save_result(pg_url, results_all, 'sig_group')
+        PullMessageFromOeWeb.save_result(pg_url, results_members, 'sig_members')
+        PullMessageFromOeWeb.save_result(pg_url, results_repos, 'sig_repos')
 
         OeMessageManager.clear_oe_sig_group_to_repos(pg_url)
         for i in range(len(results_repos)):
@@ -661,12 +685,11 @@ class PullMessageFromOeWeb:
 
                 OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role=role)
 
-
         OeMessageManager.clear_oe_sig_repos_to_members(pg_url)
         for i in range(len(results_repos)):
             repo_name = results_repos[i]['repo']
-            committers = set(json.loads(results_repos[i]['committers']))
-            maintainers = set(json.loads(results_repos[i]['maintainers']))
+            committers = set(results_repos[i]['committers'])
+            maintainers = set(results_repos[i]['maintainers'])
 
             all_members = committers.union(maintainers)
 
@@ -681,7 +704,7 @@ class PullMessageFromOeWeb:
                 OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role=role)
 
     @staticmethod
-    def oe_organize_message_handler(pg_url):
+    def oe_organize_message_handler(pg_url, oe_spider_method):
         f = open('./doc/organize.txt', 'r', encoding='utf-8')
         lines = f.readlines()
         st = 0
@@ -706,7 +729,7 @@ class PullMessageFromOeWeb:
             en = st
 
     @staticmethod
-    def oe_openeuler_version_message_handler(pg_url):
+    def oe_openeuler_version_message_handler(pg_url, oe_spider_method):
         f = open('./docs/openeuler_version.txt', 'r', encoding='utf-8')
         lines = f.readlines()
         filed_list = ['openeuler_version', 'kernel_version', 'publish_time', 'version_type']
@@ -802,23 +825,30 @@ def work(args):
                     exit()
         if oe_spider_method == 'all':
             for func in func_map:
+                print(f'开始爬取{prompt_map[func]}')
                 try:
                     if func == 'oepkgs':
-                        func_map[func](pg_url, oepkgs_info)
-                    else:
+                        func_map[func](pg_url, oepkgs_info, func)
+                    elif func == 'openeuler_sig':
                         func_map[func](pg_url)
+                    else:
+                        func_map[func](pg_url, func)
                     print(prompt_map[func] + '入库成功')
                 except Exception as e:
                     print(f'{prompt_map[func]}入库失败由于:{e}')
         else:
             try:
+                print(f'开始爬取{prompt_map[oe_spider_method]}')
                 if oe_spider_method == 'oepkgs':
-                    func_map[oe_spider_method](pg_url, oepkgs_info)
-                else:
+                    func_map[oe_spider_method](pg_url, oepkgs_info, oe_spider_method)
+                elif oe_spider_method == 'openeuler_sig':
                     func_map[oe_spider_method](pg_url)
+                else:
+                    func_map[oe_spider_method](pg_url, oe_spider_method)
                 print(prompt_map[oe_spider_method] + '入库成功')
             except Exception as e:
                 print(f'{prompt_map[oe_spider_method]}入库失败由于:{e}')
+
 
 def init_args():
     parser = argparse.ArgumentParser()
@@ -847,5 +877,6 @@ def init_args():
 
 
 if __name__ == "__main__":
+    set_start_method('spawn')
     args = init_args()
     work(vars(args))

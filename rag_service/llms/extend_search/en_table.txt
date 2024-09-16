@@ -1,0 +1,35 @@
+
+table name:oe_community_organization_structure
+table note:The openEuler community organizational structure information table stores the committees, positions, names, and personal information of openEuler community members
+column name:committee_name column type:character varying column note: Committees to which openEuler community members belong
+column name:role column type:character varying column note: Positions of openEuler community members
+column name:name column type:character varying column note: Names of openEuler community members
+column name:personal_message column type:character varying column note: Personal information of openEuler community members
+
+table name:oe_compatibility_overall_unit
+table note:The machine information table supported by openEuler stores the architecture, CPU model, hardware manufacturer, hardware model, and related openEuler versions of the machines supported by openEuler
+column name:architecture column type:character varying column note: The architecture of whole machine information supported by openEuler
+column name:cpu column type:character varying column note: CPU models for machine information supported by openEuler
+column name:hardware_factory column type:character varying column note: Hardware manufacturers of complete machine information supported by openEuler
+column name:hardware_model column type:character varying column note: The hardware models of the complete machine information supported by openEuler
+column name:openeuler_version column type:character varying column note: The relevant openEuler versions of the complete machine information supported by openEuler
+
+table name:oe_compatibility_oepkgs
+table note:The package information table supported by openEuler stores the names, introductions, official version identifiers, relevant openEuler versions, rpm package download links, source code package download links, supported architectures, and versions of openEuler supported packages
+column name:name column type:character varying column note: The versions of software packages supported by openEuler
+column name:summary column type:character varying column note: Introduction to software packages supported by openEuler
+column name:repotype column type:character varying column note: Is the software package download link supported by openEuler marked with the official version
+column name:openeuler_version column type:character varying column note: The relevant openEuler versions of software packages supported by openEuler
+column name:rpmpackurl column type:character varying column note: Download link for rpm package of openEuler supported software packages
+column name:srcrpmpackurl column type:character varying column note: Download links for source code packages supported by openEuler
+column name:arch column type:character varying column note: The architecture supported by software packages supported by openEuler
+column name:version column type:character varying column note: The versions of software packages supported by openEuler
+
+table name:oe_community_openeuler_version
+table note:The openEuler community's openEuler version information table stores the version, kernel version, release date, and version type of openEuler versions
+column name:openeuler_version column type:character varying column note: Version number of openEuler version
+column name:kernel_version column type:character varying column note: The kernel version of openEuler
+column name:publish_time column type:timestamp without time zone column note: Release date of openEuler version
+column name:version_type column type:character varying column note: Version types of openEuler community members
+
+

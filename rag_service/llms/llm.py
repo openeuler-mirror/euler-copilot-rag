@@ -53,7 +53,6 @@ class LLM:
 
             for char in data:
                 yield "data: " + json.dumps({'content': char}, ensure_ascii=False) + '\n\n'
-                time.sleep(0.03)
         for source in self.append_source_info(req, documents_info):
             yield source
         et = time.time()

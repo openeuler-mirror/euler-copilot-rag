@@ -620,7 +620,17 @@ class PullMessageFromOeWeb:
             sig_name = results_all[i]['sig_name']
             repos_url_base = 'https://www.openeuler.org/api-dsapi/query/sig/repo/committers'
             repos_url = repos_url_base + '?community=openeuler&sig=' + sig_name
-            response = requests.get(repos_url)
+            try:
+                response = requests.get(repos_url, timeout=2)
+            except Exception as e:
+                k = 0
+                while response.status_code != 200 and k < 5:
+                    k = k + 1
+                    try:
+                        response = requests.get(repos_url, timeout=2)
+                    except Exception as e:
+                        print(e)
+                # continue
             results = response.json()["data"]
             committers = results['committers']
             maintainers = results['maintainers']
@@ -661,12 +671,15 @@ class PullMessageFromOeWeb:
         PullMessageFromOeWeb.save_result(pg_url, results_members, 'sig_members')
         PullMessageFromOeWeb.save_result(pg_url, results_repos, 'sig_repos')
 
+        print("sig组 组-仓信息 录入中")
         OeMessageManager.clear_oe_sig_group_to_repos(pg_url)
         for i in range(len(results_repos)):
             repo_name = results_repos[i]['repo']
             group_name = results_repos[i]['sig_name']
             OeMessageManager.add_oe_sig_group_to_repos(pg_url, group_name, repo_name)
+        print("sig组 组-仓信息 录入完成")
 
+        print("sig组 组-人信息 录入中")
         OeMessageManager.clear_oe_sig_group_to_members(pg_url)
         for i in range(len(results_all)):
             committers = set(json.loads(results_all[i]['committers']))
@@ -684,7 +697,9 @@ class PullMessageFromOeWeb:
                     role = 'maintainer'
 
                 OeMessageManager.add_oe_sig_group_to_members(pg_url, group_name, member_name, role=role)
+        print("sig组 组-人信息 录入完成")
 
+        print("sig组 仓-人信息 录入中")
         OeMessageManager.clear_oe_sig_repos_to_members(pg_url)
         for i in range(len(results_repos)):
             repo_name = results_repos[i]['repo']
@@ -702,6 +717,7 @@ class PullMessageFromOeWeb:
                     role = 'maintainer'
 
                 OeMessageManager.add_oe_sig_repos_to_members(pg_url, repo_name, member_name, role=role)
+        print("sig组 仓-人信息 录入完成")
 
     @staticmethod
     def oe_organize_message_handler(pg_url, oe_spider_method):

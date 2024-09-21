@@ -178,7 +178,7 @@ class CorpusManager():
                 if kb_count == 0:
                     print(f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}查询失败,资产{kb_name}不存在')
                     CorpusManager.logger.error(f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}查询失败,资产{kb_name}不存在')
-                    return
+                    return []
                 kb_id = session.query(KnowledgeBase.id).filter(KnowledgeBase.sn == kb_name).one()[0]
                 kb_asset_count = session.query(func.count(KnowledgeBaseAsset.id)).filter(
                     and_(KnowledgeBaseAsset.kb_id == kb_id, KnowledgeBaseAsset.name == kb_asset_name)).scalar()
@@ -186,7 +186,7 @@ class CorpusManager():
                     print(f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}查询失败,资产库{kb_asset_name}不存在')
                     CorpusManager.logger.error(
                         f'资产{kb_name}下资产库{kb_asset_name}中的的语料{corpus_name}查询失败,资产库{kb_asset_name}不存在')
-                    return
+                    return []
                 kba_id = session.query(KnowledgeBaseAsset.id).filter(
                     KnowledgeBaseAsset.kb_id == kb_id,
                     KnowledgeBaseAsset.name == kb_asset_name

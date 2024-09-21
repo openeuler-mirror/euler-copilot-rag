@@ -22,7 +22,6 @@ from sqlalchemy.types import TIMESTAMP, UUID
 from sqlalchemy.orm import relationship, declarative_base, sessionmaker
 from scripts.logger import get_logger
 
-
 class VectorizationJobStatus(Enum):
     PENDING = 'PENDING'
     STARTING = 'STARTING'
@@ -271,6 +270,14 @@ class TableManager():
     @staticmethod
     def drop_all_tables(database_url):
         try:
+            from scripts.kb.kb_manager import KbManager
+            kb_list=KbManager.query_kb(database_url)
+            for i in range(len(kb_list)):
+                KbManager.del_kb(database_url,kb_list[i][0])
+        except Exception as e:
+            print(f'资产清除失败，由于原因{e}')
+            TableManager.logger.error(f'资产清除失败，由于原因{e}')
+        try:
             engine = create_engine(
                 database_url,
                 pool_size=20,
@@ -282,21 +289,52 @@ class TableManager():
             print(f'数据库引擎初始化失败，由于原因{e}')
             TableManager.logger.error(f'数据库引擎初始化失败，由于原因{e}')
             raise e
+        tables = [
+            "service_config",
+            "vectorize_items",
+            "knowledge_base",
+            "knowledge_base_asset",
+            "vector_store",
+            "incremental_vectorization_job_schedule",
+            "vectorization_job",
+            "daemon_heartbeats",
+            "original_document",
+            "updated_original_document",
+            "secondary_indexes",
+            "bulk_actions",
+            "instance_info",
+            "snapshots",
+            "kvs",
+            "runs",
+            "run_tags",
+            "alembic_version",
+            "event_logs",
+            "asset_keys",
+            "asset_event_tags",
+            "dynamic_partitions",
+            "concurrency_limits",
+            "concurrency_slots",
+            "pending_steps",
+            "asset_check_executions",
+            "jobs",
+            "instigators",
+            "job_ticks",
+            "asset_daemon_asset_evaluations"
+        ]
         metadata = MetaData()
         metadata.reflect(bind=engine)
         with engine.begin() as conn:
-            for table in metadata.tables.values():
-                for index in table.indexes:
-                    try:
-                        index.drop(bind=conn)
-                    except Exception as e:
-                        print(f"删除索引失败由于: {e}")
-                        TableManager.logger.error(f"删除索引失败由于: {e}")
-                        raise e
-            try:
-                metadata.drop_all(bind=conn)
-            except Exception as e:
-                print(f"数据库清除失败由于: {e}")
-                TableManager.logger.error(f"数据库清除失败由于:{e}")
-            print("数据库清除成功")
-            TableManager.logger.info("数据库清除成功")
+            conn.execute(text("SET CONSTRAINTS ALL DEFERRED;"))
+            for table_name in tables:
+                print(table_name)
+                try:
+                    print(f"正在删除表 {table_name}")
+                    conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE;"))
+                    print(f"删除表 {table_name}成功")
+                    TableManager.logger.info(f"删除表 {table_name}成功")
+                except Exception as e:
+                    print(f"删除表 {table_name}失败由于{e}")
+                    TableManager.logger.info(f"删除表 {table_name}失败由于{e}")
+            conn.execute(text("SET CONSTRAINTS ALL IMMEDIATE;"))
+        print("数据库清除成功")
+        TableManager.logger.info("数据库清除成功")

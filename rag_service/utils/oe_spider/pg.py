@@ -1,7 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from threading import Lock
 
-from sqlalchemy import Column, String, BigInteger, TIMESTAMP, create_engine, MetaData, Sequence, ForeignKey
+from sqlalchemy import Column, String, BigInteger,  DateTime, create_engine, MetaData, Sequence, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker,relationship
 
 
@@ -195,7 +195,7 @@ class OeCompatibilityCveDatabase(Base):
 
     id = Column(String(), primary_key=True,)
     affected_product = Column(String())
-    announcement_time = Column(TIMESTAMP(), comment='openEuler社区组cve漏洞的公告时间')
+    announcement_time = Column( DateTime(), comment='openEuler社区组cve漏洞的公告时间')
     attack_complexity_nvd = Column(String())
     attack_complexity_oe = Column(String())
     attack_vector_nvd = Column(String())
@@ -220,8 +220,8 @@ class OeCompatibilityCveDatabase(Base):
     type = Column(String())
     user_interaction_nvd = Column(String())
     user_interactio_oe = Column(String())
-    update_time = Column(TIMESTAMP())
-    create_time = Column(TIMESTAMP())
+    update_time = Column( DateTime())
+    create_time = Column( DateTime())
     security_notice_no = Column(String())
     parser_bean = Column(String())
     cvrf = Column(String())
@@ -236,7 +236,7 @@ class OeOpeneulerSigGroup(Base):
     id = Column(BigInteger(), Sequence('sig_group_id'), primary_key=True)
     sig_name = Column(String(), comment='SIG的名称')
     description = Column(String(), comment='SIG的描述')
-    created_at = Column(TIMESTAMP())
+    created_at = Column( DateTime())
     is_sig_original = Column(String(), comment='是否为原始SIG')
     mailing_list = Column(String(), comment='SIG的邮件列表')
     repos_group = relationship("OeSigGroupRepo", back_populates="group")
@@ -309,7 +309,7 @@ class OeCommunityOpenEulerVersion(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     openeuler_version = Column(String(), comment='openEuler版本的版本号')
     kernel_version = Column(String(), comment='openEuler版本的内核版本')
-    publish_time = Column(TIMESTAMP(), comment='openEuler版本的发布日期')
+    publish_time = Column( DateTime(), comment='openEuler版本的发布日期')
     version_type = Column(String(), comment='openEuler社区成员的版本类型')
 
 

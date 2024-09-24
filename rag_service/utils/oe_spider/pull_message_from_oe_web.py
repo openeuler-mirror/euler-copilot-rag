@@ -620,7 +620,17 @@ class PullMessageFromOeWeb:
             sig_name = results_all[i]['sig_name']
             repos_url_base = 'https://www.openeuler.org/api-dsapi/query/sig/repo/committers'
             repos_url = repos_url_base + '?community=openeuler&sig=' + sig_name
-            response = requests.get(repos_url)
+            try:
+                response = requests.get(repos_url, timeout=2)
+            except Exception as e:
+                k = 0
+                while response.status_code != 200 and k < 5:
+                    k = k + 1
+                    try:
+                        response = requests.get(repos_url, timeout=2)
+                    except Exception as e:
+                        print(e)
+                # continue
             results = response.json()["data"]
             committers = results['committers']
             maintainers = results['maintainers']

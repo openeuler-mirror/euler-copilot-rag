@@ -620,13 +620,20 @@ class PullMessageFromOeWeb:
             sig_name = results_all[i]['sig_name']
             repos_url_base = 'https://www.openeuler.org/api-dsapi/query/sig/repo/committers'
             repos_url = repos_url_base + '?community=openeuler&sig=' + sig_name
-            response = requests.get(repos_url)
             try:
-                results = response.json()["data"]
-                committers = results['committers']
-                maintainers = results['maintainers']
-            except:
-                continue
+                response = requests.get(repos_url, timeout=2)
+            except Exception as e:
+                k = 0
+                while response.status_code != 200 and k < 5:
+                    k = k + 1
+                    try:
+                        response = requests.get(repos_url, timeout=2)
+                    except Exception as e:
+                        print(e)
+                # continue
+            results = response.json()["data"]
+            committers = results['committers']
+            maintainers = results['maintainers']
             if committers is None:
                 committers = []
             if maintainers is None:
@@ -708,7 +715,7 @@ class PullMessageFromOeWeb:
 
     @staticmethod
     def oe_organize_message_handler(pg_url, oe_spider_method):
-        f = open('./docs/organize.txt', 'r', encoding='utf-8')
+        f = open('./doc/organize.txt', 'r', encoding='utf-8')
         lines = f.readlines()
         st = 0
         en = 0
@@ -840,14 +847,17 @@ def work(args):
                 except Exception as e:
                     print(f'{prompt_map[func]}入库失败由于:{e}')
         else:
-            print(f'开始爬取{prompt_map[oe_spider_method]}')
-            if oe_spider_method == 'oepkgs':
-                func_map[oe_spider_method](pg_url, oepkgs_info, oe_spider_method)
-            elif oe_spider_method == 'openeuler_sig':
-                func_map[oe_spider_method](pg_url)
-            else:
-                func_map[oe_spider_method](pg_url, oe_spider_method)
-            print(prompt_map[oe_spider_method] + '入库成功')
+            try:
+                print(f'开始爬取{prompt_map[oe_spider_method]}')
+                if oe_spider_method == 'oepkgs':
+                    func_map[oe_spider_method](pg_url, oepkgs_info, oe_spider_method)
+                elif oe_spider_method == 'openeuler_sig':
+                    func_map[oe_spider_method](pg_url)
+                else:
+                    func_map[oe_spider_method](pg_url, oe_spider_method)
+                print(prompt_map[oe_spider_method] + '入库成功')
+            except Exception as e:
+                print(f'{prompt_map[oe_spider_method]}入库失败由于:{e}')
 
 
 def init_args():

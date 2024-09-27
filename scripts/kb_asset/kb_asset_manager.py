@@ -111,6 +111,10 @@ class KbAssetManager():
 
                 reg = registry()
 
+                if 'opengauss' in database_url:
+                    index_type = 'opengauss'
+                elif 'postgres' in database_url:
+                    index_type = 'postgresql'
                 @reg.mapped
                 class VectorItem:
                     __table__ = dynamic_table
@@ -118,9 +122,9 @@ class KbAssetManager():
                         Index(
                             f'general_text_vector_index_{vector_items_id}',
                             dynamic_table.c.general_text_vector,
-                            postgresql_using='hnsw',
-                            postgresql_with={'m': 16, 'ef_construction': 200},
-                            postgresql_ops={'general_text_vector': 'vector_cosine_ops'}
+                            **{f'{index_type}_using': 'hnsw'},
+                            **{f'{index_type}_with': {'m': 16, 'ef_construction': 200}},
+                            **{f'{index_type}_ops': {'general_text_vector': 'vector_cosine_ops'}}
                         ),
                     )
 

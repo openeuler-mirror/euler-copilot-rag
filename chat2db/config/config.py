@@ -22,16 +22,15 @@ class ConfigModel(BaseModel):
     LLM_MAX_TOKENS: int = Field(None, description="单次请求中允许的最大Token数")
     LLM_MODEL: str = Field(None, description="使用的语言模型名称或版本")
 
-
     # Vectorize
     REMOTE_RERANKING_ENDPOINT: str = Field(None, description="远程重排序服务的Endpoint")
     REMOTE_EMBEDDING_ENDPOINT: str = Field(None, description="远程嵌入向量生成服务的Endpoint")
 
-    #yaml
-    DATABASE_INFO_YAML_DIR: str = Field(None, description="数据库配置文件所在路径")
+    # security
+    HALF_KEY1: str = Field(None, description='加密的密钥组件1')
+    HALF_KEY2: str = Field(None, description='加密的密钥组件2')
+    HALF_KEY3: str = Field(None, description='加密的密钥组件3')
 
-    #log
-    LOG: str = Field(None, description="日志输出类型")
 
 class Config:
     config: ConfigModel
@@ -40,7 +39,7 @@ class Config:
         if os.getenv("CONFIG"):
             config_file = os.getenv("CONFIG")
         else:
-            config_file = "./chat2DB/config/.env"
+            config_file = "./chat2db/config/.env"
         self.config = ConfigModel(**(dotenv_values(config_file)))
         if os.getenv("PROD"):
             os.remove(config_file)

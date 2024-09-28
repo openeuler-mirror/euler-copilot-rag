@@ -1,8 +1,13 @@
 import requests
-from chat2DB.config.config import config
+import urllib3
+from chat2db.config.config import config
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
 class Vectorize():
     @staticmethod
-    def vectorize_embedding(text):
+    async def vectorize_embedding(text):
         data = {
             "texts": [text]
         }

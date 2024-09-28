@@ -106,7 +106,7 @@ class OeCompatibilityOepkgs(Base):
     __table_args__ = {
         'comment': 'openEuler支持的软件包信息表，存储了openEuler支持软件包的名称、简介、是否为官方版本标识、相关的openEuler版本、rpm包下载链接、源码包下载链接、支持的架构、版本'}
     id = Column(String(), primary_key=True)
-    name = Column(String(), comment='openEuler支持的软件包的版本')
+    name = Column(String(), comment='openEuler支持的软件包的名称')
     summary = Column(String(), comment='openEuler支持的软件包的简介')
     repotype = Column(String(), comment='openEuler支持的软件包的是否为官方版本标识')
     openeuler_version = Column(String(), comment='openEuler支持的软件包的相关的openEuler版本')

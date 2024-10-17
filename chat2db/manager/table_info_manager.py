@@ -1,6 +1,6 @@
 from sqlalchemy import and_
 
-from chat2db.database.postgres import TableInfo, ColumnInfo, PostgresDB
+from chat2db.database.postgres import TableInfo, PostgresDB
 
 
 class TableInfoManager():

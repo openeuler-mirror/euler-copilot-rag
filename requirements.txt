@@ -29,3 +29,4 @@ beautifulsoup4==4.12.3
 PyPDF2==3.0.1
 Markdown==3.6
 openpyxl==3.1.2
+jieba==0.42.1

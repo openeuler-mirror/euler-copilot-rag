@@ -178,6 +178,26 @@ def call_generate_sql_example(table_id, generate_cnt=1, sql_var=False):
     return response.json()
 
 
+def write_sql_example_to_excel(dir, sql_example_list):
+    try:
+        if not os.path.exists(os.path.dirname(dir)):
+            os.makedirs(os.path.dirname(dir))
+        data = {
+            'question': [],
+            'sql': []
+        }
+        for sql_example in sql_example_list:
+            data['question'].append(sql_example['question'])
+            data['sql'].append(sql_example['sql'])
+
+        df = pd.DataFrame(data)
+        df.to_excel(dir, index=False)
+
+        print("Data written to Excel file successfully.")
+    except Exception as e:
+        print("Error writing data to Excel file:", str(e))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="chat2DB脚本")
     subparsers = parser.add_subparsers(dest="command", help="子命令列表")
@@ -414,28 +434,6 @@ if __name__ == "__main__":
         if response.get("code") == 200:
             # 输出到execl中
             sql_example_list = response.get("result")['sql_example_list']
-
-
-            def write_sql_example_to_excel(dir, sql_example_list):
-                try:
-                    if not os.path.exists(os.path.dirname(dir)):
-                        os.makedirs(os.path.dirname(dir))
-                    data = {
-                        'question': [],
-                        'sql': []
-                    }
-                    for sql_example in sql_example_list:
-                        data['question'].append(sql_example['question'])
-                        data['sql'].append(sql_example['sql'])
-
-                    df = pd.DataFrame(data)
-                    df.to_excel(dir, index=False)
-
-                    print("Data written to Excel file successfully.")
-                except Exception as e:
-                    print("Error writing data to Excel file:", str(e))
-
-
             write_sql_example_to_excel(args.dir, sql_example_list)
     else:
         print("未知命令，请检查输入的命令是否正确。")

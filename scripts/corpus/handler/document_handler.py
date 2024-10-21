@@ -1,7 +1,7 @@
 import os
 import re
-import nltk
-from nltk.tokenize import word_tokenize
+
+import jieba
 from bs4 import BeautifulSoup
 import PyPDF2
 from docx import Document
@@ -9,23 +9,22 @@ import markdown
 from openpyxl import load_workbook
 from multiprocessing import Process, Manager
 
-nltk_data_path = "./scripts/nltk_data"
 
-if os.path.exists(nltk_data_path):
-    nltk.data.path.append(nltk_data_path)
+
+
 
 
 class DocumentHandler():
     @staticmethod
     def tokenize_text(text):
-        tokens = word_tokenize(text)
+        tokens = list(jieba.cut(text))
         return tokens
 
     @staticmethod
     def tokenize_html(html):
         soup = BeautifulSoup(html, 'html.parser')
         text = soup.get_text()
-        tokens = word_tokenize(text)
+        tokens = list(jieba.cut(text))
         return tokens
 
     @staticmethod
@@ -36,12 +35,12 @@ class DocumentHandler():
             for page_num in range(len(reader.pages)):
                 page = reader.pages[page_num]
                 text = page.extract_text()
-                tokens.extend(word_tokenize(text))
+                tokens.extend(list(jieba.cut(text)))
         return tokens
 
     @staticmethod
     def extract_paragraph_from_docx(paragraph):
-        return word_tokenize(paragraph.text)+['\n']
+        return list(jieba.cut(paragraph.text))+['\n']
 
     @staticmethod
     def extract_table_from_docx(table):
@@ -56,7 +55,7 @@ class DocumentHandler():
                 header_printed = True
 
             for cell in row.cells:
-                row_tokens.extend(word_tokenize(str(cell.text).strip()))
+                row_tokens.extend(jieba.cut(str(cell.text).strip()))
                 row_tokens.append(' | ')
 
             tokens.extend(row_tokens)

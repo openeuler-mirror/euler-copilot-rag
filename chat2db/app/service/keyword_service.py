@@ -17,7 +17,7 @@ logging.basicConfig(filename='app.log', level=logging.INFO,
 
 class KeywordManager():
     def __init__(self):
-        self.keyword_asset_list = {}
+        self.keyword_asset_dict = {}
         self.lock = threading.Lock()
         self.data_frame_dict = {}
 
@@ -42,17 +42,17 @@ class KeywordManager():
         tmp_dict = self.data_frame_dict[rd_id]
         tmp_dict_tree = DictTree()
         tmp_dict_tree.load_data(tmp_dict['keyword_value_dict'])
-        if database_id not in self.keyword_asset_list.keys():
-            self.keyword_asset_list[database_id] = {}
+        if database_id not in self.keyword_asset_dict.keys():
+            self.keyword_asset_dict[database_id] = {}
         with self.lock:
-            if table_id not in self.keyword_asset_list[database_id].keys():
-                self.keyword_asset_list[database_id][table_id] = {}
-                self.keyword_asset_list[database_id][table_id]['table_info'] = table_info
-                self.keyword_asset_list[database_id][table_id]['column_info_list'] = column_info_list
-                self.keyword_asset_list[database_id][table_id]['primary_key_list'] = copy.deepcopy(
+            if table_id not in self.keyword_asset_dict[database_id].keys():
+                self.keyword_asset_dict[database_id][table_id] = {}
+                self.keyword_asset_dict[database_id][table_id]['table_info'] = table_info
+                self.keyword_asset_dict[database_id][table_id]['column_info_list'] = column_info_list
+                self.keyword_asset_dict[database_id][table_id]['primary_key_list'] = copy.deepcopy(
                     tmp_dict['primary_key_list'])
-                self.keyword_asset_list[database_id][table_id]['dict_tree_dict'] = {}
-            self.keyword_asset_list[database_id][table_id]['dict_tree_dict'][column_name] = tmp_dict_tree
+                self.keyword_asset_dict[database_id][table_id]['dict_tree_dict'] = {}
+            self.keyword_asset_dict[database_id][table_id]['dict_tree_dict'][column_name] = tmp_dict_tree
         del self.data_frame_dict[rd_id]
 
     async def add(self, database_id, table_id, column_name):
@@ -93,10 +93,10 @@ class KeywordManager():
     async def del_by_column_name(self, database_id, table_id, column_name):
         try:
             with self.lock:
-                if database_id in self.keyword_asset_list.keys():
-                    if table_id in self.keyword_asset_list[database_id].keys():
-                        if column_name in self.keyword_asset_list[database_id][table_id]['dict_tree_dict'].keys():
-                            del self.keyword_asset_list[database_id][table_id]['dict_tree_dict'][column_name]
+                if database_id in self.keyword_asset_dict.keys():
+                    if table_id in self.keyword_asset_dict[database_id].keys():
+                        if column_name in self.keyword_asset_dict[database_id][table_id]['dict_tree_dict'].keys():
+                            del self.keyword_asset_dict[database_id][table_id]['dict_tree_dict'][column_name]
         except Exception as e:
             logging.error(f'字典树删除失败由于{e}')
             return False
@@ -105,18 +105,18 @@ class KeywordManager():
     async def generate_sql(self, question, database_id, table_id_list=None):
         with self.lock:
             results = []
-            if database_id in self.keyword_asset_list.keys():
+            if database_id in self.keyword_asset_dict.keys():
                 database_url = await DatabaseInfoManager.get_database_url_by_id(database_id)
                 database_type = 'postgres'
                 if 'mysql' in database_url:
                     database_type = 'mysql'
-                for table_id in self.keyword_asset_list[database_id].keys():
+                for table_id in self.keyword_asset_dict[database_id].keys():
                     if table_id_list is None or table_id in table_id_list:
-                        table_info = self.keyword_asset_list[database_id][table_id]['table_info']
-                        primary_key_list = self.keyword_asset_list[database_id][table_id]['primary_key_list']
+                        table_info = self.keyword_asset_dict[database_id][table_id]['table_info']
+                        primary_key_list = self.keyword_asset_dict[database_id][table_id]['primary_key_list']
                         primary_key_value_list = []
                         try:
-                            for dict_tree in self.keyword_asset_list[database_id][table_id]['dict_tree_dict'].values():
+                            for dict_tree in self.keyword_asset_dict[database_id][table_id]['dict_tree_dict'].values():
                                 primary_key_value_list += dict_tree.get_results(question)
                         except Exception as e:
                             logging.error(f'从字典树中获取结果失败由于{e}')

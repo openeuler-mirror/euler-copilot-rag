@@ -22,18 +22,20 @@ router = APIRouter(
 @router.post("/generate", response_model=ResponseData)
 async def generate_sql(request: SqlGenerateRequest):
     database_id = request.database_id
+    database_url = await DatabaseInfoManager.get_database_url_by_id(database_id)
     table_id_list = request.table_id_list
     question = request.question
     use_llm_enhancements = request.use_llm_enhancements
     if table_id_list == []:
         table_id_list = None
-    results = []
-    results = await SqlGenerateService.generate_sql_base_on_exmpale(
+    results = {}
+    sql_list = await SqlGenerateService.generate_sql_base_on_exmpale(
         database_id=database_id, question=question, table_id_list=table_id_list,
         use_llm_enhancements=use_llm_enhancements)
     try:
-        results += await keyword_service.generate_sql(question, database_id, table_id_list)
-        results = results[:request.topk]
+        sql_list += await keyword_service.generate_sql(question, database_id, table_id_list)
+        results['sql_list'] = sql_list[:request.topk]
+        results['database_url'] = database_url
     except Exception as e:
         logging.error(f'sql生成失败由于{e}')
         return ResponseData(
@@ -43,7 +45,8 @@ async def generate_sql(request: SqlGenerateRequest):
         )
     return ResponseData(
         code=status.HTTP_200_OK, message="success",
-        result={'results': results})
+        result=results
+    )
 
 
 @router.post("/repair", response_model=ResponseData)
@@ -89,9 +92,9 @@ async def repair_sql(request: SqlRepairRequest):
     return ResponseData(
         code=status.HTTP_200_OK,
         message="sql修复成功",
-        result={'result': {'database_id': database_id,
+        result={'database_id': database_id,
                            'table_id': table_id,
-                           'sql': sql}}
+                           'sql': sql}
     )
 
 
@@ -122,5 +125,5 @@ async def excute_sql(request: SqlExcuteRequest):
     return ResponseData(
         code=status.HTTP_200_OK,
         message="sql执行成功",
-        result={"results": results}
+        result=results
     )

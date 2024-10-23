@@ -7,7 +7,6 @@ COPY ./ /chat2db/
 
 ENV PYTHONPATH /
 
-RUN pip3 install --index-url https://mirrors.aliyun.com/pypi/simple/ -r /chat2db/requirements.txt 
+RUN pip3 install --index-url https://mirrors.aliyun.com/pypi/simple/ -r /chat2db/requirements.txt
 
-CMD ["sh", "-c", "while true; do sleep 3600; done"]
-
+CMD ["/bin/bash", "chat2db/run.sh"]

@@ -114,7 +114,7 @@ async def excute_sql(request: SqlExcuteRequest):
         results = str(results)
     except Exception as e:
         logging.error(f'sql执行失败由于{e}')
-        ResponseData(
+        return ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="sql执行失败",
             result={}

@@ -98,8 +98,8 @@ async def repair_sql(request: SqlRepairRequest):
     )
 
 
-@router.post("/excute", response_model=ResponseData)
-async def excute_sql(request: SqlExcuteRequest):
+@router.post("/execute", response_model=ResponseData)
+async def execute_sql(request: SqlExcuteRequest):
     database_id = request.database_id
     sql = request.sql
     database_url = await DatabaseInfoManager.get_database_url_by_id(database_id)
@@ -120,7 +120,7 @@ async def excute_sql(request: SqlExcuteRequest):
         return ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="sql执行失败",
-            result={}
+            result=e
         )
     return ResponseData(
         code=status.HTTP_200_OK,

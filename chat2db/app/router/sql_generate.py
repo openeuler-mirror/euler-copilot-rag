@@ -120,10 +120,10 @@ async def execute_sql(request: SqlExcuteRequest):
         return ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="sql执行失败",
-            result=e
+            result={'Error':str(e)}
         )
     return ResponseData(
         code=status.HTTP_200_OK,
         message="sql执行成功",
-        result=results
+        result={'results':results}
     )

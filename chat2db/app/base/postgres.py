@@ -113,7 +113,7 @@ class Postgres():
     async def assemble_sql_query_base_on_primary_key(table_name, primary_key_list, primary_key_value_list):
         sql_str = f'SELECT * FROM {table_name} where '
         for i in range(len(primary_key_list)):
-            sql_str += primary_key_list[i]+'='+primary_key_value_list[i]
+            sql_str += primary_key_list[i]+'='+'\''+primary_key_value_list[i]+'\''
             if i != len(primary_key_list)-1:
                 sql_str += ' and '
         sql_str += ';'

@@ -40,8 +40,8 @@ def has_limit_offset(sql):
         return False
 
 
-def get_data_by_gsql(req, prompt):
-    raw_generate_sql = select_llm(req).nonstream(req, prompt).content
+async def get_data_by_gsql(req, prompt):
+    raw_generate_sql = (await select_llm(req).nonstream(req, prompt)).content
     logger.error('llm生成的sql '+raw_generate_sql)
     raw_generate_sql = extract_select_statements(raw_generate_sql)
     if not raw_generate_sql:
@@ -87,7 +87,7 @@ def version_expert_search_data(req: QueryRequest):
     logger.info(f'用于生成sql的prompt{prompt}')
     tmp_req = copy.deepcopy(req)
     if req.language == 'zh':
-        tmp_req.question = '请生成一条在postgres数据库可执行的sql'
+        tmp_req.question = '请生成一条在postgres数据库可执行的sql，以分号结尾'
     else:
         tmp_req.question = 'Please generate an executable SQL statement in the Postgres database'
     raw_generate_sql, results = get_data_by_gsql(tmp_req, prompt)

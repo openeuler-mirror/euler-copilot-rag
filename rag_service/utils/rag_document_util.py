@@ -30,7 +30,7 @@ def get_query_context(documents_info) -> str:
         logger.error(error)
 
 
-def intent_detect(req: QueryRequest):
+async def intent_detect(req: QueryRequest):
     if not req.history:
         return req.question
     prompt = prompt_template_dict[req.language]['INTENT_DETECT_PROMPT_TEMPLATE']
@@ -51,37 +51,31 @@ def intent_detect(req: QueryRequest):
     tmp_req.history = []
     logger.error('用户问题改写prompt')
     st = time.time()
-    rewrite_query = select_llm(tmp_req).nonstream(tmp_req, prompt).content
+    rewrite_query = (await select_llm(tmp_req).nonstream(tmp_req, prompt)).content
     et = time.time()
     logger.info(f"query改写结果 = {rewrite_query}")
     logger.info(f"query改写耗时 = {et-st}")
     return rewrite_query
 
 
-def get_rag_document_info(req: QueryRequest):
+async def get_rag_document_info(req: QueryRequest):
     logger.info(f"原始query = {req.question}")
 
     # query改写后, 深拷贝一个request对象传递给版本专家使用
     rewrite_req = copy.deepcopy(req)
     rewrite_req.model_name = config['VERSION_EXPERT_LLM_MODEL']
-    rewrite_query = intent_detect(rewrite_req)
+    rewrite_query = await intent_detect(rewrite_req)
     rewrite_req.question = rewrite_query
     req.question = prompt_template_dict[req.language]['QUESTION_PROMPT_TEMPLATE'].format(
         question=req.question, question_after_expend=rewrite_query)
     rewrite_req.history = []
     documents_info = []
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        tasks = {
-            executor.submit(version_expert_search_data, rewrite_req): 'version_expert_search_data'
-        }
-
-        for future in concurrent.futures.as_completed(tasks):
-            result = future.result()
-            if result is not None:
-                result = list(result)
-                result[0] = prompt_template_dict[req.language]['SQL_RESULT_PROMPT_TEMPLATE'].format(sql_result=result[0])
-                result = tuple(result)
-                documents_info.append(result)
+    result=await version_expert_search_data(rewrite_req)
+    if result is not None:
+        result = list(result)
+        result[0] = prompt_template_dict[req.language]['SQL_RESULT_PROMPT_TEMPLATE'].format(sql_result=result[0])
+        result = tuple(result)
+        documents_info.append(result)
     logger.info(f"版本专家检索结果 = {documents_info}")
     documents_info.extend(rag_search_and_rerank(language=req.language,raw_question=rewrite_query, kb_sn=req.kb_sn,
                                                 top_k=req.top_k-len(documents_info)))

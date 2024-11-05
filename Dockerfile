@@ -1,4 +1,4 @@
-FROM hub.oepkgs.net/neocopilot/rag-baseimg:430-release 
+FROM hub.oepkgs.net/neocopilot/rag-baseimg:0.9.1-x86
 
 COPY --chown=1001:1001 --chmod=750 ./ /rag-service/
 WORKDIR /rag-service

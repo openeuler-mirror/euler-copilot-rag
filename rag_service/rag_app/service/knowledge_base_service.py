@@ -36,10 +36,10 @@ async def create_knowledge_base(req: CreateKnowledgeBaseReq, session) -> str:
     return req.sn
 
 
-def get_llm_answer(req: QueryRequest) -> LlmAnswer:
-    documents_info = get_rag_document_info(req=req)
+async def get_llm_answer(req: QueryRequest) -> LlmAnswer:
+    documents_info = await get_rag_document_info(req=req)
     query_context = get_query_context(documents_info)
-    res = select_llm(req).nonstream(req=req, prompt=prompt_template_dict[req.language]['LLM_PROMPT_TEMPLATE'].format(context=query_context))
+    res = await select_llm(req).nonstream(req=req, prompt=prompt_template_dict[req.language]['LLM_PROMPT_TEMPLATE'].format(context=query_context))
     if req.fetch_source:
         return LlmAnswer(
             answer=res.content, sources=[doc[1] for doc in documents_info],
@@ -47,8 +47,8 @@ def get_llm_answer(req: QueryRequest) -> LlmAnswer:
     return LlmAnswer(answer=res.content, sources=[], source_contents=[])
 
 
-def get_llm_stream_answer(req: QueryRequest) -> str:
-    documents_info = get_rag_document_info(req=req)
+async def get_llm_stream_answer(req: QueryRequest) -> str:
+    documents_info = await get_rag_document_info(req=req)
     query_context = get_query_context(documents_info=documents_info)
     logger.error("finish")
     return select_llm(req).stream(

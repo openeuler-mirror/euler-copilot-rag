@@ -1,7 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import json
-import queue
-import threading
+import asyncio
 import time
 from typing import List
 from abc import abstractmethod
@@ -25,51 +24,48 @@ class LLM:
     def assemble_prompt(self):
         pass
 
-    def nonstream(self, req: QueryRequest, prompt: str):
+    async def nonstream(self, req: QueryRequest, prompt: str):
         message = self.assemble_prompt(prompt, req.question, req.history)
         st = time.time()
-        llm_result = self.client.invoke(message)
+        llm_result = await self.client.ainvoke(message)
         et = time.time()
         logger.info(f"大模型回复耗时 = {et-st}")
         return llm_result
-
-    def stream(self, req: QueryRequest, documents_info: List[str], prompt: str):
+    
+    async def data_producer(self,q, history, system_call, user_call):
+        message = self.assemble_prompt(system_call, user_call,history)
+        try:
+            # 假设 self.client.stream 是一个异步方法
+            async for frame in self.client.astream(message):
+                await q.put(frame.content)
+        except Exception as e:
+            await q.put(None)
+            logger.error(f"Error in data producer due to: {e}")
+            return
+        await q.put(None)
+    async def stream(self,req,prompt):
         st = time.time()
-        q = queue.Queue(maxsize=10)
+        q = asyncio.Queue(maxsize=10)
 
-        def data_producer(q, question, prompt: str, history=None):
-            message = self.assemble_prompt(prompt=prompt, question=question, history=history)
-            logger.info(message)
-            for frame in self.client.stream(message):
-                q.put(frame.content)
-            q.put(None)
+        logger.error(req.question)
+        # 创建一个异步生产者任务
+        producer_task = asyncio.create_task(self.data_producer(q,  req.history,prompt,req.question))
+        logger.error(req.question)
+        try:
+            while True:
+                data = await q.get()
+                if data is None:
+                    break
 
-        producer_thread = threading.Thread(target=data_producer, args=(q, req.question, prompt, req.history))
-        producer_thread.start()
-        while True:
-            data = q.get()
-            if data is None:
-                break
+                for char in data:
+                    yield "data: " + json.dumps({'content': char}, ensure_ascii=False) + '\n\n'
+                    await asyncio.sleep(0.03)
+            yield "data: [DONE]"
+        finally:
+            # 确保生产者任务完成
+            await producer_task
 
-            for char in data:
-                yield "data: " + json.dumps({'content': char}, ensure_ascii=False) + '\n\n'
-        for source in self.append_source_info(req, documents_info):
-            yield source
-        et = time.time()
-        logger.info(f"大模型回复耗时 = {et-st}")
-
-    def append_source_info(self, req: QueryRequest, documents_info):
-        source_info = ""
-        if req.fetch_source:
-            source_info += "\n\n检索的到原始片段内容如下: \n\n"
-            for idx, source in enumerate(documents_info, 1):
-                source_info += f"\n\n片段{idx}： \n{source}"
-
-        chunk_size = 8
-        for i in range(0, len(source_info), chunk_size):
-            chunk = source_info[i:i + chunk_size]
-            yield "data: " + json.dumps({'content': chunk}, ensure_ascii=False) + '\n\n'
-        yield "data: [DONE]"
+        logger.info(f"大模型回复耗时 = {time.time() - st}")
 
 
 class Spark(LLM):

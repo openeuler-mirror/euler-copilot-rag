@@ -18,8 +18,8 @@ from rag_service.vectorstore.postgresql.manage_pg import keyword_search
 logger = get_logger()
 
 
-def get_data_by_gsql(req, prompt):
-    raw_generate_sql = select_llm(req).nonstream(req, prompt).content
+async def get_data_by_gsql(req, prompt):
+    raw_generate_sql = (await select_llm(req).nonstream(req, prompt)).content
     logger.error('llm生成的sql '+raw_generate_sql)
     if not raw_generate_sql or "select" not in str.lower(raw_generate_sql):
         return raw_generate_sql, []
@@ -36,7 +36,9 @@ def get_data_by_gsql(req, prompt):
         logger.error(f"查询关系型数据库失败sql失败，raw_question：{req.question}，sql：{raw_generate_sql}")
         return raw_generate_sql, []
     return raw_generate_sql, results
-def version_expert_search_data(req: QueryRequest):
+
+
+async def version_expert_search_data(req: QueryRequest):
     st = time.time()
     prompt = prompt_template_dict['SQL_GENERATE_PROMPT_TEMPLATE']
     try:
@@ -52,17 +54,18 @@ def version_expert_search_data(req: QueryRequest):
     except Exception:
         logger.error("打开文件失败")
         return
-    prompt = prompt_template_dict['SQL_GENERATE_PROMPT_TEMPLATE'].format(table=table_content, example=example_content, question=req.question)
+    prompt = prompt_template_dict['SQL_GENERATE_PROMPT_TEMPLATE'].format(
+        table=table_content, example=example_content, question=req.question)
     logger.info(f'用于生成sql的prompt{prompt}')
     tmp_req = copy.deepcopy(req)
     tmp_req.question = '请生成一条在postgres数据库可执行的sql'
-    raw_generate_sql, results = get_data_by_gsql(tmp_req, prompt)
+    raw_generate_sql, results = await get_data_by_gsql(tmp_req, prompt)
     if len(results) == 0:
         prompt = prompt_template_dict['SQL_GENERATE_PROMPT_TEMPLATE_EX'].format(
             table=table_content, sql=raw_generate_sql, example=example_content, question=req.question)
         logger.info(f'用于生成扩展sql的prompt{prompt}')
-        raw_generate_sql, results = get_data_by_gsql(tmp_req, prompt)
-    if len(results)==0:
+        raw_generate_sql, results = await get_data_by_gsql(tmp_req, prompt)
+    if len(results) == 0:
         return
     string_results = [str(item) for item in results]
     joined_results = ', '.join(string_results)

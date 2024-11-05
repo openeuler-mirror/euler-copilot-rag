@@ -30,7 +30,7 @@ async def get_answer(req: QueryRequest, response: Response) -> LlmAnswer:
 async def get_stream_answer(req: QueryRequest, response: Response):
     response.headers["Content-Type"] = "text/event-stream"
     try:
-        res = get_llm_stream_answer(req)
+        res =  await get_llm_stream_answer(req)
         return StreamingResponse(
             res,
             status_code=status.HTTP_200_OK,

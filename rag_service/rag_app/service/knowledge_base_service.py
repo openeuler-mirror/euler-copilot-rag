@@ -52,7 +52,7 @@ async def get_llm_stream_answer(req: QueryRequest) -> str:
     query_context = get_query_context(documents_info=documents_info)
     logger.error("finish")
     return select_llm(req).stream(
-        req=req, documents_info=documents_info, prompt=prompt_template_dict[req.language]['LLM_PROMPT_TEMPLATE'].format(context=query_context))
+        req=req, prompt=prompt_template_dict[req.language]['LLM_PROMPT_TEMPLATE'].format(context=query_context))
 
 
 def get_knowledge_base_list(owner: str, session) -> Page[KnowledgeBaseInfo]:

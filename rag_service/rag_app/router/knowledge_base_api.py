@@ -21,16 +21,16 @@ logger = get_logger()
 
 
 @router.post('/get_answer')
-def get_answer(req: QueryRequest, response: Response) -> LlmAnswer:
+async def get_answer(req: QueryRequest, response: Response) -> LlmAnswer:
     response.headers['Content-Type'] = 'application/json'
-    return get_llm_answer(req)
+    return await get_llm_answer(req)
 
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)
 async def get_stream_answer(req: QueryRequest, response: Response):
     response.headers["Content-Type"] = "text/event-stream"
     try:
-        res = get_llm_stream_answer(req)
+        res =  await get_llm_stream_answer(req)
         return StreamingResponse(
             res,
             status_code=status.HTTP_200_OK,

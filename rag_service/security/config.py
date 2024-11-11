@@ -34,14 +34,18 @@ class ConfigModel(BaseModel):
     SPARK_APP_SECRET: str = Field(None, description="星火大模型App Secret")
     SPARK_GPT_URL: str = Field(None, description="星火大模型URL")
     SPARK_APP_DOMAIN: str = Field(None, description="星火大模型版本")
-
+    SPARK_MAX_TOKENS: int=Field(None, description="星火大模型单次请求中允许的最大Token数")
+    
     # Vectorize
     REMOTE_RERANKING_ENDPOINT: str = Field(None, description="远程重排序服务的Endpoint")
     REMOTE_EMBEDDING_ENDPOINT: str = Field(None, description="远程嵌入向量生成服务的Endpoint")
-    
+
     # Parser agent
     EN_PARSER_AGENT: str = Field(None, description="数据库配置的英文分词器")
     ZH_PARSER_AGENT: str = Field(None, description="数据库配置的中文分词器")
+
+    # Version expert
+    VERSION_EXPERT_ENABLE: bool = Field(False, description="是否开版本专家")
 
 
 class Config:

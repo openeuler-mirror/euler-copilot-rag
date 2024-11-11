@@ -210,7 +210,6 @@ def create_vectorize_items(_INDEX_NAME: str, dim: int):
 
     return vectorize_items
 
-
 engine = create_engine(
     config['DATABASE_URL'],
     pool_size=20,   # 连接池的基本大小

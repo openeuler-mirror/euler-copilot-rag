@@ -108,7 +108,6 @@ class OpenAi(LLM):
 
 def select_llm(req: QueryRequest) -> LLM:
     method = req.model_name
-    method = method.upper()
     if method == "spark":
         return Spark()
     return OpenAi(method)

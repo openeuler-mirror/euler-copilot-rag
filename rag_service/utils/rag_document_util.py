@@ -70,14 +70,15 @@ async def get_rag_document_info(req: QueryRequest):
         question=req.question, question_after_expend=rewrite_query)
     rewrite_req.history = []
     documents_info = []
-    result = await version_expert_search_data(rewrite_req)
-    logger.error(f"版本专家返回结果 = {result}")
-    if result is not None:
-        result = list(result)
-        result[0] = prompt_template_dict['SQL_RESULT_PROMPT_TEMPLATE'].format(sql_result=result[0])
-        result = tuple(result)
-        documents_info.append(result)
-    logger.info(f"图数据库/版本专家检索结果 = {documents_info}")
+    if config['VERSION_EXPERT_ENABLE']:
+        result = await version_expert_search_data(rewrite_req)
+        logger.error(f"版本专家返回结果 = {result}")
+        if result is not None:
+            result = list(result)
+            result[0] = prompt_template_dict['SQL_RESULT_PROMPT_TEMPLATE'].format(sql_result=result[0])
+            result = tuple(result)
+            documents_info.append(result)
+        logger.info(f"图数据库/版本专家检索结果 = {documents_info}")
     documents_info.extend(rag_search_and_rerank(raw_question=rewrite_query, kb_sn=req.kb_sn,
                                                 top_k=req.top_k-len(documents_info)))
     return documents_info

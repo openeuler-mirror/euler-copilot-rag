@@ -1,0 +1,17 @@
+.vscode
+**/__pycache__/
+**/*.pyc
+Dockerfile
+.dockerignore
+start.sh
+
+logs
+encrypted_config.json
+
+# neo4j docs
+rag_service/vectorstore/neo4j/*.json
+rag_service/vectorstore/neo4j/*.txt
+rag_service/vectorstore/neo4j/*.md
+
+# vectorize models
+rag_service/embedding_models

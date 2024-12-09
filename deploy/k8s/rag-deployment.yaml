@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-deploy
+  namespace: euler-copilot
+  labels:
+    app: rag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag
+  template:
+    metadata:
+      labels:
+        app: rag
+    spec:
+      imagePullSecrets:
+        - name: #镜像拉取鉴权
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: rag
+          image: #RAG镜像地址
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8005
+              protocol: TCP
+            - containerPort: 3000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health_check/ping
+              port: 8005
+              scheme: HTTP
+            failureThreshold: 5
+            initialDelaySeconds: 60
+            periodSeconds: 90
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            - name: PROD
+              value: enabled
+          volumeMounts:
+            - mountPath: /rag-service/config
+              name: rag-shared-secret-volume
+            - mountPath: /tmp
+              name: rag-tmp-volume
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+      initContainers:
+        - name: rag-copy-secret
+          image: #初始化容器镜像地址
+          restartPolicy: Always
+          env:
+            - name: CHECK_URL
+              value: http://rag-service.euler-copilot.svc.cluster.local:8005/health_check/ping
+            - name: INTERVAL
+              value: "60"
+            - name: CONFIG_FILES
+              value: .env
+          volumeMounts:
+            - mountPath: /config
+              name: rag-secret-volume
+            - mountPath: /config-rw
+              name: rag-shared-secret-volume
+      volumes:
+        - name: rag-secret-volume
+          secret:
+            secretName: rag-secret
+            items:
+              - key: .env
+                path: .env
+        - name: rag-shared-secret-volume
+          emptyDir:
+            medium: Memory
+        - name: rag-tmp-volume
+          emptyDir:
+            medium: Memory

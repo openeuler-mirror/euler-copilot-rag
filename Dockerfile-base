@@ -1,0 +1,26 @@
+FROM openeuler/openeuler:22.03-lts-sp1
+
+# 设置环境变量
+ENV PATH /rag-service/.local/bin:$PATH
+
+# 更新 YUM 源并安装必要的包
+RUN sed -i 's|http://repo.openeuler.org/|https://mirrors.huaweicloud.com/openeuler/|g' /etc/yum.repos.d/openEuler.repo &&\
+    yum makecache &&\
+    yum update -y &&\
+    yum install -y mesa-libGL java python3 python3-pip shadow-utils &&\
+    yum clean all && \
+    groupadd -g 1001 eulercopilot && useradd -u 1001 -g eulercopilot eulercopilot
+
+# 创建 /rag-service 目录并设置权限
+RUN mkdir -p /rag-service && chown -R 1001:1001 /rag-service
+
+# 切换到 eulercopilot 用户
+USER eulercopilot
+
+# 复制 requirements.txt 文件到 /rag-service 目录
+COPY --chown=1001:1001 requirements.txt /rag-service/
+COPY --chown=1001:1001 tika-server-standard-2.9.2.jar /rag-service/
+
+# 安装 Python 依赖
+RUN pip3 install --no-cache-dir -r /rag-service/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    chmod -R 750 /rag-service

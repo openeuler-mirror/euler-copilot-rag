@@ -9,7 +9,7 @@ from data_chain.apps.service.user_service import verify_csrf_token, verify_passw
 from data_chain.apps.base.session.session import SessionManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.user_manager import UserManager
-from data_chain.models.api import BaseResponse, UserAddRequest, UserUpdateRequest
+from data_chain.models.api import BaseResponse, AddUserRequest, UpdateUserRequest
 
 
 router = APIRouter(
@@ -19,7 +19,7 @@ router = APIRouter(
 
 
 @router.post("/add", response_model=BaseResponse)
-async def add_user(request: UserAddRequest):
+async def add_user(request: AddUserRequest):
     name = request.name
     account = request.account
     passwd = request.passwd
@@ -143,7 +143,7 @@ async def logout(request: Request, response: Response, user_id=Depends(get_user_
 
 
 @router.post("/update", response_model=BaseResponse, dependencies=[Depends(verify_user), Depends(verify_csrf_token)])
-async def switch(req: UserUpdateRequest, user_id=Depends(get_user_id)):
+async def switch(req: UpdateUserRequest, user_id=Depends(get_user_id)):
     user_info = UserManager.get_user_info_by_user_id(user_id)
     if user_info is None:
         return BaseResponse(

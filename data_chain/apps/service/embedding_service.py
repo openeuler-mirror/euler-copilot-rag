@@ -14,8 +14,6 @@ class Vectorize():
             "texts": [text]
         }
         try:
-            logging.info(f'向量化内容为：{data}')
-            logging.info(f'向量化请求地址为：{config["REMOTE_EMBEDDING_ENDPOINT"]}')
             res = requests.post(url=config["REMOTE_EMBEDDING_ENDPOINT"], json=data, verify=False)
             if res.status_code != 200:
                 return None

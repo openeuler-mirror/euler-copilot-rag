@@ -12,7 +12,7 @@ from sqlalchemy.orm import declarative_base, relationship
 
 from data_chain.config.config import config
 from data_chain.models.api import CreateKnowledgeBaseRequest
-
+from data_chain.models.constant import KnowledgeStatusEnum,ParseMethodEnum
 
 Base = declarative_base()
 
@@ -46,8 +46,8 @@ class ModelEntity(Base):
     encrypted_openai_api_key = Column(String)
     encrypted_config = Column(String)
     max_tokens = Column(Integer)
-    create_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
-    update_time = Column(
+    created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
+    updated_time = Column(
         TIMESTAMP(timezone=True),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp())
@@ -58,16 +58,16 @@ class KnowledgeBaseEntity(Base):
 
     id = Column(UUID, default=uuid4, primary_key=True)
     user_id = Column(UUID, ForeignKey('users.id', ondelete="CASCADE"))  # 用户id
-    name = Column(String)  # 资产名
+    name = Column(String,default='')  # 知识库名资产名
     language = Column(String, default='zh')  # 资产文档语言
-    description = Column(String)  # 资产描述
+    description = Column(String,default='')  # 资产描述
     embedding_model = Column(String)  # 资产向量化模型
-    document_number = Column(Integer)  # 资产文档个数
-    document_size = Column(Integer)  # 资产下所有文档大小(TODO: 单位kb或者字节)
-    default_parser_method = Column(String)  # 默认解析方法
-    default_chunk_size = Column(Integer)  # 默认分块大小
+    document_number = Column(Integer,default=0)  # 资产文档个数
+    document_size = Column(Integer,default=0)  # 资产下所有文档大小(TODO: 单位kb或者字节)
+    default_parser_method = Column(String,default=ParseMethodEnum.GENERAL)  # 默认解析方法
+    default_chunk_size = Column(Integer,default=1024)  # 默认分块大小
     vector_items_id = Column(UUID, default=uuid4)  # 向量表id
-    status = Column(String)
+    status = Column(String,default=KnowledgeStatusEnum.IDLE)
     created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
     updated_time = Column(
         TIMESTAMP(timezone=True),
@@ -138,10 +138,10 @@ class ImageEntity(Base):
     id = Column(UUID, default=uuid4, primary_key=True)
     user_id = Column(UUID)
     document_id = Column(UUID)
-    chunk_id = Column(UUID,ForeignKey('chunk.id', ondelete="CASCADE"))
+    chunk_id = Column(UUID, ForeignKey('chunk.id', ondelete="CASCADE"))
     extension = Column(String)  # 文件后缀
-    create_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
-    update_time = Column(
+    created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
+    updated_time = Column(
         TIMESTAMP(timezone=True),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp())
@@ -213,6 +213,37 @@ class TaskStatusReportEntity(Base):
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp())
 
+
+class TemporaryDocumentEntity(Base):
+    __tablename__ = 'temporary_document'
+    id = Column(UUID, default=uuid4, primary_key=True)
+    name = Column(String)
+    extension = Column(String)
+    bucket_name=Column(String)
+    parser_method=Column(String)
+    chunk_size = Column(Integer)  # 文档分块大小
+    status=Column(String) 
+    created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
+
+
+class TemporaryChunkEntity(Base):
+    __tablename__ = 'temporary_chunk'
+    id = Column(UUID, default=uuid4, primary_key=True)
+    document_id = Column(UUID, ForeignKey('temporary_document.id', ondelete="CASCADE"))
+    text = Column(String)
+    tokens = Column(Integer)
+    type = Column(String)
+    global_offset = Column(Integer)
+    created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
+
+
+class TemporaryVectorItemstEntity(Base):
+    __tablename__ = 'temporary_vector_items'
+    id = Column(UUID, default=uuid4, primary_key=True)
+    document_id = Column(UUID)
+    chunk_id = Column(UUID, ForeignKey('temporary_chunk.id', ondelete="CASCADE"))
+    vector = Column(Vector(1024))
+    created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
 # 反射加载 chunk 表的元数据
 
 
@@ -237,21 +268,16 @@ class PostgresDB:
 
     @classmethod
     async def get_dynamic_vector_items_table(cls, uuid_str, vector_dim):
-        st = time.time()
         # 使用同步引擎
-        sync_engine = create_engine(config['DATABASE_URL'].replace("postgresql+asyncpg", "postgresql"), echo=False, pool_recycle=300, pool_pre_ping=True)
-        logging.info(f'数据库同步引擎创建耗时：{time.time()-st}')
+        sync_engine = create_engine(
+            config['DATABASE_URL'].replace("postgresql+asyncpg", "postgresql"),
+            echo=False, pool_recycle=300, pool_pre_ping=True)
 
         # 反射加载 chunk 表的元数据
-        st = time.time()
         chunk_table = reflect_chunk_table(sync_engine)
-        logging.info(f'反射表格耗时：{time.time()-st}')
 
-        st = time.time()
         metadata = MetaData()
-        logging.info(f'关联原始数据耗时：{time.time()-st}')
 
-        st = time.time()
         # 动态创建表
         vector_items_table = Table(
             f'vector_items_{uuid_str}', metadata,
@@ -267,9 +293,7 @@ class PostgresDB:
                    server_default=func.current_timestamp(),
                    onupdate=func.current_timestamp()),
         )
-        logging.info(f'动态构建向量存储表耗时：{time.time()-st}')
 
-        st = time.time()
         # 动态创建索引
         index = Index(
             f'general_text_vector_index_{uuid_str}',
@@ -278,19 +302,14 @@ class PostgresDB:
             postgresql_with={'m': 16, 'ef_construction': 200},
             postgresql_ops={'vector': 'vector_cosine_ops'}
         )
-        logging.info(f'创建向量化索引耗时：{time.time()-st}')
 
-        st = time.time()
         # 将索引添加到表定义中
         vector_items_table.append_constraint(index)
-        logging.info(f'添加向量化索引耗时：{time.time()-st}')
 
-        st = time.time()
         # 创建表
         with sync_engine.begin() as conn:
             metadata.create_all(conn)
-        logging.info(f'同步创建表格耗时：{time.time()-st}')
-        
+
         return vector_items_table
 
     @classmethod

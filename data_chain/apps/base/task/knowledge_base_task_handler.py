@@ -60,13 +60,23 @@ class KnowledgeBaseTaskHandler():
                 if parser_method not in parse_methods:
                     parser_method=ParseMethodEnum.GENERAL
                 document_entity = DocumentEntity(
-                    kb_id=knowledge_base_entity.id, user_id=knowledge_base_entity.user_id, name=file_name,
-                    extension=data.get('extension', ''),
-                    size=file_size, parser_method=parser_method,
-                    type_id=document_type_dict.get(data['type'],
-                                                   uuid.UUID('00000000-0000-0000-0000-000000000000')),
-                    chunk_size=data.get('chunk_size', knowledge_base_entity.default_chunk_size),
-                    enabled=True, status=DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_STATUS_RUNNING)
+                    kb_id=knowledge_base_entity.id,\
+                    user_id=knowledge_base_entity.user_id,\
+                    name=file_name,\
+                    extension=data.get('extension', ''),\
+                    size=file_size,\
+                    parser_method=parser_method,\
+                    type_id=document_type_dict.get(
+                        data['type'],
+                        uuid.UUID('00000000-0000-0000-0000-000000000000')
+                        ),\
+                    chunk_size=data.get(
+                        'chunk_size',
+                        knowledge_base_entity.default_chunk_size
+                        ),\
+                    enabled=True,\
+                    status=DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_STATUS_RUNNING
+                    )
                 document_entity_list.append(document_entity)
                 file_path_list.append(file_path)
             await DocumentManager.insert_bulk(document_entity_list)
@@ -81,9 +91,16 @@ class KnowledgeBaseTaskHandler():
         return document_entity_list
 
     @staticmethod
-    async def handle_import_knowledge_base_task(task_entity: TaskEntity):
+    async def handle_import_knowledge_base_task(t_id: uuid.UUID):
         unzip_folder_path=None
         try:
+            task_entity=await TaskManager.select_by_id(t_id)
+            if task_entity.status != TaskConstant.TASK_STATUS_RUNNING:
+                TaskRedisHandler.put_task_by_tail(
+                    config['REDIS_SILENT_ERROR_TASK_QUEUE_NAME'], 
+                    str(task_entity.id)
+                    )
+                return
             # 定义目标目录
             kb_id = task_entity.op_id
             knowledge_base_entity = await KnowledgeBaseManager.select_by_id(kb_id)
@@ -97,14 +114,16 @@ class KnowledgeBaseTaskHandler():
             zip_file_path = os.path.join(unzip_folder_path, str(kb_id)+'.zip')
             # todo 下面两个子过程记录task report
             if not await MinIO.download_object(OssConstant.MINIO_BUCKET_KNOWLEDGEBASE, str(kb_id), zip_file_path):
-                await TaskStatusReportManager.insert(TaskStatusReportEntity(
+                await TaskStatusReportManager.insert(
+                    TaskStatusReportEntity(
                     task_id=task_entity.id,
                     message=f'Download knowledge base {kb_id} zip file failed',
                     current_stage=3,
                     stage_cnt=3
-                ))
+                )
+                )
                 await KnowledgeBaseManager.update(kb_id, {'status': KnowledgeStatusEnum.IDLE})
-                await TaskManager.update(task_entity.id, {'status': TaskConstant.TASK_STATUS_SUCCESS})
+                await TaskManager.update(task_entity.id, {'status': TaskConstant.TASK_STATUS_FAILED})
                 TaskRedisHandler.put_task_by_tail(config['REDIS_SUCCESS_TASK_QUEUE_NAME'], str(task_entity.id))
                 return
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
@@ -130,7 +149,11 @@ class KnowledgeBaseTaskHandler():
                 current_stage=2,
                 stage_cnt=3
             ))
-            document_entity_list = await KnowledgeBaseTaskHandler.parse_knowledge_base_document_yaml_file(knowledge_base_entity, unzip_folder_path)
+            document_entity_list = await KnowledgeBaseTaskHandler.\
+                parse_knowledge_base_document_yaml_file(
+                knowledge_base_entity,\
+                unzip_folder_path
+                )
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Save document and parse yaml from knowledge base {kb_id} zip file succcessfully',
@@ -162,9 +185,13 @@ class KnowledgeBaseTaskHandler():
                 shutil.rmtree(unzip_folder_path)
 
     @staticmethod
-    async def handle_export_knowledge_base_task(task_entity: TaskEntity):
+    async def handle_export_knowledge_base_task(t_id: uuid.UUID):
         knowledge_yaml_path=None
         try:
+            task_entity=await TaskManager.select_by_id(t_id)
+            if task_entity.status != TaskConstant.TASK_STATUS_RUNNING:
+                TaskRedisHandler.put_task_by_tail(config['REDIS_SILENT_ERROR_TASK_QUEUE_NAME'], str(task_entity.id))
+                return
             knowledge_base_entity = await KnowledgeBaseManager.select_by_id(task_entity.op_id)
             user_entity = await UserManager.get_user_info_by_user_id(knowledge_base_entity.user_id)
             zip_file_path = os.path.join(OssConstant.ZIP_FILE_SAVE_FOLDER, str(user_entity.id))
@@ -192,17 +219,23 @@ class KnowledgeBaseTaskHandler():
                     'language': knowledge_base_entity.language,
                     'name': knowledge_base_entity.name
                 }
-                knowledge_dict['document_type_list'] = list(set([document_type_entity.type
-                                                                for document_type_entity in document_type_entity_list]))
+                knowledge_dict['document_type_list'] = list(
+                    set([document_type_entity.type
+                    for document_type_entity in document_type_entity_list]
+                    )
+                    )
                 yaml.dump(knowledge_dict, knowledge_yaml_file)
-            await TaskStatusReportManager.insert(TaskStatusReportEntity(
-                task_id=task_entity.id,
-                message=f'Save knowledge base yaml from knowledge base {knowledge_base_entity.id}  succcessfully',
-                current_stage=1,
-                stage_cnt=4
-            ))
-            document_type_entity_map = {str(document_type_entity.id): document_type_entity.type
-                                        for document_type_entity in document_type_entity_list}
+            await TaskStatusReportManager.insert(
+                TaskStatusReportEntity(
+                task_id=task_entity.id,\
+                message=f'Save knowledge base yaml from knowledge base {knowledge_base_entity.id}  succcessfully',\
+                current_stage=1,\
+                stage_cnt=4\
+            )
+            )
+            document_type_entity_map = {
+                str(document_type_entity.id): document_type_entity.type
+                for document_type_entity in document_type_entity_list}
             document_entity_list = await DocumentManager.select_by_knowledge_base_id(knowledge_base_entity.id)
             for document_entity in document_entity_list:
                 try:
@@ -214,57 +247,78 @@ class KnowledgeBaseTaskHandler():
                         if str(document_entity.type_id) in document_type_entity_map.keys():
                             doc_type = document_type_entity_map[str(document_entity.type_id)]
                         yaml.dump(
-                            {'name': document_entity.name, 'extension': document_entity.extension,
-                             'parser_method': document_entity.parser_method,'chunk_size':document_entity.chunk_size,
-                             'type': doc_type},
+                            {
+                            'name': document_entity.name,\
+                            'extension': document_entity.extension,\
+                            'parser_method': document_entity.parser_method,\
+                            'chunk_size':document_entity.chunk_size,\
+                            'type': doc_type},
                             yaml_file)
                 except Exception as e:
-                    logging.error(f"download document {document_entity.id} failed: {str(e)}")
+                    logging.error(f"Download document {document_entity.id} failed due to: {e}")
                     continue
-            await TaskStatusReportManager.insert(TaskStatusReportEntity(
+            await TaskStatusReportManager.insert(
+                TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Save document and yaml from knowledge base {knowledge_base_entity.id} succcessfully',
                 current_stage=2,
                 stage_cnt=4
             ))
-            # 最后压缩export目录, 并放入minIO, 然后生成下载链接
+            # 最后压缩export目录, 并放入minIO
             save_knowledge_base_zip_file_name = str(task_entity.id)+".zip"
             await ZipHandler.zip_dir(knowledge_yaml_path, os.path.join(zip_file_path, save_knowledge_base_zip_file_name))
-            await TaskStatusReportManager.insert(TaskStatusReportEntity(
+            await TaskStatusReportManager.insert(
+                TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Zip knowledge base {knowledge_base_entity.id} succcessfully',
                 current_stage=3,
                 stage_cnt=4
             ))
             # 上传到minIO exportzip桶
-            res = await MinIO.put_object(OssConstant.MINIO_BUCKET_EXPORTZIP, str(task_entity.id),
-                                         os.path.join(zip_file_path, save_knowledge_base_zip_file_name))
+            res = await MinIO.put_object(
+                OssConstant.MINIO_BUCKET_KNOWLEDGEBASE,\
+                str(task_entity.id),\
+                os.path.join(
+                    zip_file_path,\
+                    save_knowledge_base_zip_file_name\
+                        )
+                    )
             if res:
-                await TaskStatusReportManager.insert(TaskStatusReportEntity(
+                await TaskStatusReportManager.insert(
+                    TaskStatusReportEntity(
                     task_id=task_entity.id,
                     message=f'Update knowledge base {knowledge_base_entity.id} zip file {save_knowledge_base_zip_file_name} to Minio succcessfully',
                     current_stage=4,
                     stage_cnt=4
-                ))
+                )
+                )
             else:
-                await TaskStatusReportManager.insert(TaskStatusReportEntity(
+                await TaskStatusReportManager.insert(
+                    TaskStatusReportEntity(
                     task_id=task_entity.id,
                     message=f'Update knowledge base {knowledge_base_entity.id} zip file {save_knowledge_base_zip_file_name} to Minio failed',
                     current_stage=4,
                     stage_cnt=4
-                ))
+                )
+                )
+                raise Exception(f'Update knowledge base {knowledge_base_entity.id} zip file {save_knowledge_base_zip_file_name} to Minio failed')
             await KnowledgeBaseManager.update(knowledge_base_entity.id, {'status': KnowledgeStatusEnum.IDLE})
             await TaskManager.update(task_entity.id, {'status': TaskConstant.TASK_STATUS_SUCCESS})
             TaskRedisHandler.put_task_by_tail(config['REDIS_SUCCESS_TASK_QUEUE_NAME'], str(task_entity.id))
         except Exception as e:
-            await TaskStatusReportManager.insert(TaskStatusReportEntity(
-                task_id=task_entity.id,
-                message=f'Import knowledge base {task_entity.op_id} failed due to {e}',
-                current_stage=0,
-                stage_cnt=4
-            ))
-            TaskRedisHandler.put_task_by_tail(config['REDIS_RESTART_TASK_QUEUE_NAME'], str(task_entity.id))
-            logging.error("Export knowledge base zip files error: {}".format(e))
+            await TaskStatusReportManager.insert(
+                TaskStatusReportEntity(
+                task_id=task_entity.id,\
+                message=f'Import knowledge base {task_entity.op_id} failed due to {e}',\
+                current_stage=0,\
+                stage_cnt=4\
+            )
+            )
+            TaskRedisHandler.put_task_by_tail(
+                config['REDIS_RESTART_TASK_QUEUE_NAME'],\
+                str(task_entity.id)
+                )
+            logging.error(f"Export knowledge base zip files errordue to {e}")
         finally:
             if knowledge_yaml_path and os.path.exists(knowledge_yaml_path):
                 shutil.rmtree(knowledge_yaml_path)

@@ -78,12 +78,8 @@ class DocxService(BaseService):
                                 text_part = ''
                             # 处理图片
                             for image_part in image_parts:
-                                try:
-                                    image_blob = image_part.image.blob
-                                    content_type = image_part.content_type
-                                except Exception as e:
-                                    logging.error(f"Error getting image blob and content type due to: {e}")
-                                    continue
+                                image_blob = image_part.image.blob
+                                content_type = image_part.content_type
                                 extension = mimetypes.guess_extension(content_type).replace('.', '')
                                 lines.append(([(Image.open(BytesIO(image_blob)), extension)], 'image'))
                         else:
@@ -104,8 +100,12 @@ class DocxService(BaseService):
                 img_id = child.xpath('.//a:blip/@r:embed')[0]
                 part = parent.part.related_parts[img_id]
                 if isinstance(part, ImagePart):
-                    image_blob = part.image.blob
-                    content_type = part.content_type
+                    try:
+                        image_blob = part.image.blob
+                        content_type = part.content_type
+                    except:
+                        logging.error(f'Error get image blob and content type due to: {img_id}')
+                        continue
                     extension = mimetypes.guess_extension(content_type).replace('.', '')
                     lines.append(([(Image.open(BytesIO(image_blob)), extension)], 'image'))
         new_lines = []

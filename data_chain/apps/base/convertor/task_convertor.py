@@ -6,11 +6,11 @@ from data_chain.stores.postgres.postgres import TaskEntity, TaskStatusReportEnti
 
 class TaskConvertor():
     @staticmethod
-    def convert_entity_to_dto(task_entity: TaskEntity, TaskStatusReportEntityList: List[TaskStatusReportEntity] = None,
-                              op_dict: Dict = None) -> TaskDTO:
+    def convert_entity_to_dto(task_entity: TaskEntity, TaskStatusReportEntityList: List[TaskStatusReportEntity] = None) -> TaskDTO:
         reports = []
         for task_status_report_entity in TaskStatusReportEntityList:
-            reports.append(TaskReportDTO(
+            reports.append(
+                TaskReportDTO(
                 id=task_status_report_entity.id,
                 message=task_status_report_entity.message,
                 current_stage=task_status_report_entity.current_stage,

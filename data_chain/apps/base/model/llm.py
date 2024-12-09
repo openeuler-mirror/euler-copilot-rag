@@ -2,6 +2,7 @@
 import asyncio
 import time
 import json
+import tiktoken
 from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage
 from data_chain.logger.logger import logger as logging
@@ -46,6 +47,9 @@ class LLM:
         # 启动生产者任务
         producer_task = asyncio.create_task(self.data_producer(q, chat, system_call, user_call))
         first_token_reach = False
+        enc = tiktoken.encoding_for_model("gpt-4") 
+        input_tokens=len(enc.encode(system_call))
+        output_tokens=0
         while True:
             data = await q.get()
             if data is None:
@@ -53,9 +57,14 @@ class LLM:
             if not first_token_reach:
                 first_token_reach = True
                 logging.info(f"大模型回复第一个字耗时 = {time.time() - st}")
-            for char in data:
-                yield "data: " + json.dumps({'content': char}, ensure_ascii=False) + '\n\n'
-                await asyncio.sleep(0.03)  # 使用异步 sleep
+            output_tokens+=len(enc.encode(data))
+            yield "data: " + json.dumps(
+                {'content': data,
+                 'input_tokens':input_tokens,
+                 'output_tokens':output_tokens
+                 }, ensure_ascii=False
+                 ) + '\n\n'
+            await asyncio.sleep(0.03)  # 使用异步 sleep
 
         yield "data: [DONE]"
         logging.info(f"大模型回复耗时 = {time.time() - st}")

@@ -16,7 +16,6 @@ class ConfigModel(BaseModel):
     LOG_METHOD:str = Field('stdout', description="日志记录方式")
     # Postgres
     DATABASE_URL: str = Field(None, description="Postgres数据库链接url")
-
     # MinIO
     MINIO_ENDPOINT: str = Field(None, description="MinIO连接地址")
     MINIO_ACCESS_KEY: str = Field(None, description="Minio认证ak")
@@ -29,23 +28,20 @@ class ConfigModel(BaseModel):
     REDIS_PENDING_TASK_QUEUE_NAME: str = Field(default='rag_pending_task_queue', description="redis等待开始任务队列名称")
     REDIS_SUCCESS_TASK_QUEUE_NAME: str = Field(default='rag_success_task_queue', description="redis已经完成任务队列名称")
     REDIS_RESTART_TASK_QUEUE_NAME: str = Field(default='rag_restart_task_queue', description="redis等待重启任务队列名称")
+    REDIS_SILENT_ERROR_TASK_QUEUE_NAME: str = Field(default='rag_silent_error_task_queue', description="redis等待重启任务队列名称")
     # Task
     TASK_RETRY_TIME: int = Field(None, description="任务重试次数")
     # Embedding
     REMOTE_EMBEDDING_ENDPOINT: str = Field(None, description="远程embedding服务url地址")
-
     # Token
     SESSION_TTL: int = Field(None, description="用户session过期时间")
     CSRF_KEY: str = Field(None, description="csrf的密钥")
-
     # Security
     HALF_KEY1: str = Field(None, description="两层密钥管理组件1")
     HALF_KEY2: str = Field(None, description="两层密钥管理组件2")
     HALF_KEY3: str = Field(None, description="两层密钥管理组件3")
-
     # Prompt file
     PROMPT_PATH: str = Field(None, description="prompt路径")
-    
     # Stop Words PATH
     STOP_WORDS_PATH: str = Field(None, description="停用词表存放位置")
     # LLM config
@@ -55,11 +51,13 @@ class ConfigModel(BaseModel):
     REQUEST_TIMEOUT: int = Field(None, description="大模型请求超时时间")
     MAX_TOKENS: int = Field(None, description="单次请求中允许的最大Token数")
     MODEL_ENH: bool = Field(None, description="是否使用大模型能力增强")
-    #DEFAULT USER
+    # DEFAULT USER
     DEFAULT_USER_ACCOUNT: str = Field(default='admin', description="默认用户账号")
     DEFAULT_USER_PASSWD: str = Field(default='123456', description="默认用户密码")
     DEFAULT_USER_NAME: str = Field(default='admin', description="默认用户名称")
     DEFAULT_USER_LANGUAGE: str = Field(default='zh', description="默认用户语言")
+    # DOCUMENT PARSER
+    DOCUMENT_PARSE_USE_CPU_LIMIT:int=Field(default=4,description="文档解析器使用CPU核数")
 class Config:
     config: ConfigModel
 

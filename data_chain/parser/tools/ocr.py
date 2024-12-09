@@ -40,18 +40,17 @@ class BaseOCR:
         try:
             # get config
             results = self.model.ocr(image)
-            logging.info(f"OCR job down {results}")
             return results
         except Exception as e:
             logging.error(f"OCR job error {e}")
-            raise [[None]]
+            return [[None]]
 
     @staticmethod
     def get_text_from_ocr_results(ocr_results):
         results = ''
         if ocr_results[0] is None or len(ocr_results)==0:
             return ''
-        if ocr_results[0][0] is None:
+        if ocr_results[0][0] is None or len(ocr_results[0][0])==0:
             return ''
         try:
             for result in ocr_results[0][0]:
@@ -101,9 +100,9 @@ class BaseOCR:
         - text：图片组对应的前后文
         """
         try:
-            user_call = '请详细输出图片的总结，不要输出其他内容'
+            user_call = '请详细输出图片的摘要，不要输出其他内容'
             split_images = []
-            max_tokens = self.max_tokens // 2
+            max_tokens = self.max_tokens // 5*2
             for image in image_results:
                 split_result = self.split_list(image, max_tokens)
                 split_images.append(split_result)
@@ -127,7 +126,7 @@ class BaseOCR:
             answer = front_image_description
             return answer
         except Exception as e:
-            logging.info(f"Imnage ocr result improve error due to: {e}")
+            logging.error(f'OCR result improve error due to: {e}')
             return ""
 
     async def run(self, image, text):

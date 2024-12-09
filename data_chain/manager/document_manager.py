@@ -5,8 +5,8 @@ import uuid
 from data_chain.logger.logger import logger as logging
 from typing import Dict, List, Tuple
 
-from data_chain.stores.postgres.postgres import PostgresDB, DocumentEntity, TaskEntity
-from data_chain.models.constant import DocumentEmbeddingConstant
+from data_chain.stores.postgres.postgres import PostgresDB, DocumentEntity, TaskEntity,TemporaryDocumentEntity
+from data_chain.models.constant import DocumentEmbeddingConstant,TemporaryDocumentStatusEnum
 
 
 
@@ -19,7 +19,7 @@ class DocumentManager():
             async with await PostgresDB.get_session() as session:
                 session.add(entity)
                 await session.commit()
-                await session.refresh(entity)  # 刷新实体以确保获取到所有数据（如自增ID）
+                await session.refresh(entity)
                 return entity
         except Exception as e:
             logging.error(f"Failed to insert entity: {e}")
@@ -77,7 +77,8 @@ class DocumentManager():
         try:
             async with await PostgresDB.get_session() as session:
                 stmt = select(DocumentEntity).where(
-                    (DocumentEntity.kb_id == kb_id) & (DocumentEntity.name == file_name))
+                    and_(DocumentEntity.kb_id == kb_id,
+                         DocumentEntity.name == file_name))
                 result = await session.execute(stmt)
                 return result.scalars().first()
         except Exception as e:
@@ -216,3 +217,81 @@ class DocumentManager():
             result = await session.execute(stmt)
             await session.commit()
             return result.rowcount
+
+class TemporaryDocumentManager():
+    @staticmethod
+    async def insert(entity: TemporaryDocumentEntity) -> TemporaryDocumentEntity:
+        try:
+            async with await PostgresDB.get_session() as session:
+                session.add(entity)
+                await session.commit()
+                await session.refresh(entity)
+                return entity
+        except Exception as e:
+            logging.error(f"Failed to insert temporary document: {e}")
+            return None
+    @staticmethod
+    async def delete_by_ids(ids: List[uuid.UUID]) -> int:
+        try:
+            async with await PostgresDB.get_session() as session:
+                stmt = delete(TemporaryDocumentEntity).where(TemporaryDocumentEntity.id.in_(ids))
+                result = await session.execute(stmt)
+                await session.commit()
+                return result.rowcount
+        except Exception as e:
+            logging.error(f"Failed to delete temporary documents: {e}")
+            return 0
+    @staticmethod
+    async def select_by_ids(ids: List[uuid.UUID]) -> List[TemporaryDocumentEntity]:
+        try:
+            async with await PostgresDB.get_session() as session:
+                stmt = select(TemporaryDocumentEntity).where(
+                    and_(
+                    TemporaryDocumentEntity.id.in_(ids),
+                    TemporaryDocumentEntity.status !=TemporaryDocumentStatusEnum.DELETED 
+                    )
+                    )        
+                result = await session.execute(stmt)
+                tmp_list = result.scalars().all()
+                return tmp_list
+        except Exception as e:
+            logging.error(f"Failed to select temporary documents by page: {e}")
+            return (0, [])
+    @staticmethod
+    async def select_by_id(id: uuid.UUID) -> TemporaryDocumentEntity:
+        try:
+            async with await PostgresDB.get_session() as session:
+                stmt = select(TemporaryDocumentEntity).where(TemporaryDocumentEntity.id==id)
+                result = await session.execute(stmt)
+                return result.scalars().first()
+        except Exception as e:
+            logging.error(f"Failed to select temporary document by id: {e}")
+            return None
+    @staticmethod
+    async def update(id: uuid.UUID, update_dict: dict):
+        try:
+            async with await PostgresDB.get_session() as session:
+                await session.execute(
+                    update(TemporaryDocumentEntity).where(TemporaryDocumentEntity.id == id).values(**update_dict)
+                )
+                await session.commit()
+                entity=await session.execute(select(TemporaryDocumentEntity).where(
+                    TemporaryDocumentEntity.id==id,
+                    )
+                )
+                return entity
+        except Exception as e:
+            logging.error(f"Failed to update temporary document by id: {e}")
+            return None
+    @staticmethod
+    async def update_all(ids: List[uuid.UUID], update_dict: dict):
+        try:
+            async with await PostgresDB.get_session() as session:
+                await session.execute(
+                    update(TemporaryDocumentEntity).where(TemporaryDocumentEntity.id.in_(ids)).values(**update_dict)
+                )
+                await session.commit()
+                return True
+        except Exception as e:
+            logging.error(f"Failed to update temporary document by ids: {e}")
+            return False

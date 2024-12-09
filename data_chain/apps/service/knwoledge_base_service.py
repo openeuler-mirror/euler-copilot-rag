@@ -52,9 +52,9 @@ async def list_knowledge_base_task(page_number, page_size, params) -> List[TaskD
             document_type_entity_list = await DocumentTypeManager.select_by_knowledge_base_id(str(knowledge_base_entity.id))
             knowledge_base_dto = KnowledgeConvertor.convert_entity_to_dto(
                 knowledge_base_entity, document_type_entity_list)
-            latest_task_status_report_entity = await TaskStatusReportManager.select_latest_report_by_task_id(task_entity.id)
-            if latest_task_status_report_entity is not None:
-                task_dto = TaskConvertor.convert_entity_to_dto(task_entity, [latest_task_status_report_entity])
+            latest_task_status_report_entity_list = await TaskStatusReportManager.select_latest_report_by_task_ids([task_entity.id])
+            if len(latest_task_status_report_entity_list)>1:
+                task_dto = TaskConvertor.convert_entity_to_dto(task_entity, latest_task_status_report_entity_list)
             else:
                 task_dto = TaskConvertor.convert_entity_to_dto(task_entity, [])
             knowledge_base_dto.task = task_dto
@@ -91,21 +91,8 @@ async def rm_knowledge_base_task(task_id: uuid.UUID) -> TaskDTO:
 async def stop_knowledge_base_task(task_id: uuid.UUID) -> TaskDTO:
     try:
         task_entity = await TaskManager.select_by_id(task_id)
-        if task_entity is None or task_entity.status == TaskConstant.TASK_STATUS_DELETED \
-                or task_entity.status == TaskConstant.TASK_STATUS_FAILED \
-                or task_entity.status == TaskConstant.TASK_STATUS_CANCELED \
-                or task_entity.status == TaskConstant.TASK_STATUS_SUCCESS:
-            return
         task_id = task_entity.id
-        TaskRedisHandler.remove_task_by_task_id(config['REDIS_PENDING_TASK_QUEUE_NAME'], str(task_id))
-        TaskRedisHandler.remove_task_by_task_id(config['REDIS_SUCCESS_TASK_QUEUE_NAME'], str(task_id))
-        TaskRedisHandler.remove_task_by_task_id(config['REDIS_RESTART_TASK_QUEUE_NAME'], str(task_id))
-        if task_entity.status == TaskConstant.TASK_STATUS_RUNNING:
-            await TaskHandler.restart_or_clear_task(task_id, TaskActionEnum.CANCEL)
-        if task_entity.type == TaskConstant.IMPORT_KNOWLEDGE_BASE:
-            await KnowledgeBaseManager.delete(task_entity.op_id)
-        else:
-            await KnowledgeBaseManager.update(task_entity.op_id, {'status': KnowledgeStatusEnum.IDLE})
+        await TaskHandler.restart_or_clear_task(task_id, TaskActionEnum.CANCEL)
     except Exception as e:
         logging.error("Stop knowledge base task={} error={}".format(task_id, e))
         raise KnowledgeBaseException(f"Stop knowledge base task={task_id} error.")
@@ -129,10 +116,13 @@ async def create_knowledge_base(tmp_dict) -> KnowledgeBaseDTO:
         raise KnowledgeBaseException("Create knowledge base error.")
 
 
-async def update_knowledge_base(update_dict) -> KnowledgeBaseDTO:
+async def update_knowledge_base(update_dict:dict) -> KnowledgeBaseDTO:
     kb_id = update_dict['id']
-    document_type_list = update_dict['document_type_list']
-    del update_dict['document_type_list']
+    document_type_list = update_dict.get('document_type_list',None)
+    if document_type_list is not None:
+        del update_dict['document_type_list']
+    else:
+        document_type_list=[]
     knowledge_base_entity = await KnowledgeBaseManager.select_by_user_id_and_kb_name(
         update_dict['user_id'], update_dict['name'])
     if knowledge_base_entity and knowledge_base_entity.id != kb_id:
@@ -152,8 +142,12 @@ async def list_knowledge_base(params, page_number=1, page_size=1) -> Tuple[List[
         knowledge_base_dto_list = []
         for knowledge_base_entity in knowledge_base_entity_list:
             document_type_entity_list = await DocumentTypeManager.select_by_knowledge_base_id(knowledge_base_entity.id)
-            knowledge_base_dto_list.append(KnowledgeConvertor.convert_entity_to_dto(
-                knowledge_base_entity, document_type_entity_list))
+            knowledge_base_dto_list.append(
+                KnowledgeConvertor.convert_entity_to_dto(
+                knowledge_base_entity, 
+                document_type_entity_list
+                )
+                )
         return (knowledge_base_dto_list, total)
     except Exception as e:
         logging.error("List knowledge base error: {}".format(e))
@@ -181,7 +175,7 @@ async def rm_knowledge_base(kb_id: str) -> bool:
         await KnowledgeBaseManager.delete(kb_id)
         return True
     except Exception as e:
-        logging.error("Delete knowledge base error: {}".format(e))
+        logging.error(f"Delete knowledge base error: {e}")
         raise KnowledgeBaseException("Delete knowledge base error.")
 
 
@@ -297,7 +291,7 @@ async def generate_knowledge_base_download_link(task_id) -> str:
         task_entity = await TaskManager.select_by_id(task_id)
         if task_entity.status != TaskConstant.TASK_STATUS_SUCCESS:
             return ""
-        return await MinIO.generate_download_link(OssConstant.MINIO_BUCKET_EXPORTZIP, str(task_id))
+        return await MinIO.generate_download_link(OssConstant.MINIO_BUCKET_KNOWLEDGEBASE, str(task_id))
     except Exception as e:
         logging.error("Export knowledge base zip files error: {}".format(e))
         raise KnowledgeBaseException("Export knowledge base zip files error.")

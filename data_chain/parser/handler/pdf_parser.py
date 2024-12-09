@@ -94,7 +94,7 @@ class PdfService(BaseService):
             try:
                 img_np = np.array(image)
             except Exception as e:
-                logging.error(f"Error converting image to numpy array due to {e}")
+                logging.error(f"Error converting image to numpy array: {e}")
                 continue
             ocr_results = await self.image_model.run(img_np, text=near)
 

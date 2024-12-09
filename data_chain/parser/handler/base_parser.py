@@ -31,14 +31,16 @@ class BaseService:
 
     async def init_service(self, llm_entity, tokens, parser_method):
         self.parser_method = parser_method
-        if llm_entity is None:
-            self.llm = None
-            self.llm_max_tokens = None
-        else:
-            self.llm = LLM(model_name=llm_entity.model_name, openai_api_base=llm_entity.openai_api_base,
-                           openai_api_key=Security.decrypt(llm_entity.encrypted_openai_api_key,
-                                                           json.loads(llm_entity.encrypted_config)),
-                           max_tokens=llm_entity.max_tokens, )
+        if llm_entity is not None:
+            self.llm = LLM(
+                model_name=llm_entity.model_name,
+                openai_api_base=llm_entity.openai_api_base,
+                openai_api_key=Security.decrypt(
+                    llm_entity.encrypted_openai_api_key,
+                    json.loads(llm_entity.encrypted_config)
+                    ),
+                    max_tokens=llm_entity.max_tokens, 
+                    )
             self.llm_max_tokens = llm_entity.max_tokens
         self.tokens = tokens
         self.vectorizer = TfidfVectorizer()
@@ -66,8 +68,7 @@ class BaseService:
                 if cosine_sim > 0.85:
                     return True
         except Exception as e:
-            logging.error(f"Check similarity error due to: {e}")
-            return False
+            logging.error(f'Check_similarity error due to: {e}')
         return False
 
     def merge_texts(self, texts):

@@ -66,6 +66,11 @@ class DocumentDTO(DictionaryBaseModelDTO):
     parser_method: str
 
 
+class TemporaryDocumentDTO(DictionaryBaseModelDTO):
+    id: uuid.UUID
+    status: str
+
+
 class ChunkDTO(DictionaryBaseModelDTO):
     id: str
     text: str
@@ -77,4 +82,4 @@ class ModelDTO(DictionaryBaseModelDTO):
     id: Optional[str] = None
     model_name: Optional[str] = None
     openai_api_base: Optional[str] = None
-    max_tokens : Optional[int] =None
+    max_tokens: Optional[int] = None

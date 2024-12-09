@@ -10,7 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from data_chain.config.config import config
 from data_chain.apps.router import chunk,document,health_check,knowledge_base,model,other,user
-from data_chain.apps.service.task_service import redis_task, monitor_tasks
+from data_chain.apps.service.task_service import task_queue_handler, monitor_tasks
 from data_chain.apps.service.user_service import UserHTTPException
 from data_chain.stores.postgres.postgres import PostgresDB, DocumentTypeEntity, DocumentEntity, KnowledgeBaseEntity, TaskEntity,User
 from data_chain.models.constant import DocumentEmbeddingConstant, KnowledgeStatusEnum, TaskConstant
@@ -37,7 +37,7 @@ async def startup_event():
     TaskRedisHandler.clear_all_task(config['REDIS_PENDING_TASK_QUEUE_NAME'])
     TaskRedisHandler.clear_all_task(config['REDIS_SUCCESS_TASK_QUEUE_NAME'])
     TaskRedisHandler.clear_all_task(config['REDIS_RESTART_TASK_QUEUE_NAME'])
-    scheduler.add_job(redis_task, 'interval', seconds=5)
+    scheduler.add_job(task_queue_handler, 'interval', seconds=5)
     scheduler.add_job(monitor_tasks, 'interval', seconds=25)
     scheduler.start()
     logging.info("Application startup complete.")

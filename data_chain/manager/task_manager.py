@@ -160,7 +160,7 @@ class TaskManager():
             
             result = await session.execute(stmt)
             return result.scalars().all()
-    
+
     @staticmethod
     async def delete_by_op_id(op_id: uuid.UUID) -> TaskEntity:
         async with await PostgresDB.get_session() as session:
@@ -265,16 +265,6 @@ class TaskStatusReportManager():
             return result.scalars().all()
 
     @staticmethod
-    async def select_latest_report_by_task_id(task_id: uuid.UUID):
-        async with await PostgresDB.get_session() as session:
-            stmt = (
-                select(TaskStatusReportEntity)
-                .where(TaskStatusReportEntity.task_id == task_id)
-                .order_by(desc(TaskStatusReportEntity.created_time))
-            ).limit(1)
-            result = await session.execute(stmt)
-            return result.scalars().first()
-    @staticmethod
     async def select_latest_report_by_task_ids(task_ids: List[uuid.UUID]) -> List[TaskStatusReportEntity]:
         async with await PostgresDB.get_session() as session:
             # 创建一个别名用于子查询
@@ -292,7 +282,6 @@ class TaskStatusReportManager():
                 .where(report_alias.task_id.in_(task_ids))
                 .subquery()
             )
-            
             # 主查询选择row_num为1的记录，即每个op_id的最新任务
             stmt = (
                 select(TaskStatusReportEntity)

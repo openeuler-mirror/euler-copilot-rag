@@ -12,27 +12,15 @@ from data_chain.stores.redis.redis import RedisConnectionPool
 from data_chain.manager.task_manager import TaskManager
 from data_chain.manager.document_manager import DocumentManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
-from data_chain.manager.chunk_manager import ChunkManager
+from data_chain.manager.chunk_manager import ChunkManager,TemporaryChunkManager
 from data_chain.models.constant import TaskConstant, DocumentEmbeddingConstant, KnowledgeStatusEnum, OssConstant, TaskActionEnum
 from data_chain.stores.minio.minio import MinIO
+
 multiprocessing = multiprocessing.get_context('spawn')
 class TaskHandler:
     tasks = {}  # 存储进程的字典
     lock = multiprocessing.Lock()  # 创建一个锁对象
-    max_processes = max((os.cpu_count() or 1)//2, 1)  # 获取CPU核心数作为最大进程数，默认为1
-
-    @staticmethod
-    async def start_subprocess(target, *args, **kwargs):
-        process = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "-m", "multiprocessing.spawn",
-            "subprocess_target",
-            args=(target, *args),
-            kwargs=kwargs,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
+    max_processes = min(max((os.cpu_count() or 1)//2, 1),config['DOCUMENT_PARSE_USE_CPU_LIMIT'])  # 获取CPU核心数作为最大进程数，默认为1
 
     @staticmethod
     def subprocess_target(target, *args, **kwargs):
@@ -46,7 +34,7 @@ class TaskHandler:
     @staticmethod
     def add_task(task_id: uuid.UUID, target, *args, **kwargs):
         with TaskHandler.lock:
-            if len(TaskHandler.tasks) >= TaskHandler.max_processes:
+            if len(TaskHandler.tasks)>= TaskHandler.max_processes:
                 logging.info("Reached maximum number of active processes.")
                 return False
 
@@ -60,7 +48,7 @@ class TaskHandler:
         return True
 
     @staticmethod
-    def remove_task(task_id):
+    def remove_task(task_id: uuid.UUID):
         with TaskHandler.lock:
             if task_id in TaskHandler.tasks.keys():
                 process = TaskHandler.tasks[task_id]
@@ -115,22 +103,32 @@ class TaskHandler:
             if task_type == TaskConstant.PARSE_DOCUMENT:
                 await DocumentManager.update(op_id, {'status': DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_STATUS_RUNNING})
                 await ChunkManager.delete_by_document_ids([op_id])
+            elif task_type == TaskConstant.PARSE_TEMPORARY_DOCUMENT:
+                await TemporaryChunkManager.delete_by_temporary_document_ids([op_id])
             elif task_type == TaskConstant.IMPORT_KNOWLEDGE_BASE:
                 await KnowledgeBaseManager.delete(op_id)
             elif task_type == TaskConstant.EXPORT_KNOWLEDGE_BASE:
                 await KnowledgeBaseManager.update(op_id, {'status': KnowledgeStatusEnum.EXPROTING})
+            await TaskManager.update(task_id, {"status": TaskConstant.TASK_STATUS_PENDING})
             TaskRedisHandler.put_task_by_tail(config['REDIS_PENDING_TASK_QUEUE_NAME'], str(task_id))
         elif method == TaskActionEnum.RESTART or method == TaskActionEnum.CANCEL or method == TaskActionEnum.DELETE:
+            TaskRedisHandler.remove_task_by_task_id(config['REDIS_PENDING_TASK_QUEUE_NAME'], str(task_id))
+            TaskRedisHandler.remove_task_by_task_id(config['REDIS_SUCCESS_TASK_QUEUE_NAME'], str(task_id))
+            TaskRedisHandler.remove_task_by_task_id(config['REDIS_RESTART_TASK_QUEUE_NAME'], str(task_id))
             if method == TaskActionEnum.CANCEL:
                 await TaskManager.update(task_id, {"status": TaskConstant.TASK_STATUS_CANCELED})
+            elif method == TaskActionEnum.DELETE:
+                await TaskManager.update(task_id, {"status": TaskConstant.TASK_STATUS_DELETED})
             else:
                 await TaskManager.update(task_id, {"status": TaskConstant.TASK_STATUS_FAILED})
             if task_type == TaskConstant.PARSE_DOCUMENT:
                 await DocumentManager.update(op_id, {'status': DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_STATUS_PENDING})
                 await ChunkManager.delete_by_document_ids([op_id])
+            elif task_type == TaskConstant.PARSE_TEMPORARY_DOCUMENT:
+                await TemporaryChunkManager.delete_by_temporary_document_ids([op_id])
             elif task_type == TaskConstant.IMPORT_KNOWLEDGE_BASE:
                 await KnowledgeBaseManager.delete(op_id)
-                await MinIO.delete_object(OssConstant.MINIO_BUCKET_EXPORTZIP, str(task_entity.op_id))
+                await MinIO.delete_object(OssConstant.MINIO_BUCKET_KNOWLEDGEBASE, str(task_entity.op_id))
             elif task_type == TaskConstant.EXPORT_KNOWLEDGE_BASE:
                 await KnowledgeBaseManager.update(op_id, {'status': KnowledgeStatusEnum.IDLE})
                 await MinIO.delete_object(OssConstant.MINIO_BUCKET_KNOWLEDGEBASE, str(task_id))

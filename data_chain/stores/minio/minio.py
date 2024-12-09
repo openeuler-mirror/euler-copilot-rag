@@ -19,9 +19,6 @@ class MinIO():
     found = client.bucket_exists(OssConstant.MINIO_BUCKET_DOCUMENT)
     if not found:
         client.make_bucket(OssConstant.MINIO_BUCKET_DOCUMENT)
-    found = client.bucket_exists(OssConstant.MINIO_BUCKET_EXPORTZIP)
-    if not found:
-        client.make_bucket(OssConstant.MINIO_BUCKET_EXPORTZIP)
     found = client.bucket_exists(OssConstant.MINIO_BUCKET_KNOWLEDGEBASE)
     if not found:
         client.make_bucket(OssConstant.MINIO_BUCKET_KNOWLEDGEBASE)

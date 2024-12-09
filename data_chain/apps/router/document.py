@@ -2,19 +2,21 @@
 import urllib
 from typing import Dict, List
 import uuid
-from fastapi import HTTPException
-from data_chain.models.service import DocumentDTO
+from fastapi import HTTPException,status
+from data_chain.models.service import DocumentDTO, TemporaryDocumentDTO
 from data_chain.apps.service.user_service import verify_csrf_token, get_user_id, verify_user
 from data_chain.exceptions.err_code import ErrorCode
 from data_chain.exceptions.exception import DocumentException
 from data_chain.models.api import BaseResponse, Page
 from data_chain.models.api import DeleteDocumentRequest, ListDocumentRequest, UpdateDocumentRequest, \
-    RunDocumentEmbeddingRequest, SwitchDocumentRequest
+    RunDocumentRequest, SwitchDocumentRequest, ParserTemporaryDocumenRequest, GetTemporaryDocumentStatusRequest, \
+    DeleteTemporaryDocumentRequest, RelatedTemporaryDocumenRequest
 from data_chain.apps.service.knwoledge_base_service import _validate_knowledge_base_belong_to_user
 from data_chain.apps.service.document_service import _validate_doucument_belong_to_user, delete_document, \
     generate_document_download_link, \
     list_documents_by_knowledgebase_id, run_document, submit_upload_document_task, switch_document, update_document, \
-    get_file_name_and_extension
+    get_file_name_and_extension, init_temporary_document_parse_task, delete_temporary_document, get_temporary_document_parse_status, \
+    get_related_document
 
 from httpx import AsyncClient
 from fastapi import Depends
@@ -58,7 +60,7 @@ async def update(req: UpdateDocumentRequest, user_id=Depends(get_user_id)):
 @router.post('/run', response_model=BaseResponse[List[DocumentDTO]],
              dependencies=[Depends(verify_user),
                            Depends(verify_csrf_token)])
-async def run(reqs: RunDocumentEmbeddingRequest, user_id=Depends(get_user_id)):
+async def run(reqs: RunDocumentRequest, user_id=Depends(get_user_id)):
     try:
         run = reqs.run
         ids = reqs.ids
@@ -149,3 +151,56 @@ async def download(id: uuid.UUID, user_id=Depends(get_user_id)):
                     retcode=ErrorCode.EXPORT_KNOWLEDGE_BASE_ERROR, retmsg="Failed to retrieve the file.", data=None)
     except DocumentException as e:
         return BaseResponse(retcode=ErrorCode.DOWNLOAD_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
+
+
+@router.post('/temporary/related', response_model=BaseResponse[List[uuid.UUID]])
+async def related_temporary_doc(req: RelatedTemporaryDocumenRequest):
+    try:
+        results = await get_related_document(req.content,req.top_k, req.document_ids, req.kb_sn)
+        return BaseResponse(data=results)
+    except Exception as e:
+        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e), data=None)
+
+@router.post('/temporary/parser', response_model=BaseResponse[List[uuid.UUID]])
+async def parser_temporary_doc(req: ParserTemporaryDocumenRequest):
+    try:
+        temporary_document_list = []
+        for i in range(len(req.document_list)):
+            tmp_dict=dict(req.document_list[i])
+            if tmp_dict['type']=='application/pdf':
+                tmp_dict['type']='.pdf'
+            elif tmp_dict['type']=='text/html':
+                tmp_dict['type']='.html'
+            elif tmp_dict['type']=='text/plain':
+                tmp_dict['type']='.txt'
+            elif tmp_dict['type']=='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+                tmp_dict['type']='.xlsx'
+            elif tmp_dict['type']=='text/x-markdown':
+                tmp_dict['type']='.md'
+            elif tmp_dict['type']=='application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                tmp_dict['type']='.docx'
+            elif tmp_dict['type']=='application/msword':
+                tmp_dict['type']='.doc'
+            temporary_document_list.append(tmp_dict)
+        result = await init_temporary_document_parse_task(temporary_document_list)
+        return BaseResponse(data=result)
+    except Exception as e:
+        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e), data=None)
+
+
+@router.post('/temporary/status', response_model=BaseResponse[List[TemporaryDocumentDTO]])
+async def get_temporary_doc_parse_status(req: GetTemporaryDocumentStatusRequest):
+    try:
+        result = await get_temporary_document_parse_status(req.ids)
+        return BaseResponse(data=result)
+    except Exception as e:
+        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e), data=None)
+
+
+@router.post('/temporary/delete', response_model=BaseResponse[List[uuid.UUID]])
+async def delete_temporary_doc(req: DeleteTemporaryDocumentRequest):
+    try:
+        result = await delete_temporary_document(req.ids)
+        return BaseResponse(data=result)
+    except Exception as e:
+        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e), data=None)

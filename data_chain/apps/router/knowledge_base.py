@@ -207,39 +207,31 @@ async def rm_kb_task(req: RmoveTaskRequest, user_id=Depends(get_user_id)):
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)
 async def get_stream_answer(req: QueryRequest, response: Response):
-    def is_valid_uuid4(uuid_str):
-        try:
-            uuid.UUID(uuid_str, version=4)
-            return True
-        except Exception as e:
-            logging.error(f"Invalid UUID string: {e}")
-            return False
     try:
         question = await question_rewrite(req.history, req.question)
         max_tokens = config['MAX_TOKENS']//3
         bac_info = ''
-        if req.kb_sn and is_valid_uuid4(req.kb_sn):
-            document_chunk_list = await get_similar_chunks(uuid.UUID(req.kb_sn), question, config['MAX_TOKENS']//2, req.top_k)
+        document_chunk_list = await get_similar_chunks(content=question,kb_id=req.kb_sn,temporary_document_ids=req.document_ids, max_tokens=config['MAX_TOKENS']//2, topk=req.top_k)
+        for i in range(len(document_chunk_list)):
+            document_name = document_chunk_list[i]['document_name']
+            chunk_list = document_chunk_list[i]['chunk_list']
+            bac_info += '文档名称：'+document_name+':\n\n'
+            for j in range(len(chunk_list)):
+                bac_info += '段落'+str(j)+':\n\n'
+                bac_info += chunk_list[j]+'\n\n'
+        bac_info = split_chunk(bac_info)
+        if len(bac_info) > max_tokens:
+            bac_info = ''
             for i in range(len(document_chunk_list)):
                 document_name = document_chunk_list[i]['document_name']
                 chunk_list = document_chunk_list[i]['chunk_list']
                 bac_info += '文档名称：'+document_name+':\n\n'
                 for j in range(len(chunk_list)):
                     bac_info += '段落'+str(j)+':\n\n'
-                    bac_info += chunk_list[j]+'\n\n'
+                    bac_info += ''.join(filter_stopwords(chunk_list[j]))+'\n\n'
             bac_info = split_chunk(bac_info)
-            if len(bac_info) > max_tokens:
-                bac_info = ''
-                for i in range(len(document_chunk_list)):
-                    document_name = document_chunk_list[i]['document_name']
-                    chunk_list = document_chunk_list[i]['chunk_list']
-                    bac_info += '文档名称：'+document_name+':\n\n'
-                    for j in range(len(chunk_list)):
-                        bac_info += '段落'+str(j)+':\n\n'
-                        bac_info += ''.join(filter_stopwords(chunk_list[j]))+'\n\n'
-                bac_info = split_chunk(bac_info)
-            bac_info = bac_info[:max_tokens]
-            bac_info = ' '.join(bac_info)
+        bac_info = bac_info[:max_tokens]
+        bac_info = ' '.join(bac_info)
     except Exception as e:
         bac_info = ''
         logging.error(f"get bac info failed due to: {e}")
@@ -258,39 +250,31 @@ async def get_stream_answer(req: QueryRequest, response: Response):
 
 @router.post('/get_answer', response_model=BaseResponse[dict])
 async def get_answer(req: QueryRequest):
-    def is_valid_uuid4(uuid_str):
-        try:
-            uuid.UUID(uuid_str, version=4)
-            return True
-        except Exception as e:
-            logging.error(f"Invalid UUID string: {e}")
-            return False
     try:
         question = await question_rewrite(req.history, req.question)
         max_tokens = config['MAX_TOKENS']//3
         bac_info = ''
-        if req.kb_sn and is_valid_uuid4(req.kb_sn):
-            document_chunk_list = await get_similar_chunks(uuid.UUID(req.kb_sn), question, config['MAX_TOKENS']//2, req.top_k)
+        document_chunk_list = await get_similar_chunks(content=question,kb_id=req.kb_sn,temporary_document_ids=req.document_ids, max_tokens=config['MAX_TOKENS']//2, topk=req.top_k)
+        for i in range(len(document_chunk_list)):
+            document_name = document_chunk_list[i]['document_name']
+            chunk_list = document_chunk_list[i]['chunk_list']
+            bac_info += '文档名称：'+document_name+':\n\n'
+            for j in range(len(chunk_list)):
+                bac_info += '段落'+str(j)+':\n\n'
+                bac_info += chunk_list[j]+'\n\n'
+        bac_info = split_chunk(bac_info)
+        if len(bac_info) > max_tokens:
+            bac_info = ''
             for i in range(len(document_chunk_list)):
                 document_name = document_chunk_list[i]['document_name']
                 chunk_list = document_chunk_list[i]['chunk_list']
                 bac_info += '文档名称：'+document_name+':\n\n'
                 for j in range(len(chunk_list)):
                     bac_info += '段落'+str(j)+':\n\n'
-                    bac_info += chunk_list[j]+'\n\n'
+                    bac_info += ''.join(filter_stopwords(chunk_list[j]))+'\n\n'
             bac_info = split_chunk(bac_info)
-            if len(bac_info) > max_tokens:
-                bac_info = ''
-                for i in range(len(document_chunk_list)):
-                    document_name = document_chunk_list[i]['document_name']
-                    chunk_list = document_chunk_list[i]['chunk_list']
-                    bac_info += '文档名称：'+document_name+':\n\n'
-                    for j in range(len(chunk_list)):
-                        bac_info += '段落'+str(j)+':\n\n'
-                        bac_info += ''.join(filter_stopwords(chunk_list[j]))+'\n\n'
-                bac_info = split_chunk(bac_info)
-            bac_info = bac_info[:max_tokens]
-            bac_info = ' '.join(bac_info)
+        bac_info = bac_info[:max_tokens]
+        bac_info = ' '.join(bac_info)
     except Exception as e:
         bac_info = ''
         logging.error(f"get bac info failed due to: {e}")
@@ -301,11 +285,11 @@ async def get_answer(req: QueryRequest):
         }
         if req.fetch_source:
             tmp_dict['source'] = []
-            for i in range(len(document_chunk_list)):
-                document_name = document_chunk_list[i]['document_name']
-                chunk_list = document_chunk_list[i]['chunk_list']
-                for j in range(len(chunk_list)):
-                    tmp_dict['source'].append({'document_name': document_name, 'chunk': chunk_list[j]})
+        for i in range(len(document_chunk_list)):
+            document_name = document_chunk_list[i]['document_name']
+            chunk_list = document_chunk_list[i]['chunk_list']
+            for j in range(len(chunk_list)):
+                tmp_dict['source'].append({'document_name': document_name, 'chunk': chunk_list[j]})
         return BaseResponse(data=tmp_dict)
     except Exception as e:
         logging.error(f"Get stream answer failed due to: {e}")

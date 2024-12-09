@@ -1,5 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from sqlalchemy import select
+from typing import List
 import uuid
 from data_chain.logger.logger import logger as logging
 
@@ -11,17 +12,28 @@ from data_chain.stores.postgres.postgres import PostgresDB, ImageEntity
 class ImageManager:
 
     @staticmethod
-    async def add_image(image_slice: ImageEntity):
+    async def add_image(image_entity: ImageEntity):
         try:
             async with await PostgresDB.get_session() as session:
-                session.add(image_slice)
+                session.add(image_entity)
                 await session.commit()
-                await session.refresh(image_slice)
+                await session.refresh(image_entity)
         except Exception as e:
             logging.error(f"Add image failed due to error: {e}")
             return None
-        return image_slice
-
+        return image_entity
+    @staticmethod
+    async def add_images(image_entity_list: List[ImageEntity]):
+        try:
+            async with await PostgresDB.get_session() as session:
+                session.add_all(image_entity_list)
+                await session.commit()
+                for image_entity in image_entity_list:
+                    await session.refresh(image_entity)
+        except Exception as e:
+            logging.error(f"Add image failed due to error: {e}")
+            return None
+        return image_entity_list
     @staticmethod
     async def del_image_by_image_id(image_id: uuid.UUID):
         try:

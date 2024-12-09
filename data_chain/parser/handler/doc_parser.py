@@ -27,7 +27,7 @@ class DocService(BaseService):
         except Exception as e:
             logging.error(f"Error opening file {file_path} :{e}")
             raise e
-        content=js['content']
+        content=js.get('content','') 
         paragraphs = content.split('\n')
         sentences = []
         for paragraph in paragraphs:

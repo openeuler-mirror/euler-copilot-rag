@@ -7,7 +7,7 @@ from data_chain.apps.service.user_service import verify_csrf_token, get_user_id,
 from data_chain.exceptions.err_code import ErrorCode
 from data_chain.exceptions.exception import DocumentException
 from data_chain.models.api import BaseResponse
-from data_chain.models.api import CreateModelRequest, UpdateModelRequest
+from data_chain.models.api import UpdateModelRequest
 from data_chain.apps.service.model_service import  get_model, update_model
 
 

@@ -1,7 +1,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 
-
-class OssConstant():
+class BaseConstant():
+    @classmethod
+    def get_all_values(cls):
+        return [value for name, value in cls.__dict__.items()
+                if not name.startswith("__") and isinstance(value, str)]
+class OssConstant(BaseConstant):
     IMPORT_FILE_SAVE_FOLDER = "./stash"
     EXPORT_FILE_SAVE_FOLDER = "./export"
     UPLOAD_DOCUMENT_SAVE_FOLDER = "./document"
@@ -10,18 +14,24 @@ class OssConstant():
 
     MINIO_BUCKET_DOCUMENT = "document"
     MINIO_BUCKET_KNOWLEDGEBASE = "knowledgebase"
-    MINIO_BUCKET_EXPORTZIP = "exportzip"
     MINIO_BUCKET_PICTURE = "picture"
 
-class DocumentEmbeddingConstant():
+class DocumentEmbeddingConstant(BaseConstant):
     DOCUMENT_EMBEDDING_RUN = 'run'
     DOCUMENT_EMBEDDING_CANCEL = 'cancel'
 
     DOCUMENT_EMBEDDING_STATUS_PENDING = "pending"
     DOCUMENT_EMBEDDING_STATUS_RUNNING = "running"
 
+class DocumentStatusEnum(BaseConstant):
+    PENDIND='pending'
+    RUNNING='running'
+    DELETED='deleted'
 
-class TaskConstant():
+class TemporaryDocumentStatusEnum(BaseConstant):
+    EXIST='exist'
+    DELETED='deleted'
+class TaskConstant(BaseConstant):
     TASK_REDIS_QUEUE_KEY = "TASK_QUEUE"
 
     TASK_STATUS_PENDING = "pending"
@@ -34,54 +44,33 @@ class TaskConstant():
     IMPORT_KNOWLEDGE_BASE = "import_knowledge_base"
     EXPORT_KNOWLEDGE_BASE = "export_knowledge_base"
     PARSE_DOCUMENT = "parse_document"
+    PARSE_TEMPORARY_DOCUMENT = "parse_temporary_document"
 
-
-class KnowledgeStatusEnum():
+class KnowledgeStatusEnum(BaseConstant):
     IMPORTING = "importing"
     EXPROTING = "exporting"
     IDLE = 'idle'
     DELETE = 'delete'
 
-
-class TaskActionEnum():
+class TaskActionEnum(BaseConstant):
     CANCEL = "cancel"
     RESTART = "restart"
     DELETE = "delete"
 
-
-class KnowledgeLanguageEnum():
+class KnowledgeLanguageEnum(BaseConstant):
     ZH = "简体中文"
     EN = "English"
-    @classmethod
-    def get_all_values(cls):
-        return [value for name, value in cls.__dict__.items()
-                if not name.startswith("__") and isinstance(value, str)]
 
-class EmbeddingModelEnum():
+class EmbeddingModelEnum(BaseConstant):
     BGE_LARGE_ZH = "bge_large_zh"
     BGE_LARGE_EN = "bge_large_en"
-    @classmethod
-    def get_all_values(cls):
-        return [value for name, value in cls.__dict__.items()
-                if not name.startswith("__") and isinstance(value, str)]
 
-
-embedding_model_out_dimensions = {
-    'bge_large_zh': 1024,
-    'bge_large_en': 1024
-}
-
-
-class ParseMethodEnum():
+class ParseMethodEnum(BaseConstant):
     GENERAL = "general"
     OCR = "ocr"
     ENHANCED = "enhanced"
-    @classmethod
-    def get_all_values(cls):
-        return [value for name, value in cls.__dict__.items()
-                if not name.startswith("__") and isinstance(value, str)]
 
-class ParseExtensionEnum():
+class ParseExtensionEnum(BaseConstant):
     PDF = ".pdf"
     DOCX = ".docx"
     DOC = ".doc"
@@ -89,11 +78,7 @@ class ParseExtensionEnum():
     XLSX = ".xlsx"
     HTML = ".html"
     MD = ".md"
-    @classmethod
-    def get_all_values(cls):
-        return [value for name, value in cls.__dict__.items()
-                if not name.startswith("__") and isinstance(value, str)]
-class ChunkRelevance():
+class ChunkRelevance(BaseConstant):
     IRRELEVANT = 1
     WEAKLY_RELEVANT = 2
     RELEVANT_BUT_LACKS_PREVIOUS_CONTEXT = 3
@@ -102,3 +87,7 @@ class ChunkRelevance():
     RELEVANT_AND_COMPLETE = 6
 
 default_document_type_id = '00000000-0000-0000-0000-000000000000'
+embedding_model_out_dimensions = {
+    'bge_large_zh': 1024,
+    'bge_large_en': 1024
+}

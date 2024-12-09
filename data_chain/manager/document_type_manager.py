@@ -33,6 +33,8 @@ class DocumentTypeManager():
 
     @staticmethod
     async def insert_bulk(kb_id: uuid.UUID, types: List[str]) -> List[DocumentTypeEntity]:
+        if types is None or len(types) == 0:
+            return []
         async with await PostgresDB.get_session()as session:
             document_type_entity_list = [
                 DocumentTypeEntity(kb_id=kb_id, type=type) for type in types

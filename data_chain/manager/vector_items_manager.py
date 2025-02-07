@@ -125,7 +125,6 @@ class VectorItemsManager:
                     f"WHERE v.kb_id = :kb_id AND v.enabled = true AND document.enabled = true "
                     f"ORDER BY v.vector <=> :target_vector "
                     f"LIMIT :topk")
-            # 获取会话并执行查询
             async with await PostgresDB.get_session() as session:
                 # 使用execute执行原始SQL语句，并传递参数
                 result = await session.execute(

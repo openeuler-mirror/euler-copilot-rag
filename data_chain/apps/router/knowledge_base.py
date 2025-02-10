@@ -231,7 +231,7 @@ async def get_stream_answer(req: QueryRequest, response: Response):
                     bac_info += ''.join(filter_stopwords(chunk_list[j]))+'\n\n'
             bac_info = split_chunk(bac_info)
         bac_info = bac_info[:max_tokens]
-        bac_info = ' '.join(bac_info)
+        bac_info = ''.join(bac_info)
     except Exception as e:
         bac_info = ''
         logging.error(f"get bac info failed due to: {e}")
@@ -274,7 +274,7 @@ async def get_answer(req: QueryRequest):
                     bac_info += ''.join(filter_stopwords(chunk_list[j]))+'\n\n'
             bac_info = split_chunk(bac_info)
         bac_info = bac_info[:max_tokens]
-        bac_info = ' '.join(bac_info)
+        bac_info = ''.join(bac_info)
     except Exception as e:
         bac_info = ''
         logging.error(f"get bac info failed due to: {e}")

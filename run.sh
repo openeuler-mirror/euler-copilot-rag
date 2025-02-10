@@ -1,4 +1,3 @@
-#!/usr/bin/env sh
-nohup java -jar tika-server-standard-2.9.2.jar &
-python3 /rag-service/data_chain/apps/app.py
-
+nohup dagster-webserver -h 0.0.0.0 -p 3000 &
+nohup dagster-daemon run &
+python3 /rag-service/rag_service/rag_app/app.py

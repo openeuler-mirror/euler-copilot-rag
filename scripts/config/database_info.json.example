@@ -1,0 +1,1 @@
+{"database_url": "postgresql+psycopg2://postgres:123456@0.0.0.0:5444/postgres"}

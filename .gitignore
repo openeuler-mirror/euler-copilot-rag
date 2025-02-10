@@ -7,7 +7,6 @@ poetry.lock
 rag_service/security/init
 *venv
 
-nohup*
 .env
 start.sh
 
@@ -15,15 +14,7 @@ start.sh
 *.crt
 
 /logs
-app.log
 encrypted_config.json
 
 # neo4j docs
 rag_service/vectorstore/neo4j/documents
-# embedding models
-rag_service/embedding_models
-# dagster.yaml
-dagster.yaml
-
-# Vannai
-rag_service/llms/vanna_docs

@@ -1,0 +1,14 @@
+storage:
+  postgres:
+    postgres_url:
+      env: DAGSTER_DB_CONNECTION
+
+run_queue:
+  max_concurrent_runs: 5
+
+run_retries:
+  enabled: true
+  max_retries: 3
+
+telemetry:
+  enabled: false

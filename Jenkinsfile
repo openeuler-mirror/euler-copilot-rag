@@ -1,41 +1,83 @@
-node {
-    echo "拉取代码仓库"
-    checkout scm
-    
-    def REPO = scm.getUserRemoteConfigs()[0].getUrl().tokenize('/').last().split("\\.")[0]
-    def BRANCH = scm.branches[0].name.split("/")[1]
-    def BUILD = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-    
-    withCredentials([string(credentialsId: "host", variable: "HOST")]) {
-        echo "构建当前分支Docker Image镜像"
-        sh "sed -i 's|rag_base|${HOST}:30000/rag-baseimg|g' Dockerfile"
-        docker.withRegistry("http://${HOST}:30000", "dockerAuth") {
-            def image = docker.build("${HOST}:30000/${REPO}:${BUILD}", "-f Dockerfile .")
-            image.push()
-            image.push("${BRANCH}")
+pipeline {
+    agent any
+    parameters{
+        string(name: 'REGISTRY', defaultValue: 'hub.oepkgs.net/neocopilot', description: 'Docker镜像仓库地址')
+        string(name: 'IMAGE', defaultValue: 'euler-copilot-rag', description: 'Docker镜像名')
+        string(name: 'DOCKERFILE_PATH', defaultValue: 'Dockerfile', description: 'Dockerfile位置')
+        booleanParam(name: 'IS_PYC', defaultValue: true, description: 'py转换为pyc')
+        booleanParam(name: 'IS_DEPLOY', defaultValue: false, description: '联动更新K3s deployment')
+        booleanParam(name: 'IS_BRANCH', defaultValue: false, description: '分支主镜像持久保存')
+    }
+    stages {
+        stage('Prepare SCM') {
+            steps {
+                checkout scm
+                script {
+                    BRANCH = scm.branches[0].name.split("/")[1]
+                    BUILD = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+
+                    sh "sed -i 's|app.py|app.pyc|g' run.sh"
+                }
+            }
         }
 
-        def remote = [:]
-        remote.name = "machine"
-        remote.host = "${HOST}"
-        withCredentials([usernamePassword(credentialsId: "ssh", usernameVariable: 'sshUser', passwordVariable: 'sshPass')]) {
-            remote.user = sshUser
-            remote.password = sshPass
+        stage('Convert pyc') {
+            when{
+                expression {
+                    return params.IS_PYC == true
+                }
+            }
+            steps {
+                sh 'python3 -m compileall -f -b .'
+                sh 'find . -name *.py -exec rm -f {} +'
+            }
         }
-        remote.allowAnyHosts = true
+
+        stage('Image build and push') {
+            steps {
+                sh "sed -i 's|rag_base:latest|${params.REGISTRY}/rag-baseimg:${BRANCH}|g' Dockerfile"
+                script {
+                    docker.withRegistry("https://${params.REGISTRY}", "dockerAuth") {
+                        image = docker.build("${params.REGISTRY}/${params.IMAGE}:${BUILD}", ". -f ${params.DOCKERFILE_PATH}")
+                        image.push()
+                        if (params.IS_PYC && params.IS_BRANCH) {
+                            image.push("${BRANCH}")
+                        }
+                    }
+                }
+            }
+        }
         
-        echo "清除构建缓存"
-        sshCommand remote: remote, command: "sh -c \"docker rmi ${HOST}:30000/${REPO}:${BUILD} || true\";"
-        sshCommand remote: remote, command: "sh -c \"docker rmi ${REPO}:${BUILD} || true\";"
-        sshCommand remote: remote, command: "sh -c \"docker rmi ${REPO}:${BRANCH} || true\";"
-        sshCommand remote: remote, command: "sh -c \"docker image prune -f || true\";";
-        sshCommand remote: remote, command: "sh -c \"docker builder prune -f || true\";";
-        sshCommand remote: remote, command: "sh -c \"k3s crictl rmi --prune || true\";";
-            
-        echo "重新部署"
-        withCredentials([usernamePassword(credentialsId: "dockerAuth", usernameVariable: 'dockerUser', passwordVariable: 'dockerPass')]) {
-            sshCommand remote: remote, command: "sh -c \"cd /home/registry/registry-cli; python3 ./registry.py -l ${dockerUser}:${dockerPass} -r http://${HOST}:30000 --delete --keep-tags 'master' '0001' '330-feature' '430-feature' 'local_deploy' || true\";"
+        stage('Image CleanUp') {
+            steps {
+                script {
+                    sh "docker rmi ${params.REGISTRY}/${params.IMAGE}:${BUILD} || true"
+                    sh "docker rmi ${params.REGISTRY}/${params.IMAGE}:${BRANCH} || true"
+
+                    sh "docker image prune -f || true"
+                    sh "docker builder prune -f || true"
+                    sh "k3s crictl rmi --prune || true"
+                }
+            }
         }
-        sshCommand remote: remote, command: "sh -c \"kubectl -n euler-copilot set image deployment/rag-deploy rag=${HOST}:30000/${REPO}:${BUILD}\";"
+        
+        stage('Deploy') {
+            when{
+                expression {
+                    return params.IS_DEPLOY == true
+                }
+            }
+            steps {
+                script {
+                    sh "kubectl -n euler-copilot set image deployment/rag-deploy rag=${params.REGISTRY}/${params.IMAGE}:${BUILD}"
+                }
+            }
+        }
+    }
+
+    post{
+        always {
+            cleanWs(cleanWhenNotBuilt: true, cleanWhenFailure: true)
+        }
     }
 }

@@ -1,9 +1,10 @@
 .vscode
 **/__pycache__/
-**/*.pyc
 Dockerfile
 .dockerignore
 start.sh
+.gitignore
+.git/
 
 logs
 encrypted_config.json
@@ -12,6 +13,3 @@ encrypted_config.json
 rag_service/vectorstore/neo4j/*.json
 rag_service/vectorstore/neo4j/*.txt
 rag_service/vectorstore/neo4j/*.md
-
-# vectorize models
-rag_service/embedding_models

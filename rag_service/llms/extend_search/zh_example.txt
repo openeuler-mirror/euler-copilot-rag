@@ -1,0 +1,61 @@
+表名：oe_community_organization_structure
+表注释：openEuler社区组织架构信息表，存储了openEuler社区成员所属的委员会、职位、姓名和个人信息
+问题：openEuler每个委员会有多少人？
+sql：SELECT committee_name, COUNT(*) FROM oe_community_organization_structure GROUP BY committee_name;
+问题：openEuler的执行总监是谁
+sql：SELECT name FROM oe_community_organization_structure WHERE role = '执行总监';
+问题：openEuler委员会有哪些组织？
+sql：SELECT DISTINCT committee_name from oe_community_organization_structure;
+问题：openEuler技术委员会的主席是谁？
+
+表名：oe_compatibility_overall_unit
+表注释：openEuler支持的整机信息表，存储了openEuler支持的整机的架构、CPU型号、硬件厂家、硬件型号和相关的openEuler版本
+问题：openEuler-22.03 LTS支持哪些整机？
+sql：SELECT main_board_model, cpu, ram FROM oe_compatibility_overall_unit WHERE openeuler_version ILIKE '%openEuler-22.03-LTS%';
+问题：查询所有支持`openEuler-22.09`，并且提供详细产品介绍链接的整机型号和它们的内存配置？
+sql：SELECT hardware_model, ram FROM oe_compatibility_overall_unit WHERE openeuler_version ILIKE '%openEuler-22.09%' AND product_information IS NOT NULL;
+问题：显示所有由新华三生产，支持`openEuler-20.03 LTS SP2`版本的整机，列出它们的型号和架构类型
+sql：SELECT hardware_model, architecture FROM oe_compatibility_overall_unit WHERE hardware_factory = '新华三' AND openeuler_version ILIKE '%openEuler-20.03 LTS SP2%';
+问题：openEuler支持多少种整机？
+
+表名：oe_compatibility_oepkgs
+表注释：openEuler支持的软件包信息表，存储了openEuler支持软件包的名称、简介、是否为官方版本标识、相关的openEuler版本、rpm包下载链接、源码包下载链接、支持的架构、版本
+问题：openEuler-20.03-LTS的非官方软件包有多少个？
+sql：SELECT COUNT(*) FROM oe_compatibility_oepkgs WHERE repotype = 'openeuler_compatible' AND openeuler_version ILIKE '%openEuler-20.03-LTS%';
+问题：openEuler支持的nginx版本有哪些？
+sql：SELECT DISTINCT name,version, srcrpmpackurl FROM oe_compatibility_oepkgs WHERE name ILIKE 'nginx'；
+问题：openEuler的支持哪些架构的glibc？
+sql：SELECT DISTINCT name,arch FROM oe_compatibility_oepkgs WHERE name ILIKE 'glibc';
+问题：openEuler支持的python3这个软件包是用来干什么的？
+sql：SELECT DISTINCT name,summary FROM oe_compatibility_oepkgs WHERE name ILIKE 'python3';
+问题：哪些版本的openEuler的zlib中有官方源的？
+sql：SELECT DISTINCT openeuler_version,name,version FROM oe_compatibility_oepkgs WHERE name ILIKE '%zlib%' AND repotype = 'openeuler_official';
+问题：请以表格的形式提供openEuler-20.09的gcc软件包的下载链接
+sql：SELECT DISTINCT openeuler_version,name, rpmpackurl FROM oe_compatibility_oepkgs WHERE openeuler_version ILIKE '%openEuler-20.09%' AND name ilike 'gcc';
+
+
+表名：oe_community_openeuler_version
+表注释：openEuler社区openEuler版本信息表，存储了openEuler版本的版本、内核版本、发布日期和版本类型
+问题：openEuler社区创新版本有哪些
+sql：SELECT DISTINCT openeuler_version,version_type  FROM oe_community_openeuler_version where version_type ILIKE '%社区创新版本%';
+问题：openEuler有哪些版本
+sql：SELECT openeuler_version FROM public.oe_community_openeuler_version；
+问题：查询openeuler各版本对应的内核版本
+sql：SELECT DISTINCT openeuler_version, kernel_version FROM public.oe_community_openeuler_version;
+问题：openEuler有多少个长期支持版本(LTS)
+sql：SELECT COUNT(*) as publish_version_count FROM public.oe_community_openeuler_version WHERE version_type ILIKE '%长期支持版本%';
+问题：查询openEuler-20.03的所有SP版本
+sql：SELECT openeuler_version FROM public.oe_community_openeuler_version WHERE openeuler_version ILIKE '%openEuler-20.03-LTS-SP%';
+问题：openEuler最新的社区创新版本内核是啥
+sql：SELECT kernel_version FROM public.oe_community_openeuler_version WHERE version_type ILIKE '%社区创新版本%' ORDER BY   publish_time DESC LIMIT 1;
+问题：最早的openEuler版本是什么时候发布的
+sql：SELECT openeuler_version,publish_time FROM public.oe_community_openeuler_version ORDER BY publish_time ASC LIMIT 1;
+问题：最新的openEuler版本是哪个
+sql：SELECT   openeuler_version,publish_time FROM   public.oe_community_openeuler_version ORDER BY   publish_time  LIMIT 1;
+问题：哪个openEuler版本是最近更新的长期支持版本
+sql：SELECT  openeuler_version,publish_time FROM   public.oe_community_openeuler_version WHERE   version_type ILIKE '%长期支持版本%' ORDER BY   publish_time DESC LIMIT 1;
+问题：openEuler每个年份发布了多少个版本
+sql：SELECT   EXTRACT(YEAR FROM publish_time) AS year, COUNT(*) AS publish_version_count FROM  oe_community_openeuler_version group by EXTRACT(YEAR FROM publish_time);
+问题：openEuler-20.03-LTS版本的linux内核是多少？
+sql：SELECT openeuler_version,kernel_version FROM public.oe_community_openeuler_version WHERE openeuler_version = 'openEuler-20.03-LTS';
+

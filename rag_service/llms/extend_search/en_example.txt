@@ -1,0 +1,60 @@
+table name:oe_community_organization_structure
+table note:The openEuler community organizational structure information table stores the committees, positions, names, and personal information of openEuler community members
+question:How many people are in each committee of openEuler?
+sql:SELECT committee_name, COUNT(*) FROM oe_community_organization_structure GROUP BY committee_name;
+question:Who is the Executive Director of openEuler
+sql:SELECT name FROM oe_community_organization_structure WHERE role = '执行总监';
+question:What are the organizations of the openEuler committee?
+sql:SELECT DISTINCT committee_name from oe_community_organization_structure;
+
+
+table name:oe_compatibility_overall_unit
+table note:The machine information table supported by openEuler stores the architecture, CPU model, hardware manufacturer, hardware model, and related openEuler versions of the machines supported by openEuler
+question:What complete machines does openEuler-22.03-LTS support?
+sql:SELECT main_board_model, cpu, ram FROM oe_compatibility_overall_unit WHERE openeuler_version ILIKE '%openEuler-22.03-LTS%';
+question:Search for all machine models and their memory configurations that support openEuler-22.09 and provide detailed product introduction links?
+sql:SELECT hardware_model, ram FROM oe_compatibility_overall_unit WHERE openeuler_version ILIKE '%openEuler-22.09%' AND product_information IS NOT NULL;
+question:Display all complete machines produced by New H3C that support the openEuler-20.03 LTS SP2 version, and list their models and architecture types
+sql:SELECT hardware_model, architecture FROM oe_compatibility_overall_unit WHERE hardware_factory = '新华三' AND openeuler_version ILIKE '%openEuler-20.03 LTS SP2%';
+
+table name:oe_compatibility_oepkgs
+table note:The package information table supported by openEuler stores the names, introductions, official version identifiers, relevant openEuler versions, rpm package download links, source code package download links, supported architectures, and versions of openEuler supported packages
+question:How many unofficial software packages are there for openEuler-20.03-LTS?
+sql:SELECT COUNT(*) FROM oe_compatibility_oepkgs WHERE repotype = 'openeuler_compatible' AND openeuler_version ILIKE '%openEuler-20.03-LTS%';
+question:What are the nginx versions supported by openEuler?
+sql:SELECT DISTINCT name,version, srcrpmpackurl FROM oe_compatibility_oepkgs WHERE name ILIKE 'nginx'；
+question:What architectures of glibc does openEuler support?
+sql:SELECT DISTINCT name,arch FROM oe_compatibility_oepkgs WHERE name ILIKE 'glibc';
+question:What is the purpose of the Python 3 package supported by openEuler?
+sql:SELECT DISTINCT name,summary FROM oe_compatibility_oepkgs WHERE name ILIKE 'python3';
+question:Which versions of openEuler's zlib have official sources?
+sql:SELECT DISTINCT openeuler_version,name,version FROM oe_compatibility_oepkgs WHERE name ILIKE '%zlib%' AND repotype = 'openeuler_official';
+question:Please provide the download link for the gcc package of openEuler-20.09 in the form of a table
+sql:SELECT DISTINCT openeuler_version,name, rpmpackurl FROM oe_compatibility_oepkgs WHERE openeuler_version ILIKE '%openEuler-20.09%' AND name ilike 'gcc';
+
+
+table name:oe_community_openeuler_version
+table note:The openEuler community's openEuler version information table stores the version, kernel version, release date, and version type of openEuler versions
+question:What are the sp versions of openEuler
+sql:SELECT DISTINCT openeuler_version,version_type  FROM oe_community_openeuler_version where version_type ILIKE '%社区创新版本%';
+question:What are the versions of openEuler
+sql:SELECT openeuler_version FROM public.oe_community_openeuler_version；
+question:Query the kernel versions corresponding to each version of openeuler
+sql:SELECT DISTINCT openeuler_version, kernel_version FROM public.oe_community_openeuler_version;
+question:How many LTS versions of openEuler are there
+sql:SELECT COUNT(*) as publish_version_count FROM public.oe_community_openeuler_version WHERE version_type ILIKE '%长期支持版本%';
+question:Search for all SP versions of openEuler-20.03
+sql:SELECT openeuler_version FROM public.oe_community_openeuler_version WHERE openeuler_version ILIKE '%openEuler-20.03-LTS-SP%';
+question:What is the latest sp version of openEuler kernel version
+sql:SELECT kernel_version FROM public.oe_community_openeuler_version WHERE version_type ILIKE '%社区创新版本%' ORDER BY   publish_time DESC LIMIT 1;
+question:When was the earliest version of openEuler released
+sql:SELECT openeuler_version,publish_time FROM public.oe_community_openeuler_version ORDER BY publish_time ASC LIMIT 1;
+question:What is the latest version of openEuler
+sql:SELECT   openeuler_version,publish_time FROM   public.oe_community_openeuler_version ORDER BY   publish_time  LIMIT 1;
+question:Which openEuler version is the latest updated LTS version
+sql:SELECT  openeuler_version,publish_time FROM   public.oe_community_openeuler_version WHERE   version_type ILIKE '%长期支持版本%' ORDER BY   publish_time DESC LIMIT 1;
+question:How many versions of openEuler have been released in each year
+sql:SELECT   EXTRACT(YEAR FROM publish_time) AS year, COUNT(*) AS publish_version_count FROM  oe_community_openeuler_version group by EXTRACT(YEAR FROM publish_time);
+question:What is the Linux kernel for openEuler 20.03-LTS version?
+sql:SELECT openeuler_version,kernel_version FROM public.oe_community_openeuler_version WHERE openeuler_version = 'openEuler-20.03-LTS';
+

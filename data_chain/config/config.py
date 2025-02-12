@@ -32,7 +32,9 @@ class ConfigModel(BaseModel):
     # Task
     TASK_RETRY_TIME: int = Field(None, description="任务重试次数")
     # Embedding
-    REMOTE_EMBEDDING_ENDPOINT: str = Field(None, description="远程embedding服务url地址")
+    EMBEDDING_API_KEY: str = Field(None, description="embedding服务api key")
+    EMBEDDING_ENDPOINT: str = Field(None, description="embedding服务url地址")
+    EMBEDDING_MODEL_NAME: str = Field(None, description="embedding模型名称")
     # Token
     SESSION_TTL: int = Field(None, description="用户session过期时间")
     CSRF_KEY: str = Field(None, description="csrf的密钥")

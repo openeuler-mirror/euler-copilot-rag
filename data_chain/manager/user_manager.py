@@ -10,9 +10,10 @@ from data_chain.stores.postgres.postgres import PostgresDB, User
 class UserManager:
 
     @staticmethod
-    async def add_user(name, account, passwd):
+    async def add_user(name,email, account, passwd):
         user_slice = User(
             name=name,
+            email=email,
             account=account,
             passwd=passwd
         )
@@ -80,7 +81,17 @@ class UserManager:
         except Exception as e:
             logging.error(f"Failed to get user info by account: {e}")
         return None
-
+    @staticmethod
+    async def get_user_info_by_email(email):
+        try:
+            async with await PostgresDB.get_session() as session:
+                stmt = select(User).where(User.email == email)
+                result = await session.execute(stmt)
+                user = result.scalars().first()
+                return user
+        except Exception as e:
+            logging.error(f"Failed to get user info by account: {e}")
+        return None
     @staticmethod
     async def get_user_info_by_user_id(user_id):
         result = None
@@ -92,3 +103,4 @@ class UserManager:
         except Exception as e:
             logging.error(f"Get user failed due to error: {e}")
         return result
+    

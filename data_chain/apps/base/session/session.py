@@ -88,7 +88,7 @@ class SessionManager:
         csrf_value = f"{session_id}{rand}"
         csrf_b64 = base64.b64encode(bytes.fromhex(csrf_value))
 
-        hmac_processor = hmac.new(key=bytes.fromhex(config["CSRF_KEY"]), msg=csrf_b64, digestmod=hashlib.sha256)
+        hmac_processor = hmac.new(key=bytes.fromhex(base64.b64decode(config["CSRF_KEY"])), msg=csrf_b64, digestmod=hashlib.sha256)
         signature = base64.b64encode(hmac_processor.digest())
 
         csrf_b64 = csrf_b64.decode("utf-8")
@@ -120,7 +120,7 @@ class SessionManager:
             except Exception as e:
                 logging.error(f"Get csrf token from session error: {e}")
 
-        hmac_obj = hmac.new(key=bytes.fromhex(config["CSRF_KEY"]),
+        hmac_obj = hmac.new(key=bytes.fromhex(base64.b64decode(config["CSRF_KEY"])),
                             msg=token_msg[0].encode("utf-8"), digestmod=hashlib.sha256)
         signature = hmac_obj.digest()
         current_signature = base64.b64decode(token_msg[1])

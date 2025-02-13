@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import asyncio
 import time
+import re
 import json
 import tiktoken
 from langchain_openai import ChatOpenAI
@@ -27,7 +28,8 @@ class LLM:
     async def nostream(self, chat, system_call, user_call):
         chat = self.assemble_chat(chat, system_call, user_call)
         response = await self.client.ainvoke(chat)
-        return response.content
+        content = re.sub(r'<think>.*?</think>\n\n', '', response.content, flags=re.DOTALL)
+        return content
 
     async def data_producer(self, q: asyncio.Queue, history, system_call, user_call):
         message = self.assemble_chat(history, system_call, user_call)

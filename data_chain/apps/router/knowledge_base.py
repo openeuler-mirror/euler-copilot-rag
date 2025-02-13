@@ -208,7 +208,7 @@ async def rm_kb_task(req: RmoveTaskRequest, user_id=Depends(get_user_id)):
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)
 async def get_stream_answer(req: QueryRequest, response: Response):
-    model_dto=await get_model_by_kb_id
+    model_dto=await get_model_by_kb_id(req.kb_sn)
     try:
         question = await question_rewrite(req.history, req.question,model_dto)
         max_tokens = config['MAX_TOKENS']//3

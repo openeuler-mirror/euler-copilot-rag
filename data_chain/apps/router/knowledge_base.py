@@ -7,8 +7,8 @@ from httpx import AsyncClient
 from fastapi import APIRouter, File, UploadFile, status, HTTPException
 from fastapi import Depends
 from fastapi.responses import StreamingResponse, HTMLResponse, Response
-from data_chain.logger.logger import logger as logging
 
+from data_chain.logger.logger import logger as logging
 from data_chain.apps.service.user_service import verify_csrf_token, get_user_id, verify_user
 from data_chain.exceptions.err_code import ErrorCode
 from data_chain.exceptions.exception import KnowledgeBaseException
@@ -18,6 +18,7 @@ from data_chain.models.api import Page, BaseResponse, ExportKnowledgeBaseRequest
 from data_chain.apps.service.knwoledge_base_service import _validate_knowledge_base_belong_to_user, \
     create_knowledge_base, list_knowledge_base, rm_knowledge_base, generate_knowledge_base_download_link, submit_import_knowledge_base_task, \
     update_knowledge_base, list_knowledge_base_task, stop_knowledge_base_task, submit_export_knowledge_base_task, rm_knowledge_base_task, rm_all_knowledge_base_task
+from data_chain.apps.service.model_service import get_model_by_kb_id
 from data_chain.models.constant import KnowledgeLanguageEnum, TaskConstant
 from data_chain.models.service import KnowledgeBaseDTO
 from data_chain.apps.service.task_service import _validate_task_belong_to_user
@@ -207,8 +208,9 @@ async def rm_kb_task(req: RmoveTaskRequest, user_id=Depends(get_user_id)):
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)
 async def get_stream_answer(req: QueryRequest, response: Response):
+    model_dto=await get_model_by_kb_id(req.kb_sn)
     try:
-        question = await question_rewrite(req.history, req.question)
+        question = await question_rewrite(req.history, req.question,model_dto)
         max_tokens = config['MAX_TOKENS']//3
         bac_info = ''
         document_chunk_list = await get_similar_chunks(content=question,kb_id=req.kb_sn,temporary_document_ids=req.document_ids, max_tokens=config['MAX_TOKENS']//2, topk=req.top_k)
@@ -237,7 +239,7 @@ async def get_stream_answer(req: QueryRequest, response: Response):
         logging.error(f"get bac info failed due to: {e}")
     try:
         response.headers["Content-Type"] = "text/event-stream"
-        res = await get_llm_answer(req.history, bac_info, req.question)
+        res = await get_llm_answer(req.history, bac_info, req.question,is_stream=True,model_dto=model_dto)
         return StreamingResponse(
             res,
             status_code=status.HTTP_200_OK,
@@ -250,8 +252,9 @@ async def get_stream_answer(req: QueryRequest, response: Response):
 
 @router.post('/get_answer', response_model=BaseResponse[dict])
 async def get_answer(req: QueryRequest):
+    model_dto=await get_model_by_kb_id(req.kb_sn)
     try:
-        question = await question_rewrite(req.history, req.question)
+        question = await question_rewrite(req.history, req.question,model_dto)
         max_tokens = config['MAX_TOKENS']//3
         bac_info = ''
         document_chunk_list = await get_similar_chunks(content=question,kb_id=req.kb_sn,temporary_document_ids=req.document_ids, max_tokens=config['MAX_TOKENS']//2, topk=req.top_k)
@@ -279,7 +282,7 @@ async def get_answer(req: QueryRequest):
         bac_info = ''
         logging.error(f"get bac info failed due to: {e}")
     try:
-        answer = await get_llm_answer(req.history, bac_info, req.question, is_stream=False)
+        answer = await get_llm_answer(req.history, bac_info, req.question, is_stream=False,model_dto=model_dto)
         tmp_dict = {
             'answer': answer,
         }

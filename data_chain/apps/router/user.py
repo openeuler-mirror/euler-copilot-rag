@@ -21,6 +21,7 @@ router = APIRouter(
 @router.post("/add", response_model=BaseResponse)
 async def add_user(request: AddUserRequest):
     name = request.name
+    email = request.email
     account = request.account
     passwd = request.passwd
     user_entity = await UserManager.get_user_info_by_account(account)
@@ -30,12 +31,18 @@ async def add_user(request: AddUserRequest):
             retmsg="Sign failed due to duplicate account",
             data={}
         )
-
-    user_entity = await UserManager.add_user(name, account, passwd)
+    user_entity = await UserManager.get_user_info_by_email(email)
+    if user_entity is not None:
+        return BaseResponse(
+            code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            retmsg="Sign failed due to duplicate email",
+            data={}
+        )
+    user_entity = await UserManager.add_user(name,email,account, passwd)
     if user_entity is None:
         return BaseResponse(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            retmsg="Sign failed due to duplicate account",
+            retmsg="Sign failed due to add user failed",
             data={}
         )
     return BaseResponse(

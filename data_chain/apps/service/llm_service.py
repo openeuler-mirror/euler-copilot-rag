@@ -1,13 +1,14 @@
 from typing import List
 import time
 import yaml
+import json
 import jieba
+from data_chain.models.service import ModelDTO
 from data_chain.logger.logger import logger as logging
 from data_chain.config.config import config
 from data_chain.apps.base.model.llm import LLM
 from data_chain.parser.tools.split import split_tools
-
-
+from data_chain.apps.base.security.security import Security
 def load_stopwords(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         stopwords = set(line.strip() for line in f)
@@ -21,7 +22,7 @@ def filter_stopwords(text):
     return filtered_words
 
 
-async def question_rewrite(history: List[dict], question: str) -> str:
+async def question_rewrite(history: List[dict], question: str,model_dto:ModelDTO=None) -> str:
     if not history:
         return question
     try:
@@ -71,6 +72,13 @@ async def question_rewrite(history: List[dict], question: str) -> str:
                           max_tokens=config['MAX_TOKENS'],
                           request_timeout=60,
                           temperature=0.35)
+        if model_dto is not None:
+            default_llm = LLM(model_name=model_dto.model_name,
+                          openai_api_base=model_dto.openai_api_base,
+                          openai_api_key=model_dto.openai_api_key,
+                          max_tokens=model_dto.max_tokens,
+                          request_timeout=60,
+                          temperature=0.35)
         rewrite_question = await default_llm.nostream([], prompt, user_call)
         logging.info(f'改写后的问题为：{rewrite_question}')
         logging.info(f'问题改写耗时：{time.time() - st}')
@@ -85,7 +93,7 @@ async def question_split(question: str) -> List[str]:
     return [question]
 
 
-async def get_llm_answer(history, bac_info, question, is_stream=True):
+async def get_llm_answer(history, bac_info, question, is_stream=True,model_dto:ModelDTO=None):
     try:
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
             prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
@@ -99,6 +107,12 @@ async def get_llm_answer(history, bac_info, question, is_stream=True):
         openai_api_base=config['OPENAI_API_BASE'],
         model_name=config['MODEL_NAME'],
         max_tokens=config['MAX_TOKENS'])
+    if model_dto is not None:
+            llm = LLM(model_name=model_dto.model_name,
+                          openai_api_base=model_dto.openai_api_base,
+                          openai_api_key=model_dto.openai_api_key,
+                          max_tokens=model_dto.max_tokens
+            )
     if is_stream:
         return llm.stream(history, prompt, question)
     res = await llm.nostream(history, prompt, question)

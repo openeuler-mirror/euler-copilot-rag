@@ -22,6 +22,7 @@ class User(Base):
 
     id = Column(UUID, default=uuid4, primary_key=True)  # 用户id
     account = Column(String, unique=True)  # 用户账号
+    email = Column(String, unique=True)  # 用户邮箱
     passwd = Column(String)
     name = Column(String)
     language = Column(String, default='zh')

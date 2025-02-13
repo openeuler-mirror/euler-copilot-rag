@@ -10,14 +10,19 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class Vectorize():
     @staticmethod
     async def vectorize_embedding(text):
+        headers = {
+                    "Authorization": f"Bearer {config['EMBEDDING_API_KEY']}"
+                }
         data = {
-            "texts": [text]
+            "input": text,
+            "model": config["EMBEDDING_MODEL_NAME"],
+            "encoding_format": "float"
         }
         try:
-            res = requests.post(url=config["REMOTE_EMBEDDING_ENDPOINT"], json=data, verify=False)
+            res = requests.post(url=config["EMBEDDING_ENDPOINT"],headers=headers, json=data, verify=False)
             if res.status_code != 200:
                 return None
-            return res.json()[0]
+            return res.json()['data'][0]['embedding']
         except Exception as e:
             logging.error(f"Embedding error failed due to: {e}")
             return None

@@ -8,7 +8,7 @@ from data_chain.exceptions.err_code import ErrorCode
 from data_chain.exceptions.exception import DocumentException
 from data_chain.models.api import BaseResponse
 from data_chain.models.api import UpdateModelRequest
-from data_chain.apps.service.model_service import  get_model, update_model
+from data_chain.apps.service.model_service import get_model_by_user_id, get_model_by_kb_id, update_model
 
 
 router = APIRouter(prefix='/model', tags=['Model'])
@@ -27,11 +27,12 @@ async def update(req: UpdateModelRequest, user_id=Depends(get_user_id)):
 
 
 @router.get('/get', response_model=BaseResponse[ModelDTO],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
+            dependencies=[Depends(verify_user),
+                          Depends(verify_csrf_token)])
 async def get(user_id=Depends(get_user_id)):
     try:
-        model_dto = await get_model(user_id)
+        model_dto = await get_model_by_user_id(user_id)
+        model_dto.openai_api_key = None
         return BaseResponse(data=model_dto)
     except DocumentException as e:
         return BaseResponse(retcode=ErrorCode.UPDATE_MODEL_ERROR, retmsg=str(e.args[0]), data=None)

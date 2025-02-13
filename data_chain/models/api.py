@@ -177,12 +177,11 @@ class SwitchChunkRequest(DictionaryBaseModel):
     ids: List[uuid.UUID]  # 支持批量操作
     enabled: bool  # True启用, False未启用
 
-
-class AddUserRequest(DictionaryBaseModel):
-    name: str
-    account: str
-    passwd: str
-
+class AddUserRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=10, description="用户名，长度在1到10个字符")
+    email: str = Field(..., min_length=5, max_length=30,pattern='^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', description="邮箱，长度在5到30个字符")
+    account: str = Field(..., min_length=5, max_length=20, pattern="^[a-z0-9]+$", description="账号，由小写字母和数字组成，长度在5到20个字符")
+    passwd: str = Field(..., min_length=63, max_length=65, description="密码的哈希")
 
 class UpdateUserRequest(DictionaryBaseModel):
     name: Optional[str] = None

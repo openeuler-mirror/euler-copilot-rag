@@ -66,10 +66,10 @@ async def question_rewrite(history: List[dict], question: str,model_dto:ModelDTO
             history_prompt = ''.join(splited_prompt)
         prompt = prompt.format(history=history_prompt, question=question)
         user_call = "请输出改写后的问题"
-        default_llm = LLM(model_name=config['MODEL_NAME'],
-                          openai_api_base=config['OPENAI_API_BASE'],
-                          openai_api_key=config['OPENAI_API_KEY'],
-                          max_tokens=config['MAX_TOKENS'],
+        default_llm = LLM(model_name=config['MODELS'][0]['MODEL_NAME'],
+                          openai_api_base=config['MODELS'][0]['OPENAI_API_BASE'],
+                          openai_api_key=config['MODELS'][0]['OPENAI_API_KEY'],
+                          max_tokens=config['MODELS'][0]['MAX_TOKENS'],
                           request_timeout=60,
                           temperature=0.35)
         if model_dto is not None:
@@ -103,10 +103,10 @@ async def get_llm_answer(history, bac_info, question, is_stream=True,model_dto:M
         logging.error(f'Get prompt failed : {e}')
         raise e
     llm = LLM(
-        openai_api_key=config['OPENAI_API_KEY'],
-        openai_api_base=config['OPENAI_API_BASE'],
-        model_name=config['MODEL_NAME'],
-        max_tokens=config['MAX_TOKENS'])
+        openai_api_key=config['MODELS'][0]['OPENAI_API_KEY'],
+        openai_api_base=config['MODELS'][0]['OPENAI_API_BASE'],
+        model_name=config['MODELS'][0]['MODEL_NAME'],
+        max_tokens=config['MODELS'][0]['MAX_TOKENS'])
     if model_dto is not None:
             llm = LLM(model_name=model_dto.model_name,
                           openai_api_base=model_dto.openai_api_base,

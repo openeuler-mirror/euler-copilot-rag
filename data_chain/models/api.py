@@ -192,10 +192,12 @@ class UpdateUserRequest(DictionaryBaseModel):
     language: Optional[str] = None
 
 class UpdateModelRequest(DictionaryBaseModel):
-    model_name: str=Field(...,min_length=1, max_length=128)
-    openai_api_base: str=Field(...,min_length=1, max_length=128)
-    openai_api_key: str=Field(...,min_length=1, max_length=128)
-    max_tokens: int=Field(1024, ge=1024, le=8192)
+    id:Optional[uuid.UUID]=Field(None)
+    model_name: Optional[str]=Field(None,min_length=1, max_length=128)
+    openai_api_base: Optional[str]=Field(None,min_length=1, max_length=128)
+    openai_api_key: Optional[str]=Field(None,min_length=1, max_length=128)
+    max_tokens: Optional[int]=Field(None, ge=1024, le=8192)
+    is_online: bool=Field(default=True)
 
 
 class QueryRequest(BaseModel):

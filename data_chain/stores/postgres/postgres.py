@@ -12,7 +12,7 @@ from sqlalchemy.orm import declarative_base, relationship
 
 from data_chain.config.config import config
 from data_chain.models.api import CreateKnowledgeBaseRequest
-from data_chain.models.constant import KnowledgeStatusEnum,ParseMethodEnum
+from data_chain.models.constant import KnowledgeStatusEnum, ParseMethodEnum
 
 Base = declarative_base()
 
@@ -42,7 +42,9 @@ class ModelEntity(Base):
     __tablename__ = 'model'
     id = Column(UUID, default=uuid4, primary_key=True)
     user_id = Column(UUID, ForeignKey('users.id', ondelete="CASCADE"))
+    is_online = Column(Boolean, default=False)
     model_name = Column(String)
+    model_type = Column(String)
     openai_api_base = Column(String)
     encrypted_openai_api_key = Column(String)
     encrypted_config = Column(String)
@@ -59,16 +61,16 @@ class KnowledgeBaseEntity(Base):
 
     id = Column(UUID, default=uuid4, primary_key=True)
     user_id = Column(UUID, ForeignKey('users.id', ondelete="CASCADE"))  # 用户id
-    name = Column(String,default='')  # 知识库名资产名
+    name = Column(String, default='')  # 知识库名资产名
     language = Column(String, default='zh')  # 资产文档语言
-    description = Column(String,default='')  # 资产描述
+    description = Column(String, default='')  # 资产描述
     embedding_model = Column(String)  # 资产向量化模型
-    document_number = Column(Integer,default=0)  # 资产文档个数
-    document_size = Column(Integer,default=0)  # 资产下所有文档大小(TODO: 单位kb或者字节)
-    default_parser_method = Column(String,default=ParseMethodEnum.GENERAL)  # 默认解析方法
-    default_chunk_size = Column(Integer,default=1024)  # 默认分块大小
+    document_number = Column(Integer, default=0)  # 资产文档个数
+    document_size = Column(Integer, default=0)  # 资产下所有文档大小(TODO: 单位kb或者字节)
+    default_parser_method = Column(String, default=ParseMethodEnum.GENERAL)  # 默认解析方法
+    default_chunk_size = Column(Integer, default=1024)  # 默认分块大小
     vector_items_id = Column(UUID, default=uuid4)  # 向量表id
-    status = Column(String,default=KnowledgeStatusEnum.IDLE)
+    status = Column(String, default=KnowledgeStatusEnum.IDLE)
     created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
     updated_time = Column(
         TIMESTAMP(timezone=True),
@@ -220,10 +222,10 @@ class TemporaryDocumentEntity(Base):
     id = Column(UUID, default=uuid4, primary_key=True)
     name = Column(String)
     extension = Column(String)
-    bucket_name=Column(String)
-    parser_method=Column(String)
+    bucket_name = Column(String)
+    parser_method = Column(String)
     chunk_size = Column(Integer)  # 文档分块大小
-    status=Column(String) 
+    status = Column(String)
     created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
 
 

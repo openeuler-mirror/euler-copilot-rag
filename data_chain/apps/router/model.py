@@ -1,14 +1,14 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from fastapi import Depends
 from fastapi import APIRouter
-
+from typing import List
 from data_chain.models.service import ModelDTO
 from data_chain.apps.service.user_service import verify_csrf_token, get_user_id, verify_user
 from data_chain.exceptions.err_code import ErrorCode
 from data_chain.exceptions.exception import DocumentException
 from data_chain.models.api import BaseResponse
 from data_chain.models.api import UpdateModelRequest
-from data_chain.apps.service.model_service import get_model_by_user_id, get_model_by_kb_id, update_model
+from data_chain.apps.service.model_service import get_model_by_user_id, list_offline_model, update_model
 
 
 router = APIRouter(prefix='/model', tags=['Model'])
@@ -20,9 +20,11 @@ router = APIRouter(prefix='/model', tags=['Model'])
 async def update(req: UpdateModelRequest, user_id=Depends(get_user_id)):
     try:
         update_dict = dict(req)
+        update_dict['user_id']=user_id
         model_dto = await update_model(user_id, update_dict)
+        model_dto.openai_api_key=None
         return BaseResponse(data=model_dto)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.UPDATE_MODEL_ERROR, retmsg=str(e.args[0]), data=None)
 
 
@@ -34,5 +36,16 @@ async def get(user_id=Depends(get_user_id)):
         model_dto = await get_model_by_user_id(user_id)
         model_dto.openai_api_key = None
         return BaseResponse(data=model_dto)
-    except DocumentException as e:
+    except Exception as e:
+        return BaseResponse(retcode=ErrorCode.UPDATE_MODEL_ERROR, retmsg=str(e.args[0]), data=None)
+
+
+@router.get('/list', response_model=BaseResponse[List[ModelDTO]],
+            dependencies=[Depends(verify_user),
+                          Depends(verify_csrf_token)])
+async def list():
+    try:
+        model_dto_list = await list_offline_model()
+        return BaseResponse(data=model_dto_list)
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.UPDATE_MODEL_ERROR, retmsg=str(e.args[0]), data=None)

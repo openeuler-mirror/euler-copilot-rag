@@ -81,6 +81,8 @@ class ChunkDTO(DictionaryBaseModelDTO):
 class ModelDTO(DictionaryBaseModelDTO):
     id: Optional[str] = None
     model_name: Optional[str] = None
+    model_type: Optional[str] = None
     openai_api_base: Optional[str] = None
     openai_api_key: Optional[str] = None
     max_tokens: Optional[int] = None
+    is_online: Optional[bool] = None

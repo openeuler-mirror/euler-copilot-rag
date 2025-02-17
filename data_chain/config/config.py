@@ -1,11 +1,28 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import os
-
+import uuid
 from dotenv import dotenv_values
 from pydantic import BaseModel, Field
+from typing import List
 
 
-class ConfigModel(BaseModel):
+class DictBaseModel(BaseModel):
+    def __getitem__(self, key):
+        if key in self.__dict__:
+            return getattr(self, key)
+        return None
+
+
+class ModelConfig(DictBaseModel):
+    MODEL_ID: str = Field(default_factory=lambda: uuid.uuid4(), description="模型ID")
+    MODEL_NAME: str = Field(..., description="使用的语言模型名称或版本")
+    MODEL_TYPE: str = Field(..., description="语言模型类型")
+    OPENAI_API_BASE: str = Field(..., description="语言模型服务的基础URL")
+    OPENAI_API_KEY: str = Field(..., description="语言模型访问密钥")
+    MAX_TOKENS: int = Field(..., description="单次请求中允许的最大Token数")
+
+
+class ConfigModel(DictBaseModel):
     # FastAPI
     UVICORN_IP: str = Field(None, description="FastAPI 服务的IP地址")
     UVICORN_PORT: int = Field(None, description="FastAPI 服务的端口号")
@@ -13,7 +30,7 @@ class ConfigModel(BaseModel):
     SSL_KEYFILE: str = Field(None, description="SSL密钥文件的路径")
     SSL_ENABLE: bool = Field(None, description="是否启用SSL连接")
     # LOG METHOD
-    LOG_METHOD:str = Field('stdout', description="日志记录方式")
+    LOG_METHOD: str = Field('stdout', description="日志记录方式")
     # Postgres
     DATABASE_URL: str = Field(None, description="Postgres数据库链接url")
     # MinIO
@@ -28,7 +45,8 @@ class ConfigModel(BaseModel):
     REDIS_PENDING_TASK_QUEUE_NAME: str = Field(default='rag_pending_task_queue', description="redis等待开始任务队列名称")
     REDIS_SUCCESS_TASK_QUEUE_NAME: str = Field(default='rag_success_task_queue', description="redis已经完成任务队列名称")
     REDIS_RESTART_TASK_QUEUE_NAME: str = Field(default='rag_restart_task_queue', description="redis等待重启任务队列名称")
-    REDIS_SILENT_ERROR_TASK_QUEUE_NAME: str = Field(default='rag_silent_error_task_queue', description="redis等待重启任务队列名称")
+    REDIS_SILENT_ERROR_TASK_QUEUE_NAME: str = Field(
+        default='rag_silent_error_task_queue', description="redis等待重启任务队列名称")
     # Task
     TASK_RETRY_TIME: int = Field(None, description="任务重试次数")
     # Embedding
@@ -47,19 +65,17 @@ class ConfigModel(BaseModel):
     # Stop Words PATH
     STOP_WORDS_PATH: str = Field(None, description="停用词表存放位置")
     # LLM config
-    MODEL_NAME: str = Field(None, description="使用的语言模型名称或版本")
-    OPENAI_API_BASE: str = Field(None, description="语言模型服务的基础URL")
-    OPENAI_API_KEY: str = Field(None, description="语言模型访问密钥")
-    REQUEST_TIMEOUT: int = Field(None, description="大模型请求超时时间")
-    MAX_TOKENS: int = Field(None, description="单次请求中允许的最大Token数")
+    MODELS: List[ModelConfig] = Field(..., description="多个大模型的配置列表")
     MODEL_ENH: bool = Field(None, description="是否使用大模型能力增强")
     # DEFAULT USER
     DEFAULT_USER_ACCOUNT: str = Field(default='admin', description="默认用户账号")
-    DEFAULT_USER_PASSWD: str = Field(default='123456', description="默认用户密码")
+    DEFAULT_USER_PASSWD: str = Field(default='8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', description="默认用户密码")
     DEFAULT_USER_NAME: str = Field(default='admin', description="默认用户名称")
     DEFAULT_USER_LANGUAGE: str = Field(default='zh', description="默认用户语言")
     # DOCUMENT PARSER
-    DOCUMENT_PARSE_USE_CPU_LIMIT:int=Field(default=4,description="文档解析器使用CPU核数")
+    DOCUMENT_PARSE_USE_CPU_LIMIT: int = Field(default=4, description="文档解析器使用CPU核数")
+
+
 class Config:
     config: ConfigModel
 
@@ -68,7 +84,20 @@ class Config:
             config_file = os.getenv("CONFIG")
         else:
             config_file = "data_chain/common/.env"
-        self.config = ConfigModel(**(dotenv_values(config_file)))
+        env_vars = dotenv_values(config_file)
+
+        models_configs = []
+        model_keys = set([k.split('_')[1] for k in env_vars.keys() if k.startswith('MODEL_')])  # 提取模型标识符
+
+        for model_key in model_keys:
+            single_model_config = {
+                k.replace(f'MODEL_{model_key}_', ''): v for k, v in env_vars.items()
+                if k.startswith(f'MODEL_{model_key}')}
+            models_configs.append(single_model_config)
+        self.config = ConfigModel(
+            MODELS=[ModelConfig(**model_cfg) for model_cfg in models_configs],
+            **{k: v for k, v in env_vars.items() if not k.startswith('MODEL_')}
+        )
         if os.getenv("PROD"):
             os.remove(config_file)
 

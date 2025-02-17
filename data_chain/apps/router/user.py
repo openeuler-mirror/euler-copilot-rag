@@ -31,13 +31,14 @@ async def add_user(request: AddUserRequest):
             retmsg="Sign failed due to duplicate account",
             data={}
         )
-    user_entity = await UserManager.get_user_info_by_email(email)
-    if user_entity is not None:
-        return BaseResponse(
-            code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            retmsg="Sign failed due to duplicate email",
-            data={}
-        )
+    if email is not None:
+        user_entity = await UserManager.get_user_info_by_email(email)
+        if user_entity is not None:
+            return BaseResponse(
+                code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                retmsg="Sign failed due to duplicate email",
+                data={}
+            )
     user_entity = await UserManager.add_user(name,email,account, passwd)
     if user_entity is None:
         return BaseResponse(
@@ -54,14 +55,14 @@ async def add_user(request: AddUserRequest):
 
 @router.post("/del", response_model=BaseResponse, dependencies=[Depends(verify_user), Depends(verify_csrf_token)])
 async def del_user(request: Request, response: Response, user_id=Depends(get_user_id)):
-    session_id = request.cookies['ECSESSION']
+    session_id = request.cookies['WD_ECSESSION']
     if not SessionManager.verify_user(session_id):
         logging.info("User already logged out.")
         return BaseResponse(code=200, retmsg="ok", data={})
 
     SessionManager.delete_session(user_id)
-    response.delete_cookie("ECSESSION")
-    response.delete_cookie("_csrf_tk")
+    response.delete_cookie("WD_ECSESSION")
+    response.delete_cookie("wd_csrf_tk")
     await UserManager.del_user_by_user_id(user_id)
     response_data = BaseResponse(
         code=status.HTTP_200_OK,
@@ -96,16 +97,16 @@ async def login(request: Request, response: Response, account: str):
     new_csrf_token = SessionManager.create_csrf_token(current_session)
     if config['COOKIE_MODE'] == 'DEBUG':
         response.set_cookie(
-            "_csrf_tk",
+            "wd_csrf_tk",
             new_csrf_token
         )
         response.set_cookie(
-            "ECSESSION",
+            "WD_ECSESSION",
             current_session
         )
     else:
         response.set_cookie(
-            "_csrf_tk",
+            "wd_csrf_tk",
             new_csrf_token,
             max_age=config["SESSION_TTL"] * 60,
             secure=config['SSL_ENABLE'],
@@ -113,7 +114,7 @@ async def login(request: Request, response: Response, account: str):
             samesite="strict"
         )
         response.set_cookie(
-            "ECSESSION",
+            "WD_ECSESSION",
             current_session,
             max_age=config["SESSION_TTL"] * 60,
             secure=config['SSL_ENABLE'],
@@ -134,14 +135,14 @@ async def login(request: Request, response: Response, account: str):
 
 @router.get("/logout", response_model=BaseResponse, dependencies=[Depends(verify_csrf_token)])
 async def logout(request: Request, response: Response, user_id=Depends(get_user_id)):
-    session_id = request.cookies['ECSESSION']
+    session_id = request.cookies['WD_ECSESSION']
     if not SessionManager.verify_user(session_id):
         logging.info("User already logged out.")
         return BaseResponse(code=200, retmsg="ok", data={})
 
     SessionManager.delete_session(user_id)
-    response.delete_cookie("ECSESSION")
-    response.delete_cookie("_csrf_tk")
+    response.delete_cookie("WD_ECSESSION")
+    response.delete_cookie("wd_csrf_tk")
     return {
         "code": status.HTTP_200_OK,
         "rtmsg": "Logout success",

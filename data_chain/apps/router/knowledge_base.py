@@ -208,7 +208,9 @@ async def rm_kb_task(req: RmoveTaskRequest, user_id=Depends(get_user_id)):
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)
 async def get_stream_answer(req: QueryRequest, response: Response):
-    model_dto = await get_model_by_kb_id(req.kb_sn)
+    model_dto=None
+    if req.kb_sn is not None:
+        model_dto = await get_model_by_kb_id(req.kb_sn)
     if model_dto is None:
         if len(config['MODELS']) > 0:
             tokens_upper = config['MODELS'][0]['MAX_TOKENS']
@@ -259,7 +261,9 @@ async def get_stream_answer(req: QueryRequest, response: Response):
 
 @router.post('/get_answer', response_model=BaseResponse[dict])
 async def get_answer(req: QueryRequest):
-    model_dto = await get_model_by_kb_id(req.kb_sn)
+    model_dto=None
+    if req.kb_sn is not None:
+        model_dto = await get_model_by_kb_id(req.kb_sn)
     if model_dto is None:
         if len(config['MODELS']) > 0:
             tokens_upper = config['MODELS'][0]['MAX_TOKENS']

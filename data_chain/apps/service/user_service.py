@@ -20,7 +20,7 @@ class UserHTTPException(HTTPException):
 
 def verify_user(request: HTTPConnection):
     try:
-        session_id = request.cookies["ECSESSION"]
+        session_id = request.cookies["WD_ECSESSION"]
     except:
         raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 retcode=401, rtmsg="Authentication Error.", data="")
@@ -31,7 +31,7 @@ def verify_user(request: HTTPConnection):
 
 def get_session(request: HTTPConnection):
     try:
-        session_id = request.cookies["ECSESSION"]
+        session_id = request.cookies["WD_ECSESSION"]
     except:
         raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 retcode=401, rtmsg="Authentication Error.", data="")
@@ -43,7 +43,7 @@ def get_session(request: HTTPConnection):
 
 def get_user_id(request: HTTPConnection) -> uuid:
     try:
-        session_id = request.cookies["ECSESSION"]
+        session_id = request.cookies["WD_ECSESSION"]
     except:
         raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 retcode=401, rtmsg="Authentication Error.", data="")
@@ -78,7 +78,7 @@ def verify_csrf_token(request: Request, response: Response):
         return
     try:
         csrf_token = request.headers.get('x-csrf-token').strip("\"")
-        session = request.cookies.get('ECSESSION')
+        session = request.cookies.get('WD_ECSESSION')
     except:
         raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 retcode=401, rtmsg="Authentication Error.", data="")
@@ -91,6 +91,6 @@ def verify_csrf_token(request: Request, response: Response):
         raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, retcode=401,
                                 rtmsg="Renew CSRF token failed.", data="")
 
-    response.set_cookie("_csrf_tk", new_csrf_token, max_age=config["SESSION_TTL"] * 60,
+    response.set_cookie("wd_csrf_tk", new_csrf_token, max_age=config["SESSION_TTL"] * 60,
                         secure=True, domain=config["DOMAIN"], samesite="strict")
     return response

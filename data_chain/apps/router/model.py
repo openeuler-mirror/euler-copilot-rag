@@ -24,7 +24,7 @@ async def update(req: UpdateModelRequest, user_id=Depends(get_user_id)):
         model_dto = await update_model(user_id, update_dict)
         model_dto.openai_api_key=None
         return BaseResponse(data=model_dto)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.UPDATE_MODEL_ERROR, retmsg=str(e.args[0]), data=None)
 
 
@@ -36,7 +36,7 @@ async def get(user_id=Depends(get_user_id)):
         model_dto = await get_model_by_user_id(user_id)
         model_dto.openai_api_key = None
         return BaseResponse(data=model_dto)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.UPDATE_MODEL_ERROR, retmsg=str(e.args[0]), data=None)
 
 
@@ -47,5 +47,5 @@ async def list():
     try:
         model_dto_list = await list_offline_model()
         return BaseResponse(data=model_dto_list)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.UPDATE_MODEL_ERROR, retmsg=str(e.args[0]), data=None)

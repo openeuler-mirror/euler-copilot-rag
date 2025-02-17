@@ -69,7 +69,7 @@ class ConfigModel(DictBaseModel):
     MODEL_ENH: bool = Field(None, description="是否使用大模型能力增强")
     # DEFAULT USER
     DEFAULT_USER_ACCOUNT: str = Field(default='admin', description="默认用户账号")
-    DEFAULT_USER_PASSWD: str = Field(default='123456', description="默认用户密码")
+    DEFAULT_USER_PASSWD: str = Field(default='8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', description="默认用户密码")
     DEFAULT_USER_NAME: str = Field(default='admin', description="默认用户名称")
     DEFAULT_USER_LANGUAGE: str = Field(default='zh', description="默认用户语言")
     # DOCUMENT PARSER

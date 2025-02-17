@@ -40,7 +40,7 @@ async def list(req: ListDocumentRequest, user_id=Depends(get_user_id)):
                              total=document_list_tuple[1],
                              data_list=document_list_tuple[0])
         return BaseResponse(data=document_page)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.LIST_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
 
 
@@ -53,7 +53,7 @@ async def update(req: UpdateDocumentRequest, user_id=Depends(get_user_id)):
         tmp_dict = dict(req)
         document = await update_document(tmp_dict)
         return BaseResponse(data=document)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.RENAME_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
 
 
@@ -70,7 +70,7 @@ async def run(reqs: RunDocumentRequest, user_id=Depends(get_user_id)):
             document = await run_document(dict(id=req_id, run=run))
             document_dto_list.append(document)
         return BaseResponse(data=document_dto_list)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.RUN_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
 
 
@@ -82,7 +82,7 @@ async def switch(req: SwitchDocumentRequest, user_id=Depends(get_user_id)):
         await _validate_doucument_belong_to_user(user_id, req.id)
         document = await switch_document(req.id, req.enabled)
         return BaseResponse(data=document)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.SWITCH_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
 
 
@@ -95,7 +95,7 @@ async def rm(req: DeleteDocumentRequest, user_id=Depends(get_user_id)):
             await _validate_doucument_belong_to_user(user_id, id)
         deleted_cnt = await delete_document(req.ids)
         return BaseResponse(data=deleted_cnt)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.DELETE_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
 
 
@@ -121,7 +121,7 @@ async def upload(kb_id: str, files: List[UploadFile] = File(...), user_id=Depend
         await _validate_knowledge_base_belong_to_user(user_id, kb_id)
         res = await submit_upload_document_task(user_id, kb_id, files)
         return BaseResponse(data=res)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.UPLOAD_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
 
 
@@ -149,7 +149,7 @@ async def download(id: uuid.UUID, user_id=Depends(get_user_id)):
             else:
                 return BaseResponse(
                     retcode=ErrorCode.EXPORT_KNOWLEDGE_BASE_ERROR, retmsg="Failed to retrieve the file.", data=None)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.DOWNLOAD_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
 
 

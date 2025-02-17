@@ -24,7 +24,7 @@ async def _validate_model_belong_to_user(user_id: uuid.UUID, model_id: uuid.UUID
 
 async def test_model_connection(model_name, openai_api_base, openai_api_key, max_tokens):
     try:
-        llm = LLM(openai_api_key,openai_api_base,model_name, max_tokens)
+        llm = LLM(openai_api_key, openai_api_base, model_name, max_tokens)
         await asyncio.wait_for(llm.nostream([], "hello world", "hello world"), timeout=60)
         return True
     except Exception as e:
@@ -42,9 +42,7 @@ async def get_model_by_kb_id(kb_id):
     kb_entity = await KnowledgeBaseManager.select_by_id(kb_id)
     if kb_entity is not None:
         model_entity = await ModelManager.select_by_user_id(kb_entity.user_id)
-    if model_entity is not None:
-        return ModelConvertor.convert_entity_to_dto(model_entity)
-    return None
+    return ModelConvertor.convert_entity_to_dto(model_entity)
 
 
 async def list_offline_model():
@@ -68,6 +66,8 @@ async def update_model(user_id, update_dict):
                 update_dict['openai_api_base'] = model_config['OPENAI_API_BASE']
                 update_dict['openai_api_key'] = model_config['OPENAI_API_KEY']
                 update_dict['max_tokens'] = model_config['MAX_TOKENS']
+        if 'id' in update_dict.keys():
+            del update_dict['id']
     else:
         update_dict['model_type'] = ''
     encrypted_openai_api_key, encrypted_config = Security.encrypt(update_dict['openai_api_key'])

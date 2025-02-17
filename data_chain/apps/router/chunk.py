@@ -25,7 +25,7 @@ async def list(req: ListChunkRequest, user_id=Depends(get_user_id)):
                           total=total,
                           data_list=chunk_list)
         return BaseResponse(data=chunk_page)
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.CREATE_CHUNK_ERROR, retmsg=str(e.args[0]))
 
 
@@ -39,5 +39,5 @@ async def switch(req: SwitchChunkRequest, user_id=Depends(get_user_id)):
         for id in req.ids:
             await switch_chunk(id, req.enabled)
         return BaseResponse(data='success')
-    except DocumentException as e:
+    except Exception as e:
         return BaseResponse(retcode=ErrorCode.SWITCH_CHUNK_ERROR, retmsg=str(e.args[0]))

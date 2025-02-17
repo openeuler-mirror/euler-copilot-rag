@@ -119,18 +119,25 @@ async def get_llm_answer(history, bac_info, question, is_stream=True,model_dto:M
     return res
 
 
-async def get_question_chunk_relation(question, chunk):
+async def get_question_chunk_relation(question, chunk,model_dto:ModelDTO=None):
     with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
         prompt_template_dict = yaml.load(f, Loader=yaml.SafeLoader)
 
     prompt = prompt_template_dict['DETERMINE_ANSWER_AND_QUESTION']
     prompt = prompt.format(chunk=chunk, question=question)
     user_call = "判断，并输出关联性编号"
-    default_llm = LLM(model_name=config['MODEL_NAME'],
-                      openai_api_base=config['OPENAI_API_BASE'],
-                      openai_api_key=config['OPENAI_API_KEY'],
-                      max_tokens=config['MAX_TOKENS'],
-                      request_timeout=60,
-                      temperature=0.35)
+    default_llm = LLM(model_name=config['MODELS'][0]['MODEL_NAME'],
+                          openai_api_base=config['MODELS'][0]['OPENAI_API_BASE'],
+                          openai_api_key=config['MODELS'][0]['OPENAI_API_KEY'],
+                          max_tokens=config['MODELS'][0]['MAX_TOKENS'],
+                          request_timeout=60,
+                          temperature=0.35)
+    if model_dto is not None:
+        default_llm = LLM(model_name=model_dto.model_name,
+                        openai_api_base=model_dto.openai_api_base,
+                        openai_api_key=model_dto.openai_api_key,
+                        max_tokens=model_dto.max_tokens,
+                        request_timeout=60,
+                        temperature=0.35)
     ans = await default_llm.nostream([], prompt, user_call)
     return ans

@@ -37,7 +37,7 @@ async def create(req: CreateKnowledgeBaseRequest, user_id=Depends(get_user_id)):
         tmp_dict['user_id'] = user_id
         knowledge_base = await create_knowledge_base(tmp_dict)
         return BaseResponse(data=knowledge_base)
-    except KnowledgeBaseException as e:
+    except Exception as e:
         logging.error(f"Create knowledge base failed due to: {e}")
         return BaseResponse(retcode=ErrorCode.CREATE_KNOWLEDGE_BASE_ERROR, retmsg=str(e.args[0]), data=None)
 
@@ -51,7 +51,7 @@ async def update(req: UpdateKnowledgeBaseRequest, user_id=Depends(get_user_id)):
         update_dict['user_id'] = user_id
         knowledge_base = await update_knowledge_base(update_dict)
         return BaseResponse(data=knowledge_base)
-    except KnowledgeBaseException as e:
+    except Exception as e:
         logging.error(f"Update knowledge base failed due to: {e}")
         return BaseResponse(retcode=ErrorCode.UPDATE_KNOWLEDGE_BASE_ERROR, retmsg=str(e.args[0]), data=None)
 
@@ -70,7 +70,7 @@ async def list(req: ListKnowledgeBaseRequest, user_id=Depends(get_user_id)):
                                    total=knowledge_base_list_tuple[1],
                                    data_list=knowledge_base_list_tuple[0])
         return BaseResponse(data=knowledge_base_page)
-    except KnowledgeBaseException as e:
+    except Exception as e:
         logging.error(f"List knowledge base failed due to: {e}")
         return BaseResponse(retcode=ErrorCode.LIST_KNOWLEDGE_BASE_ERROR, retmsg=str(e.args[0]), data=None)
 
@@ -83,7 +83,7 @@ async def rm(req: DeleteKnowledgeBaseRequest, user_id=Depends(get_user_id)):
         await _validate_knowledge_base_belong_to_user(user_id, req.id)
         res = await rm_knowledge_base(req.id)
         return BaseResponse(data=res)
-    except KnowledgeBaseException as e:
+    except Exception as e:
         logging.error(f"Rmove knowledge base failed due to: {e}")
         return BaseResponse(retcode=ErrorCode.DELETE_KNOWLEDGE_BASE_ERROR, retmsg=str(e.args[0]), data=None)
 

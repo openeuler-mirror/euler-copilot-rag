@@ -89,9 +89,11 @@ async def update_model(user_id, update_dict):
             encrypted_config=json.dumps(encrypted_config),
             max_tokens=update_dict['max_tokens']
         )
-        await ModelManager.insert(model_entity)
+        model_entity=await ModelManager.insert(model_entity)
     else:
         update_dict['encrypted_openai_api_key'] = encrypted_openai_api_key
         update_dict['encrypted_config'] = json.dumps(encrypted_config)
-        await ModelManager.update_by_user_id(user_id, update_dict)
+        model_entity=await ModelManager.update_by_user_id(user_id, update_dict)
+    if model_entity is None:
+        raise ModelException("Model update failed")
     return ModelConvertor.convert_entity_to_dto(model_entity)

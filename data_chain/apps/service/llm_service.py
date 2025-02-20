@@ -59,10 +59,12 @@ async def question_rewrite(history: List[dict], question: str,model_dto:ModelDTO
                 history_prompt += "模型历史回答" + str(a_cnt) + ':' + item + "\n"
                 a_cnt += 1
                 character = 'user'
-
-        if split_tools.get_tokens(history_prompt) > config['MAX_TOKENS'] - used_tokens:
+        maxtokens=['MODELS'][0]['MAX_TOKENS']
+        if model_dto is not None:
+            maxtokens=model_dto.max_tokens
+        if split_tools.get_tokens(history_prompt) > maxtokens - used_tokens:
             splited_prompt = split_tools.split_words(history_prompt)
-            splited_prompt = splited_prompt[-(config['MAX_TOKENS'] - used_tokens):]
+            splited_prompt = splited_prompt[-(maxtokens - used_tokens):]
             history_prompt = ''.join(splited_prompt)
         prompt = prompt.format(history=history_prompt, question=question)
         user_call = "请输出改写后的问题"

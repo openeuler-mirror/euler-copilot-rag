@@ -27,3 +27,5 @@ dagster.yaml
 
 # Vannai
 rag_service/llms/vanna_docs
+utils/scores/qa_score.py
+utils/scores/test_document.py

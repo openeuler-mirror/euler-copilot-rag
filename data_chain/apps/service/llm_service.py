@@ -39,8 +39,11 @@ async def question_rewrite(history: List[dict], question: str,model_dto:ModelDTO
             history_abstract_list.append(item['content'])
             sum_tokens += split_tools.get_tokens(item['content'])
         used_tokens = split_tools.get_tokens(prompt + question)
+        maxtokens=config['MODELS'][0]['MAX_TOKENS']
+        if model_dto is not None:
+            maxtokens=model_dto.max_tokens
         # 计算 history_prompt 的长度
-        if sum_tokens > config['MAX_TOKENS'] - used_tokens:
+        if sum_tokens > maxtokens - used_tokens:
             filtered_history = []
             # 使用 jieba 分词并去除停用词
             for item in history_abstract_list:
@@ -59,9 +62,6 @@ async def question_rewrite(history: List[dict], question: str,model_dto:ModelDTO
                 history_prompt += "模型历史回答" + str(a_cnt) + ':' + item + "\n"
                 a_cnt += 1
                 character = 'user'
-        maxtokens=['MODELS'][0]['MAX_TOKENS']
-        if model_dto is not None:
-            maxtokens=model_dto.max_tokens
         if split_tools.get_tokens(history_prompt) > maxtokens - used_tokens:
             splited_prompt = split_tools.split_words(history_prompt)
             splited_prompt = splited_prompt[-(maxtokens - used_tokens):]

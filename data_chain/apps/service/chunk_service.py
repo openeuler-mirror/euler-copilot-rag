@@ -151,8 +151,16 @@ async def get_keywords_from_content(content: str, top_k: int = 3):
 
 async def rerank_chunks(content: str, chunks: list[str], top_k: int = 3):
      pass
+async def get_keywords_from_chunk(chunk: str, top_k=30):
+    try:
+        keywords = jieba.analyse.extract_tags(chunk, topK=top_k, withWeight=True)
+    except Exception as e:
+        logging.error(f"get_keywords_from_chunk error due to: {e}")
+        keywords = []
+    return keywords
 
-async def get_similar_chunks(content, kb_id=None, temporary_document_ids=None, max_tokens=4096, topk=3):
+async def get_similar_chunks(
+        content, kb_id=None, temporary_document_ids=None, max_tokens=4096, topk=3, devided_by_document_id=True):
     #
     # 这里返回的chunk_tuple_list是个n*5二维列表
     # 内部的每个列表内容： （id, document_id, global_offset, tokens, text）
@@ -262,33 +270,51 @@ async def get_similar_chunks(content, kb_id=None, temporary_document_ids=None, m
         # else:
         #     document_para_dict = new_document_para_dict
         document_para_dict = new_document_para_dict
-        docuemnt_chunk_list = []
-        for document_id in document_para_dict:
-            document_entity = None
-            if docuemnt_chunk_list:
-                document_entity = await TemporaryDocumentManager.select_by_id(document_id)
-            elif kb_id:
-                document_entity = await DocumentManager.select_by_id(document_id)
-            if document_entity is not None:
-                document_name = document_entity.name
-            else:
-                document_name = ''
+        if devided_by_document_id:
+            docuemnt_chunk_list = []
+            for document_id in document_para_dict:
+                document_entity = None
+                if temporary_document_ids:
+                    document_entity = await TemporaryDocumentManager.select_by_id(document_id)
+                elif kb_id:
+                    document_entity = await DocumentManager.select_by_id(document_id)
+                if document_entity is not None:
+                    document_name = document_entity.name
+                else:
+                    document_name = ''
+                chunk_list = []
+                st = 0
+                en = 0
+                while st < len(document_para_dict[document_id]):
+                    text = ''
+                    while en < len(
+                            document_para_dict[document_id]) and (
+                            en == st or document_para_dict[document_id][en][2]
+                            - document_para_dict[document_id][en - 1][2] ==
+                            1):
+                        text += document_para_dict[document_id][en][4]
+                        en += 1
+                    chunk_list.append(text)
+                    st = en
+                docuemnt_chunk_list.append({'document_name': document_name, 'chunk_list': chunk_list})
+            return docuemnt_chunk_list
+        else:
             chunk_list = []
-            st = 0
-            en = 0
-            while st < len(document_para_dict[document_id]):
-                text = ''
-                while en < len(
-                        document_para_dict[document_id]) and (
-                        en == st or document_para_dict[document_id][en][2]
-                        - document_para_dict[document_id][en - 1][2] ==
-                        1):
-                    text += document_para_dict[document_id][en][4]
-                    en += 1
-                chunk_list.append(text)
-                st = en
-            docuemnt_chunk_list.append({'document_name': document_name, 'chunk_list': chunk_list})
-        return docuemnt_chunk_list
+            for document_id in document_para_dict:
+                st = 0
+                en = 0
+                while st < len(document_para_dict[document_id]):
+                    text = ''
+                    while en < len(
+                            document_para_dict[document_id]) and (
+                            en == st or document_para_dict[document_id][en][2]
+                            - document_para_dict[document_id][en - 1][2] ==
+                            1):
+                        text += document_para_dict[document_id][en][4]
+                        en += 1
+                    chunk_list.append(text)
+                    st = en
+            return chunk_list
     except Exception as e:
         logging.error(f"Get similar chunking failed due to e: {e}")
         logging.error(f"Get similar chunking failed due to traceback: {traceback.format_exc()}")

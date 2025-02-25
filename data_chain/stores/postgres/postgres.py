@@ -123,6 +123,7 @@ class DocumentEntity(Base):
     chunk_size = Column(Integer)  # 文档分块大小
     enabled = Column(Boolean)  # 文档是否启用
     status = Column(String)
+    full_text = Column(String) #文档全文
     created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
     updated_time = Column(
         TIMESTAMP(timezone=True),
@@ -225,6 +226,7 @@ class TemporaryDocumentEntity(Base):
     bucket_name = Column(String)
     parser_method = Column(String)
     chunk_size = Column(Integer)  # 文档分块大小
+    full_text = Column(String) #文档全文
     status = Column(String)
     created_time = Column(TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp())
 

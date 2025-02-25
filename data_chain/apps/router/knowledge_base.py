@@ -215,7 +215,8 @@ async def get_stream_answer(req: QueryRequest, response: Response):
         if len(config['MODELS']) > 0:
             tokens_upper = config['MODELS'][0]['MAX_TOKENS']
         else:
-            tokens_upper = 0
+            logging.error("Can not find model config locally")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Can not find model config locally")
     else:
         tokens_upper = model_dto.max_tokens
     try:
@@ -268,7 +269,8 @@ async def get_answer(req: QueryRequest):
         if len(config['MODELS']) > 0:
             tokens_upper = config['MODELS'][0]['MAX_TOKENS']
         else:
-            tokens_upper = 0
+            logging.error("Can not find model config locally")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Can not find model config locally")
     else:
         tokens_upper = model_dto.max_tokens
     try:

@@ -17,6 +17,7 @@ class ChunkManager():
             await session.commit()
             await session.refresh(chunk_entity)
             return chunk_entity
+
     @staticmethod
     async def insert_chunks(chunk_entity_list: List[ChunkEntity]) -> List[ChunkEntity]:
         async with await PostgresDB.get_session() as session:
@@ -28,6 +29,7 @@ class ChunkManager():
                 return chunk_entity_list
             except Exception as e:
                 logging.error(f'Error saving chunk entities due to: {e}')
+
     @staticmethod
     async def select_by_chunk_id(chunk_id: uuid.UUID) -> Optional[ChunkEntity]:
         async with await PostgresDB.get_session() as session:
@@ -46,7 +48,7 @@ class ChunkManager():
 
     @staticmethod
     async def fetch_surrounding_context(
-            document_id: uuid.UUID, global_offset: int,expand_method='all',max_tokens: int = 1024,max_rd_cnt:int=50):
+            document_id: uuid.UUID, global_offset: int, expand_method='all', max_tokens: int = 1024, max_rd_cnt: int = 50):
         try:
             if max_tokens <= 0:
                 return []
@@ -60,65 +62,66 @@ class ChunkManager():
                     join(DocumentEntity).
                     where(
                         ChunkEntity.document_id == document_id
-                        )
                     )
+                )
                 min_global_offset, max_global_offset = result.one()
-                if expand_method=='nex':
-                    min_global_offset=global_offset
-                if expand_method=='pre':
-                    max_global_offset=global_offset
-                tokens_sub=0
-                mv_flag=None
-                rd_it=0
+                if expand_method == 'nex':
+                    min_global_offset = global_offset
+                if expand_method == 'pre':
+                    max_global_offset = global_offset
+                tokens_sub = 0
+                mv_flag = None
+                rd_it = 0
                 chunk_entity_list = (
                     await session.execute(
-                    select(ChunkEntity).
-                    where(
-                        and_(
-                        ChunkEntity.document_id == document_id,
-                        ChunkEntity.global_offset>=global_offset-max_rd_cnt,
-                        ChunkEntity.global_offset<=global_offset+max_rd_cnt,
-                        ChunkEntity.enabled==True
-                        )
+                        select(ChunkEntity).
+                        where(
+                            and_(
+                                ChunkEntity.document_id == document_id,
+                                ChunkEntity.global_offset >= global_offset-max_rd_cnt,
+                                ChunkEntity.global_offset <= global_offset+max_rd_cnt,
+                                ChunkEntity.enabled == True
+                            )
                         )
                     )
-                    ).scalars().all()
-                global_offset_set_dict={}
+                ).scalars().all()
+                global_offset_set_dict = {}
                 for chunk_entity in chunk_entity_list:
-                    global_offset_set_dict[chunk_entity.global_offset]=(
-                                chunk_entity.id, 
-                                chunk_entity.document_id,
-                                chunk_entity.global_offset,
-                                chunk_entity.tokens,
-                                chunk_entity.text)
-                while tokens < max_tokens and (min(global_offset_set)>min_global_offset or max(global_offset_set)<max_global_offset) and rd_it<max_rd_cnt:
+                    global_offset_set_dict[chunk_entity.global_offset] = (
+                        chunk_entity.id,
+                        chunk_entity.document_id,
+                        chunk_entity.global_offset,
+                        chunk_entity.tokens,
+                        chunk_entity.text)
+                while tokens < max_tokens and (min(global_offset_set) > min_global_offset or max(global_offset_set) <
+                                               max_global_offset) and rd_it < max_rd_cnt:
                     result = None
                     new_global_offset = None
-                    if tokens_sub<=0 and min(global_offset_set) > min_global_offset:
-                        mv_flag=True
+                    if tokens_sub <= 0 and min(global_offset_set) > min_global_offset:
+                        mv_flag = True
                         new_global_offset = min(global_offset_set)-1
-                    elif tokens_sub>0 and max(global_offset_set) < max_global_offset:
-                        mv_flag=False
+                    elif tokens_sub > 0 and max(global_offset_set) < max_global_offset:
+                        mv_flag = False
                         new_global_offset = max(global_offset_set)+1
-                    elif rd_it%2==0 and min(global_offset_set) > min_global_offset:
-                        mv_flag=True
+                    elif rd_it % 2 == 0 and min(global_offset_set) > min_global_offset:
+                        mv_flag = True
                         new_global_offset = min(global_offset_set)-1
                     elif max(global_offset_set) < max_global_offset:
-                        mv_flag=False
+                        mv_flag = False
                         new_global_offset = max(global_offset_set)+1
                     else:
                         break
-                    result = global_offset_set_dict.get(new_global_offset,None)
+                    result = global_offset_set_dict.get(new_global_offset, None)
                     global_offset_set.add(new_global_offset)
                     if result:
                         tokens += result[3]
                         para_cnt += 1
                         results.append(result)
                         if mv_flag:
-                            tokens_sub+=result[3]
+                            tokens_sub += result[3]
                         else:
-                            tokens_sub-=result[3]
-                    rd_it+=1
+                            tokens_sub -= result[3]
+                    rd_it += 1
             return results
         except Exception as e:
             logging.error(f"Fetch surrounding context failed due to: {e}")
@@ -157,7 +160,7 @@ class ChunkManager():
 
                 results = await session.execute(stmt)
                 chunk_entity_list = results.scalars().all()
-                return (chunk_entity_list,total)
+                return (chunk_entity_list, total)
         except Exception as e:
             logging.error(f"Select by page error: {e}")
             raise ChunkException(f"Select by page ({params}) error.")
@@ -248,10 +251,14 @@ class ChunkLinkManager():
     @staticmethod
     async def insert_chunk_link(chunk_link_entity: ChunkLinkEntity) -> ChunkLinkEntity:
         async with await PostgresDB.get_session() as session:
-            session.add(chunk_link_entity)
-            await session.commit()
-            await session.refresh(chunk_link_entity)
-            return chunk_link_entity
+            try:
+                session.add(chunk_link_entity)
+                await session.commit()
+                await session.refresh(chunk_link_entity)
+                return chunk_link_entity
+            except Exception as e:
+                logging.error(f"Insert chunk link failed due to: {e}")
+                return None
 
     @staticmethod
     async def insert_chunk_links(chunk_link_entity_list: List[ChunkLinkEntity]) -> List[ChunkLinkEntity]:
@@ -261,44 +268,62 @@ class ChunkLinkManager():
                 await session.commit()
                 for chunk_link_entity in chunk_link_entity_list:
                     await session.refresh(chunk_link_entity)
-                return chunk_link_entity
-                
+                return chunk_link_entity_list
+
             except Exception as e:
-                logging.error(f'Error saving chunk entities due to: {e}')
+                logging.error(f'Insert chunk link entities failed due to: {e}')
+
+
 class TemporaryChunkManager():
     @staticmethod
     async def insert_temprorary_chunk(temprorary_chunk_entity: TemporaryChunkEntity) -> TemporaryChunkEntity:
         async with await PostgresDB.get_session() as session:
-            session.add(temprorary_chunk_entity)
-            await session.commit()
-            await session.refresh(temprorary_chunk_entity)
-            return temprorary_chunk_entity
-    @staticmethod
-    async def insert_temprorary_chunks(temprorary_chunk_entity_list: List[TemporaryChunkEntity]) -> List[TemporaryChunkEntity]:
-        async with await PostgresDB.get_session() as session:
-            session.add_all(temprorary_chunk_entity_list)
-            await session.commit()
-            for temprorary_chunk_entity in temprorary_chunk_entity_list:
+            try:
+                session.add(temprorary_chunk_entity)
+                await session.commit()
                 await session.refresh(temprorary_chunk_entity)
-            return temprorary_chunk_entity
+                return temprorary_chunk_entity
+            except Exception as e:
+                logging.error(f'Insert temprorary chunk entity failed due to: {e}')
+
+    @staticmethod
+    async def insert_temprorary_chunks(
+            temprorary_chunk_entity_list: List[TemporaryChunkEntity]) -> List[TemporaryChunkEntity]:
+        async with await PostgresDB.get_session() as session:
+            try:
+                session.add_all(temprorary_chunk_entity_list)
+                await session.commit()
+                for temprorary_chunk_entity in temprorary_chunk_entity_list:
+                    await session.refresh(temprorary_chunk_entity)
+                return temprorary_chunk_entity_list
+            except Exception as e:
+                logging.error(f'Insert temporary chunks entities failed due to: {e}')
+
     @staticmethod
     async def delete_by_temporary_document_ids(document_ids: List[str]) -> None:
         async with await PostgresDB.get_session() as session:
-            stmt = await session.execute(
-                select(TemporaryChunkEntity).where(ChunkEntity.document_id.in_(document_ids))
-            )
-            entities = stmt.scalars().all()
-            for entity in entities:
-                await session.delete(entity)
-            await session.commit()
+            try:
+                stmt = await session.execute(
+                    select(TemporaryChunkEntity).where(ChunkEntity.document_id.in_(document_ids))
+                )
+                entities = stmt.scalars().all()
+                for entity in entities:
+                    await session.delete(entity)
+                await session.commit()
+            except Exception as e:
+                logging.error(f'Delete temporary chunks entities failed due to: {e}')
 
     @staticmethod
     async def select_by_temporary_chunk_ids(temporary_chunk_ids: List[uuid.UUID]) -> Optional[List[TemporaryChunkEntity]]:
         async with await PostgresDB.get_session() as session:
-            stmt = select(TemporaryChunkEntity).where(TemporaryChunkEntity.id.in_(temporary_chunk_ids))
-            result = await session.execute(stmt)
-            temporary_chunk_entity_list = result.scalars().all()
-            return temporary_chunk_entity_list
+            try:
+                stmt = select(TemporaryChunkEntity).where(TemporaryChunkEntity.id.in_(temporary_chunk_ids))
+                result = await session.execute(stmt)
+                temporary_chunk_entity_list = result.scalars().all()
+                return temporary_chunk_entity_list
+            except Exception as e:
+                logging.error(f'Select temporary chunks entities failed due to: {e}')
+                return None
 
     @staticmethod
     async def find_top_k_similar_chunks(document_ids: List[uuid.UUID], content: str, topk=3):
@@ -369,24 +394,24 @@ class TemporaryChunkManager():
                 rd_it = 0
                 temporary_chunk_entity_list = (
                     await session.execute(
-                    select(TemporaryChunkEntity).
-                    where(
-                        and_(
-                        TemporaryChunkEntity.document_id == document_id,
-                        TemporaryChunkEntity.global_offset>=global_offset-max_rd_cnt,
-                        TemporaryChunkEntity.global_offset<=global_offset+max_rd_cnt
-                        )
+                        select(TemporaryChunkEntity).
+                        where(
+                            and_(
+                                TemporaryChunkEntity.document_id == document_id,
+                                TemporaryChunkEntity.global_offset >= global_offset-max_rd_cnt,
+                                TemporaryChunkEntity.global_offset <= global_offset+max_rd_cnt
+                            )
                         )
                     )
-                    ).scalars().all()
-                global_offset_set_dict={}
+                ).scalars().all()
+                global_offset_set_dict = {}
                 for temporary_chunk_entity in temporary_chunk_entity_list:
-                    global_offset_set_dict[temporary_chunk_entity.global_offset]=(
-                                temporary_chunk_entity.id, 
-                                temporary_chunk_entity.document_id,
-                                temporary_chunk_entity.global_offset,
-                                temporary_chunk_entity.tokens,
-                                temporary_chunk_entity.text)
+                    global_offset_set_dict[temporary_chunk_entity.global_offset] = (
+                        temporary_chunk_entity.id,
+                        temporary_chunk_entity.document_id,
+                        temporary_chunk_entity.global_offset,
+                        temporary_chunk_entity.tokens,
+                        temporary_chunk_entity.text)
                 while tokens < max_tokens and (min(global_offset_set) > min_global_offset or max(global_offset_set) <
                                                max_global_offset) and rd_it < max_rd_cnt:
                     result = None
@@ -414,7 +439,7 @@ class TemporaryChunkManager():
                             new_global_offset = min(global_offset_set)-1
                     else:
                         break
-                    result = global_offset_set_dict.get(new_global_offset,None)
+                    result = global_offset_set_dict.get(new_global_offset, None)
                     global_offset_set.add(new_global_offset)
                     if result:
                         tokens += result[3]

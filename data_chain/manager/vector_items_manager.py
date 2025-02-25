@@ -162,7 +162,7 @@ class TemporaryVectorItemsManager:
                 await session.commit()
                 for temporary_vector_items_entity in temporary_vector_items_entity_list:
                     await session.refresh(temporary_vector_items_entity)
-                return temporary_vector_items_entity
+                return temporary_vector_items_entity_list
         except Exception as e:
             logging.error(f"Add temporary vector items failed due to error: {e}")
             return None
@@ -195,9 +195,7 @@ class TemporaryVectorItemsManager:
                     }
                 )
                 result = result.scalars().all()
-                print(result)
                 return result
         except Exception as e:
             logging.error(f"Query for similar temporary vectors failed due to error: {e}")
-            logging.error(f"Error details: {traceback.format_exc()}")
             return []

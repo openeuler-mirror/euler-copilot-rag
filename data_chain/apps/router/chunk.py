@@ -3,6 +3,7 @@ from typing import List
 import tiktoken
 from fastapi import APIRouter, Depends, status
 
+
 from data_chain.models.service import ChunkDTO
 from data_chain.models.api import Page, BaseResponse, ListChunkRequest, SwitchChunkRequest
 from data_chain.exceptions.err_code import ErrorCode
@@ -43,7 +44,7 @@ async def switch(req: SwitchChunkRequest, user_id=Depends(get_user_id)):
     except Exception as e:
         return BaseResponse(retcode=ErrorCode.SWITCH_CHUNK_ERROR, retmsg=str(e.args[0]))
 
-@router.get('/get', response_model=BaseResponse[List[str]])
+@router.post('/get', response_model=BaseResponse[List[str]])
 async def get(content: str,kb_sn: str,topk: int=10):
     try:
         enc = tiktoken.encoding_for_model("gpt-4") 

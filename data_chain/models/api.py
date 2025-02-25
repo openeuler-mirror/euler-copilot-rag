@@ -189,6 +189,12 @@ class ListChunkRequest(DictionaryBaseModel):
         return v
 
 
+class GetChunkRequst(DictionaryBaseModel):
+    content: str=Field(default='')
+    kb_sn: Optional[str] = None
+    topk: int = Field(default=5, ge=0, le=10)
+
+
 class SwitchChunkRequest(DictionaryBaseModel):
     ids: List[uuid.UUID]  # 支持批量操作
     enabled: bool  # True启用, False未启用

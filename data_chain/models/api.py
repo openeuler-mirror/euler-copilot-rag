@@ -199,7 +199,11 @@ class SwitchChunkRequest(DictionaryBaseModel):
     ids: List[uuid.UUID]  # 支持批量操作
     enabled: bool  # True启用, False未启用
 
-
+class GetChunkRequest(DictionaryBaseModel):
+    content: str
+    kb_sn: Optional[str]=None
+    topk: int=Field(default=5, ge=0, le=20)
+    retrieval_mode: str=Field(default='chunk', choices=['chunk', 'full_text'])
 class AddUserRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=10, description="用户名，长度在1到10个字符")
     email: Optional[str] = Field(None, min_length=5, max_length=30,

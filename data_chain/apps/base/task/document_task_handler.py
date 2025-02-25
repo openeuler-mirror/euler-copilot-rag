@@ -8,7 +8,7 @@ from fastapi import File, UploadFile
 import aiofiles
 from typing import List
 from data_chain.apps.base.task.task_handler import TaskRedisHandler
-from data_chain.manager.document_manager import DocumentManager,TemporaryDocumentManager
+from data_chain.manager.document_manager import DocumentManager, TemporaryDocumentManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.task_manager import TaskManager, TaskStatusReportManager
 from data_chain.models.constant import DocumentEmbeddingConstant, OssConstant, TaskConstant
@@ -59,7 +59,7 @@ class DocumentTaskHandler():
             answer = await parser.parser(document_entity.id, file_path)
             chunk_list, chunk_link_list, images = answer['chunk_list'], answer['chunk_link_list'], answer[
                 'image_chunks']
-            chunk_id_set=set()
+            chunk_id_set = set()
             for chunk in chunk_list:
                 chunk_id_set.add(chunk['id'])
             new_chunk_link_list = []
@@ -78,11 +78,15 @@ class DocumentTaskHandler():
                 current_stage=2,
                 stage_cnt=7
             ))
+            full_text = ''
+            for chunk in chunk_list:
+                full_text += chunk['text']
+            await parser.update_full_text_to_pg(document_entity.id, full_text)
             await parser.upload_chunks_to_pg(chunk_list)
             await parser.upload_chunk_links_to_pg(chunk_link_list)
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
-                message=f'Upload document {document_entity.name} chunk and link completed',
+                message=f'Upload document {document_entity.name} full text chunk and link completed',
                 current_stage=3,
                 stage_cnt=7
             ))
@@ -131,6 +135,7 @@ class DocumentTaskHandler():
         finally:
             if target_dir and os.path.exists(target_dir):
                 shutil.rmtree(target_dir)  # 清理文件
+
     @staticmethod
     async def handle_parser_temporary_document_task(t_id: uuid.UUID):
         target_dir = None
@@ -152,14 +157,14 @@ class DocumentTaskHandler():
 
             await TaskStatusReportManager.insert(
                 TaskStatusReportEntity(
-                task_id=task_entity.id,
-                message=f'Temporary document {document_entity.name} begin to parse',
-                current_stage=1,
-                stage_cnt=6
-            ))
+                    task_id=task_entity.id,
+                    message=f'Temporary document {document_entity.name} begin to parse',
+                    current_stage=1,
+                    stage_cnt=6
+                ))
 
             parser = ParserService()
-            parser_result = await parser.parser(document_entity.id, file_path,is_temporary_document=True)
+            parser_result = await parser.parser(document_entity.id, file_path, is_temporary_document=True)
             chunk_list, chunk_link_list, images = parser_result['chunk_list'], parser_result['chunk_link_list'], parser_result[
                 'image_chunks']
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
@@ -168,23 +173,26 @@ class DocumentTaskHandler():
                 current_stage=2,
                 stage_cnt=6
             ))
-
-            await parser.upload_chunks_to_pg(chunk_list,is_temporary_document=True)
+            full_text = ''
+            for chunk in chunk_list:
+                full_text += chunk['text']
+            await parser.update_full_text_to_pg(document_entity.id, full_text, is_temporary_document=True)
+            await parser.upload_chunks_to_pg(chunk_list, is_temporary_document=True)
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
-                message=f'Upload temporary document {document_entity.name} chunks completed',
+                message=f'Upload temporary document {document_entity.name} full text chunks completed',
                 current_stage=3,
                 stage_cnt=6
             ))
-            await parser.upload_images_to_minio(images,is_temporary_document=True)
+            await parser.upload_images_to_minio(images, is_temporary_document=True)
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Upload temporary document {document_entity.name} images completed',
                 current_stage=4,
                 stage_cnt=6
             ))
-            vectors = await parser.embedding_chunks(chunk_list,is_temporary_document=True)
-            await parser.insert_vectors_to_pg(vectors,is_temporary_document=True)
+            vectors = await parser.embedding_chunks(chunk_list, is_temporary_document=True)
+            await parser.insert_vectors_to_pg(vectors, is_temporary_document=True)
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Upload temporary document {document_entity.name} vectors completed',

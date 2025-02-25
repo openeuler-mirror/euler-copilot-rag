@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, status
 
 
 from data_chain.models.service import ChunkDTO
-from data_chain.models.api import Page, BaseResponse, ListChunkRequest, SwitchChunkRequest
+from data_chain.models.api import Page, BaseResponse, ListChunkRequest, SwitchChunkRequest,GetChunkRequest
 from data_chain.exceptions.err_code import ErrorCode
 from data_chain.exceptions.exception import DocumentException
-from data_chain.apps.service.chunk_service import _validate_chunk_belong_to_user, list_chunk, switch_chunk,get_similar_chunks,get_keywords_from_chunk
+from data_chain.apps.service.chunk_service import _validate_chunk_belong_to_user, list_chunk, switch_chunk,get_similar_chunks,get_similar_full_text, get_keywords_from_chunk
 from data_chain.apps.service.document_service import _validate_doucument_belong_to_user
 from data_chain.apps.service.user_service import verify_csrf_token, get_user_id, verify_user
 
@@ -28,7 +28,7 @@ async def list(req: ListChunkRequest, user_id=Depends(get_user_id)):
                           data_list=chunk_list)
         return BaseResponse(data=chunk_page)
     except Exception as e:
-        return BaseResponse(retcode=ErrorCode.CREATE_CHUNK_ERROR, retmsg=str(e.args[0]))
+        return BaseResponse(retcode=ErrorCode.CREATE_CHUNK_ERROR, data=str(e.args[0]))
 
 
 @router.post('/switch', response_model=BaseResponse[str],
@@ -42,11 +42,15 @@ async def switch(req: SwitchChunkRequest, user_id=Depends(get_user_id)):
             await switch_chunk(id, req.enabled)
         return BaseResponse(data='success')
     except Exception as e:
-        return BaseResponse(retcode=ErrorCode.SWITCH_CHUNK_ERROR, retmsg=str(e.args[0]))
+        return BaseResponse(retcode=ErrorCode.SWITCH_CHUNK_ERROR, data=str(e.args[0]))
 
 @router.post('/get', response_model=BaseResponse[List[str]])
-async def get(content: str,kb_sn: str,topk: int=10):
+async def get(req:GetChunkRequest):
     try:
+        content = req.content
+        kb_sn=req.kb_sn
+        topk=req.topk
+        retrieval_mode=req.retrieval_mode
         enc = tiktoken.encoding_for_model("gpt-4") 
         str_len_keywords_len_ratio_pair_list=[(30,1),(60,0.75),(120,0.55),(240,0.35),(1000,0.1)]
         content_len=len(enc.encode(content))
@@ -64,7 +68,12 @@ async def get(content: str,kb_sn: str,topk: int=10):
             content=''
             for keyword in keywords:
                 content+=keyword+' '
-        chunk_list=await get_similar_chunks(content=content,kb_id=kb_sn,topk=topk,devided_by_document_id=False)
+        if retrieval_mode=='chunk':
+            chunk_list=await get_similar_chunks(content=content,kb_id=kb_sn,topk=topk,devided_by_document_id=False)
+        elif retrieval_mode=='full_text':
+            chunk_list=await get_similar_full_text(content=content,kb_id=kb_sn,topk=topk)
+        else:
+            chunk_list=[]
         return BaseResponse(data=chunk_list)
     except Exception as e:
-        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e.args[0]))
+        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, data=str(e.args[0]))

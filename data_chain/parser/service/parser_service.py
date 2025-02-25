@@ -5,7 +5,7 @@ import traceback
 from data_chain.apps.service.embedding_service import Vectorize
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.model_manager import ModelManager
-from data_chain.models.constant import OssConstant, embedding_model_out_dimensions,ParseMethodEnum
+from data_chain.models.constant import OssConstant, embedding_model_out_dimensions, ParseMethodEnum
 from data_chain.parser.handler.docx_parser import DocxService
 from data_chain.parser.handler.html_parser import HtmlService
 from data_chain.parser.handler.xlsx_parser import XlsxService
@@ -48,12 +48,12 @@ class ParserService:
                 if not is_temporary_document:
                     llm_entity = await ModelManager.select_by_user_id(self.doc.user_id)
                     await model.init_service(llm_entity=llm_entity,
-                                            tokens=self.doc.chunk_size,
-                                            parser_method=self.doc.parser_method)
+                                             tokens=self.doc.chunk_size,
+                                             parser_method=self.doc.parser_method)
                 else:
                     await model.init_service(llm_entity=None,
-                                            tokens=self.doc.chunk_size,
-                                            parser_method=self.doc.parser_method)
+                                             tokens=self.doc.chunk_size,
+                                             parser_method=self.doc.parser_method)
                 chunk_list, chunk_link_list, image_chunks = await model.parser(file_path)
                 if not is_temporary_document:
                     for chunk in chunk_list:
@@ -78,12 +78,24 @@ class ParserService:
         return {"chunk_list": chunk_list, "chunk_link_list": chunk_link_list, "image_chunks": image_chunks}
 
     @staticmethod
+    async def update_full_text_to_pg(document_id, full_text, is_temporary_document=False):
+        try:
+            update_dict={'full_text': full_text}
+            if not is_temporary_document:
+                await DocumentManager.update(document_id, update_dict)
+            else:
+                await TemporaryDocumentManager.update(document_id, update_dict)
+        except Exception as e:
+            logging.error(f'Update full text to pg failed due to:{e}')
+            raise e
+
+    @staticmethod
     async def upload_chunks_to_pg(chunks, is_temporary_document=False):
         if len(chunks) == 0:
             return
         try:
             if not is_temporary_document:
-                image_entity_list=await ImageManager.query_image_by_doc_id(chunks[0]['doc_id'])
+                image_entity_list = await ImageManager.query_image_by_doc_id(chunks[0]['doc_id'])
                 for image_entity in image_entity_list:
                     MinIO.delete_object(OssConstant.MINIO_BUCKET_PICTURE, str(image_entity.id))
                 await ChunkManager.delete_by_document_ids([chunks[0]['doc_id']])
@@ -131,7 +143,7 @@ class ParserService:
     @staticmethod
     async def upload_chunk_links_to_pg(chunk_links: List[Dict], is_temporary_document: bool = False):
         try:
-            chunk_link_entity_list=[]
+            chunk_link_entity_list = []
             if not is_temporary_document:
                 for chunk_link in chunk_links:
                     chunk_link_entity = ChunkLinkEntity(
@@ -166,7 +178,7 @@ class ParserService:
     @staticmethod
     async def upload_images_to_pg(images, is_temporary_document: bool = False):
         try:
-            image_entity_list=[]
+            image_entity_list = []
             if not is_temporary_document:
                 for image in images:
                     image_entity = ImageEntity(id=image['id'],
@@ -219,14 +231,14 @@ class ParserService:
                 await PostgresDB.create_table(vector_items_table)
                 await VectorItemsManager.add_all(vector_items_table, vectors)
             else:
-                vector_entity_list=[]
+                vector_entity_list = []
                 for vector in vectors:
                     vector_entity_list.append(
                         TemporaryVectorItemstEntity(
-                        document_id=vector['doc_id'],
-                        chunk_id=vector['chunk_id'],
-                        vector=vector['vector'])
-                        )
+                            document_id=vector['doc_id'],
+                            chunk_id=vector['chunk_id'],
+                            vector=vector['vector'])
+                    )
                 await TemporaryVectorItemsManager.add_all(vector_entity_list)
         except Exception as e:
             logging.error(f"Failed to upload chunk: {e}")

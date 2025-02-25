@@ -141,7 +141,7 @@ async def get_keywords_from_content(content: str, top_k: int = 3):
     words = list(jieba.cut(content))
     keywords = set(jieba.analyse.extract_tags(content, topK=top_k))
     result = []
-    exist_words=set()
+    exist_words = set()
     for word in words:
         if word in keywords and word not in exist_words:
             exist_words.add(word)
@@ -150,7 +150,9 @@ async def get_keywords_from_content(content: str, top_k: int = 3):
 
 
 async def rerank_chunks(content: str, chunks: list[str], top_k: int = 3):
-     pass
+    pass
+
+
 async def get_keywords_from_chunk(chunk: str, top_k=30):
     try:
         keywords = jieba.analyse.extract_tags(chunk, topK=top_k, withWeight=True)
@@ -159,8 +161,8 @@ async def get_keywords_from_chunk(chunk: str, top_k=30):
         keywords = []
     return keywords
 
-async def get_similar_chunks(
-        content, kb_id=None, temporary_document_ids=None, max_tokens=4096, topk=3, devided_by_document_id=True):
+
+async def get_chunk_tuple(content, temporary_document_ids=None, kb_id=None, topk=3):
     #
     # 这里返回的chunk_tuple_list是个n*5二维列表
     # 内部的每个列表内容： （id, document_id, global_offset, tokens, text）
@@ -225,6 +227,16 @@ async def get_similar_chunks(
                 chunk_tuple_list.append((chunk_entity.id, chunk_entity.document_id,
                                         chunk_entity.global_offset, chunk_entity.tokens, chunk_entity.text))
             logging.info(f"向量化结果关联片段耗时: {time.time()-st}")
+        return chunk_tuple_list
+    except Exception as e:
+        logging.error(f"片段关联失败: {e}")
+        return []
+
+
+async def get_similar_chunks(
+        content, kb_id=None, temporary_document_ids=None, max_tokens=4096, topk=3, devided_by_document_id=True):
+    try:
+        chunk_tuple_list = await get_chunk_tuple(content=content, temporary_document_ids=temporary_document_ids, kb_id=kb_id, topk=topk)
         st = time.time()
         document_para_dict = {}
         exist_chunk_id_set = set()
@@ -316,8 +328,31 @@ async def get_similar_chunks(
                     st = en
             return chunk_list
     except Exception as e:
-        logging.error(f"Get similar chunking failed due to e: {e}")
-        logging.error(f"Get similar chunking failed due to traceback: {traceback.format_exc()}")
+        logging.error(f"Get similar chun failed due to e: {e}")
+        logging.error(f"Get similar chun failed due to traceback: {traceback.format_exc()}")
+        return []
+
+
+async def get_similar_full_text(
+        content, kb_id=None, temporary_document_ids=None, topk=3):
+    try:
+        chunk_tuple_list = await get_chunk_tuple(content=content, temporary_document_ids=temporary_document_ids, kb_id=kb_id, topk=topk)
+        full_text_list = []
+        document_id_set = set()
+        for chunk_tuple in chunk_tuple_list:
+            if chunk_tuple[1] not in document_id_set:
+                document_id_set.add(chunk_tuple[1])
+                if temporary_document_ids:
+                    document_entity = await TemporaryDocumentManager.select_by_id(chunk_tuple[1])
+                    full_text_list.append(document_entity.full_text)
+                elif kb_id:
+                    document_entity = await DocumentManager.select_by_id(chunk_tuple[1])
+                    full_text_list.append(document_entity.full_text)
+        logging.info(f"Get similar full text success, full_text_list: {full_text_list}")
+        return full_text_list
+    except Exception as e:
+        logging.error(f"Get similar full text failed due to e: {e}")
+        logging.error(f"Get similar full text failed due to traceback: {traceback.format_exc()}")
         return []
 
 

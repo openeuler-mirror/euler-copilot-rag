@@ -372,7 +372,7 @@ async def stop_temporary_document_parse_task(doc_id):
 
 async def delete_temporary_document(doc_ids) -> List[TemporaryDocumentDTO]:
     if len(doc_ids) == 0:
-        return 0
+        return []
     try:
         # 删除document表的记录
         for doc_id in doc_ids:

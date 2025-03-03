@@ -20,7 +20,9 @@ USER eulercopilot
 # 复制 requirements.txt 文件到 /rag-service 目录
 COPY --chown=1001:1001 requirements.txt /rag-service/
 COPY --chown=1001:1001 tika-server-standard-2.9.2.jar /rag-service/
+COPY --chown=1001:1001 install_titkon_packge.py /rag-service/
 
 # 安装 Python 依赖
 RUN pip3 install --no-cache-dir -r /rag-service/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     chmod -R 750 /rag-service
+RUN python3 /rag-service/install_titkon_packge.py

@@ -8,8 +8,6 @@ from data_chain.parser.tools.ocr import BaseOCR
 from data_chain.parser.handler.base_parser import BaseService
 
 
-
-
 class PdfService(BaseService):
 
     def __init__(self):
@@ -40,7 +38,6 @@ class PdfService(BaseService):
                                   'text': text,
                                   'type': 'para',
                                   })
-        sorted_lines = sorted(lines, key=lambda x: (x['bbox'][1], x['bbox'][0]))
         return sorted_lines
 
     def extract_table(self, page_number):
@@ -90,7 +87,7 @@ class PdfService(BaseService):
             image = Image.open(io.BytesIO(image_bytes))
             image_id = self.get_uuid()
 
-            await self.insert_image_to_tmp_folder(image_bytes, image_id,image_ext)
+            await self.insert_image_to_tmp_folder(image_bytes, image_id, image_ext)
             try:
                 img_np = np.array(image)
             except Exception as e:
@@ -132,7 +129,6 @@ class PdfService(BaseService):
 
     def find_near_words(self, bbox, texts):
         """寻找相邻文本"""
-        nearby_text = []
         image_x0, image_y0, image_x1, image_y1 = bbox
         threshold = 100
         image_x0 -= threshold
@@ -206,7 +202,7 @@ class PdfService(BaseService):
             else:
                 merge_list = temp_list
             sentences.extend(merge_list)
-
+        sentences = sorted(sentences, key=lambda x: (x['bbox'][1], x['bbox'][0]))
         chunks = self.build_chunks_by_lines(sentences)
         chunk_links = self.build_chunk_links_by_line(chunks)
         return chunks, chunk_links, all_image_chunks

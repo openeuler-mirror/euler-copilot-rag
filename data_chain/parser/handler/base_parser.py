@@ -1,22 +1,17 @@
+import json
 import os
 import uuid
-import json
-from data_chain.logger.logger import logger as logging
-from pandas import DataFrame
+
 from docx.table import Table as DocxTable
+from pandas import DataFrame
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import secrets
-import shutil
-from data_chain.manager.document_manager import DocumentManager
-from data_chain.manager.model_manager import ModelManager
-from data_chain.parser.tools.split import split_tools
-from data_chain.models.constant import OssConstant
+
 from data_chain.apps.base.model.llm import LLM
 from data_chain.apps.base.security.security import Security
-from data_chain.stores.minio.minio import MinIO
+from data_chain.logger.logger import logger as logging
 from data_chain.models.constant import OssConstant
-
+from data_chain.parser.tools.split import split_tools
 
 # TODO chunk和chunk_link可以封装成类
 

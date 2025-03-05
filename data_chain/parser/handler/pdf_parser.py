@@ -122,11 +122,11 @@ class PdfService(BaseService):
 
             await self.insert_image_to_tmp_folder(image_bytes, image_id, image_ext)
             try:
-                image_np = np.array(image)
+                img_np = np.array(image)
             except Exception as e:
                 logging.error(f"Error converting image to numpy array: {e}")
                 continue
-            ocr_results = await self.image_model.image_to_text(img_np, text=near)
+            ocr_results = await self.image_model.image_to_text(img_np, image_related_text=nearby_text)
 
             # 获取OCR结果
             chunk_id = self.get_uuid()
@@ -273,11 +273,3 @@ class PdfService(BaseService):
         self.total_pages = None
         self.pdf_document = None
         self.image_model = None
-
-import asyncio
-if __name__ == "__main__":
-    parser = PdfService()
-    asyncio.run(parser.init_service(llm_entity=None, tokens=1024, parser_method="ocr"))
-    chunk, chunk_links, image_chunks = asyncio.run(parser.parser("./data_chain/test/test.pdf"))
-    for chunk_item in chunk:
-        print(chunk_item["text"])

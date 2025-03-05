@@ -1,6 +1,9 @@
+import json
 import os
 import uuid
 import json
+
+import numpy as np
 
 import pptx.table
 from data_chain.logger.logger import logger as logging
@@ -15,9 +18,9 @@ from data_chain.parser.tools.split import split_tools
 from data_chain.models.constant import OssConstant
 from data_chain.apps.base.model.llm import LLM
 from data_chain.apps.base.security.security import Security
-from data_chain.stores.minio.minio import MinIO
+from data_chain.logger.logger import logger as logging
 from data_chain.models.constant import OssConstant
-
+from data_chain.parser.tools.split import split_tools
 
 # TODO chunk和chunk_link可以封装成类
 
@@ -191,7 +194,7 @@ class BaseService:
                 pass
         for line in lines:
             if line['type'] == 'image':
-                line['text'] = await self.ocr_tool.image_to_text(line['image'], text=line['related_text'])
+                line['text'] = await self.ocr_tool.image_to_text(line['image'], image_related_text=line['related_text'])
         return lines
 
     async def change_lines(self, lines):
@@ -240,7 +243,7 @@ class BaseService:
                                   'type': line['type']})
                 last_para_id = new_lines[-1]['id']
 
-            elif line[1] == 'table':
+            elif line["type"] == 'table':
                 # 处理表格
                 new_lines.append({'id': self.get_uuid(),
                                   'text': line['text'],

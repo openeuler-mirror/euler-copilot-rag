@@ -8,7 +8,7 @@ class SplitTools:
     def get_tokens(self, content):
         try:
             enc = tiktoken.encoding_for_model("gpt-4")
-            return len(enc.encode(content))
+            return len(enc.encode(str(content)))
         except Exception as e:
             logging.error(f"Get tokens failed due to: {e}")
             return 0

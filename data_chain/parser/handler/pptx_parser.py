@@ -30,7 +30,7 @@ class PptxService(BaseService):
                     if text.strip():
                         lines.append({
                             "text": text,
-                            "type": 'text'
+                            "type": 'para'
                         })
                 # 提取表格
                 elif shape.has_table:
@@ -39,7 +39,7 @@ class PptxService(BaseService):
                     for row in rows:
                         lines.append({
                             "text": text,
-                            "type": table
+                            "type": "table"
                         })
                 # 提取图片
                 elif shape.shape_type == 13:  # 13 表示图片类型
@@ -51,7 +51,7 @@ class PptxService(BaseService):
                         continue
                     lines.append({
                         "image": Image.open(BytesIO(image.blob)),
-                        "type": table,
+                        "type": "image",
                         "extension": image_ext
                     })
 
@@ -76,7 +76,6 @@ class PptxService(BaseService):
         if self.parser_method != "general":
             self.ocr_tool = BaseOCR(llm=self.llm, method=self.parser_method)
         lines = await self.extract_ppt_content(pptx)
-
         lines, images = await self.change_lines(lines)
         lines = await self.ocr_from_images_in_lines(lines)
         chunks = self.build_chunks_by_lines(lines)

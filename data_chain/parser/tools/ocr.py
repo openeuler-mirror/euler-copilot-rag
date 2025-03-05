@@ -29,7 +29,7 @@ class BaseOCR:
             self.max_tokens = 1024
         self.method = method
 
-    def ocr_from_image(self, image):
+    async def ocr_from_image(self, image):
         """
         图片ocr接口
         参数：
@@ -44,7 +44,7 @@ class BaseOCR:
             logging.error(f"Ocr from image failed due to: {e}")
             return None
 
-    def merge_text_from_ocr_result(self, ocr_result):
+    async def merge_text_from_ocr_result(self, ocr_result):
         """
         ocr结果文字内容合并接口
         参数：
@@ -52,14 +52,14 @@ class BaseOCR:
         """
         text = ''
         try:
-            for _ in ocr_result[0][0]:
-                text += _[1][0]
+            for _ in ocr_result[0]:
+                text += str(_[1][0])
             return text
         except Exception as e:
             logging.error(f'Get text from ocr result failed due to: {e}')
             return ''
 
-    def cut_ocr_result_in_part(self, ocr_result, max_tokens=1024):
+    async def cut_ocr_result_in_part(self, ocr_result, max_tokens=1024):
         """
         ocr结果切割接口
         参数：
@@ -99,7 +99,7 @@ class BaseOCR:
                 logging.error(f'Get prompt template failed due to :{e}')
                 return ''
             pre_part_description = ""
-            ocr_result_parts = self.cut_ocr_result_in_part(ocr_result, self.max_tokens // 5*2)
+            ocr_result_parts = await self.cut_ocr_result_in_part(ocr_result, self.max_tokens // 5*2)
             user_call = '请详细输出图片的摘要，不要输出其他内容'
             for part in ocr_result_parts:
                 pre_part_description_cp = pre_part_description
@@ -125,16 +125,16 @@ class BaseOCR:
         image_related_text: 图片相关文字
         """
         if self.method == 'ocr':
-            text = self.merge_text_from_ocr_result(ocr_result)
+            text = await self.merge_text_from_ocr_result(ocr_result)
             return text
         elif self.method == 'enhanced':
             try:
                 text = await self.enhance_ocr_result(ocr_result, image_related_text)
                 if len(text) == 0:
-                    text = self.merge_text_from_ocr_result(ocr_result)
+                    text = await self.merge_text_from_ocr_result(ocr_result)
             except Exception as e:
                 logging.error(f"LLM ERROR with: {e}")
-                text = self.merge_text_from_ocr_result(ocr_result)
+                text = await self.merge_text_from_ocr_result(ocr_result)
             return text
         else:
             return ""
@@ -146,7 +146,7 @@ class BaseOCR:
         image：图像文件
         image_related_text：图像相关的文本
         """
-        ocr_result = self.ocr_from_image(image)
+        ocr_result = await self.ocr_from_image(image)
         if ocr_result is None:
             return ""
         text = await self.get_text_from_image(ocr_result, image_related_text)

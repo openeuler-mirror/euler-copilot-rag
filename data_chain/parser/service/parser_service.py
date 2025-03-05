@@ -50,11 +50,11 @@ class ParserService:
                 if not is_temporary_document:
                     llm_entity = await ModelManager.select_by_user_id(self.doc.user_id)
                     await model.init_service(llm_entity=llm_entity,
-                                             tokens=self.doc.chunk_size,
+                                             chunk_tokens=self.doc.chunk_size,
                                              parser_method=self.doc.parser_method)
                 else:
                     await model.init_service(llm_entity=None,
-                                             tokens=self.doc.chunk_size,
+                                             chunk_tokens=self.doc.chunk_size,
                                              parser_method=self.doc.parser_method)
                 chunk_list, chunk_link_list, image_chunks = await model.parser(file_path)
                 if not is_temporary_document:

@@ -126,7 +126,7 @@ class PdfService(BaseService):
             except Exception as e:
                 logging.error(f"Error converting image to numpy array: {e}")
                 continue
-            ocr_results = await self.image_model.run(image_np, text=nearby_text)
+            ocr_results = await self.image_model.image_to_text(img_np, text=near)
 
             # 获取OCR结果
             chunk_id = self.get_uuid()
@@ -246,7 +246,7 @@ class PdfService(BaseService):
         sentences = []
         all_image_chunks = []
         if method != "general":
-            self.image_model = BaseOCR(llm=self.llm, llm_max_tokens=self.llm_max_tokens,
+            self.image_model = BaseOCR(llm=self.llm,
                                        method=self.parser_method)
         for page_num in range(self.total_pages):
             tables = self.extract_table(page_num)

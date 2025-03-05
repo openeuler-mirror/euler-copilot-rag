@@ -8,8 +8,6 @@ from data_chain.parser.tools.ocr import BaseOCR
 from data_chain.parser.handler.base_parser import BaseService
 
 
-
-
 class PdfService(BaseService):
 
     def __init__(self):
@@ -40,8 +38,7 @@ class PdfService(BaseService):
                                   'text': text,
                                   'type': 'para',
                                   })
-        sorted_lines = sorted(lines, key=lambda x: (x['bbox'][1], x['bbox'][0]))
-        return sorted_lines
+        return lines
 
     def extract_table(self, page_number):
         """
@@ -90,13 +87,13 @@ class PdfService(BaseService):
             image = Image.open(io.BytesIO(image_bytes))
             image_id = self.get_uuid()
 
-            await self.insert_image_to_tmp_folder(image_bytes, image_id,image_ext)
+            await self.insert_image_to_tmp_folder(image_bytes, image_id, image_ext)
             try:
                 img_np = np.array(image)
             except Exception as e:
                 logging.error(f"Error converting image to numpy array: {e}")
                 continue
-            ocr_results = await self.image_model.run(img_np, text=near)
+            ocr_results = await self.image_model.image_to_text(img_np, text=near)
 
             # 获取OCR
             chunk_id = self.get_uuid()
@@ -132,7 +129,6 @@ class PdfService(BaseService):
 
     def find_near_words(self, bbox, texts):
         """寻找相邻文本"""
-        nearby_text = []
         image_x0, image_y0, image_x1, image_y1 = bbox
         threshold = 100
         image_x0 -= threshold
@@ -193,7 +189,7 @@ class PdfService(BaseService):
         sentences = []
         all_image_chunks = []
         if method != "general":
-            self.image_model = BaseOCR(llm=self.llm, llm_max_tokens=self.llm_max_tokens,
+            self.image_model = BaseOCR(llm=self.llm,
                                        method=self.parser_method)
         for page_num in range(self.page_numbers):
             tables = self.extract_table(page_num)
@@ -206,7 +202,7 @@ class PdfService(BaseService):
             else:
                 merge_list = temp_list
             sentences.extend(merge_list)
-
+        sentences = sorted(sentences, key=lambda x: (x['bbox'][1], x['bbox'][0]))
         chunks = self.build_chunks_by_lines(sentences)
         chunk_links = self.build_chunk_links_by_line(chunks)
         return chunks, chunk_links, all_image_chunks

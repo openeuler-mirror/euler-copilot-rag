@@ -155,15 +155,19 @@ class PdfService(BaseService):
         """
         page = self.pdf_document.load_page(page_number)
         text_blocks = []
+        temp_blocks = []
+
         for block in page.get_text("dict")["blocks"]:
             if "lines" in block:  # 确保是文本块
                 for line in block["lines"]:
                     for span in line["spans"]:
-                        text_blocks.append({
+                        temp_blocks.extend([{
                             "text": span["text"],
                             "bbox": span["bbox"],  # 文本边界框 (x0, y0, x1, y1)
                             "type": "paragraph",
-                        })
+                        }])
+
+        text_blocks.extend(temp_blocks)
         return text_blocks
 
     def find_near_words(self, bounding_box: tuple[float, float, float, float], texts: list[dict]) -> str:

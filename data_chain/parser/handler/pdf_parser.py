@@ -11,7 +11,7 @@ from data_chain.parser.tools.ocr import BaseOCR
 
 class PdfService(BaseService):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.image_model = None
         self.total_pages = None
@@ -53,8 +53,7 @@ class PdfService(BaseService):
                                       "text": text,
                                       "type": "paragraph",
                                       })
-        sorted_text_lines = sorted(text_lines, key=lambda x: (x["bbox"][1], x["bbox"][0]))
-        return sorted_text_lines
+        return sorted(text_lines, key=lambda x: (x["bbox"][1], x["bbox"][0]))
 
     def extract_table(self, page_number: int) -> list[dict]:
         """从PDF页面中提取表格
@@ -266,7 +265,7 @@ class PdfService(BaseService):
         chunk_links = self.build_chunk_links_by_line(chunks)
         return chunks, chunk_links, all_image_chunks
 
-    def __del__(self):
+    def __del__(self) -> None:
         """析构函数，关闭PDF文档并释放资源"""
         if self.pdf_document:
             self.pdf_document.close()

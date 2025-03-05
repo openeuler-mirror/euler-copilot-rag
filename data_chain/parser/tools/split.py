@@ -12,8 +12,8 @@ class SplitTools:
         except Exception as e:
             logging.error(f"Get tokens failed due to: {e}")
             return 0
-    
-    def split_words(text):
+
+    def split_words(self, text):
         return list(jieba.cut(str(text)))
 
 

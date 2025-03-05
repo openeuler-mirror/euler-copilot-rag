@@ -2,7 +2,7 @@
 import urllib
 from typing import Dict, List
 import uuid
-from fastapi import HTTPException,status
+from fastapi import HTTPException, status
 from data_chain.models.service import DocumentDTO, TemporaryDocumentDTO
 from data_chain.apps.service.user_service import verify_csrf_token, get_user_id, verify_user
 from data_chain.exceptions.err_code import ErrorCode
@@ -156,31 +156,34 @@ async def download(id: uuid.UUID, user_id=Depends(get_user_id)):
 @router.post('/temporary/related', response_model=BaseResponse[List[uuid.UUID]])
 async def related_temporary_doc(req: RelatedTemporaryDocumenRequest):
     try:
-        results = await get_related_document(req.content,req.top_k, req.document_ids, req.kb_sn)
+        results = await get_related_document(req.content, req.top_k, req.document_ids, req.kb_sn)
         return BaseResponse(data=results)
     except Exception as e:
         return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e), data=None)
+
 
 @router.post('/temporary/parser', response_model=BaseResponse[List[uuid.UUID]])
 async def parser_temporary_doc(req: ParserTemporaryDocumenRequest):
     try:
         temporary_document_list = []
         for i in range(len(req.document_list)):
-            tmp_dict=dict(req.document_list[i])
-            if tmp_dict['type']=='application/pdf':
-                tmp_dict['type']='.pdf'
-            elif tmp_dict['type']=='text/html':
-                tmp_dict['type']='.html'
-            elif tmp_dict['type']=='text/plain':
-                tmp_dict['type']='.txt'
-            elif tmp_dict['type']=='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-                tmp_dict['type']='.xlsx'
-            elif tmp_dict['type']=='text/x-markdown':
-                tmp_dict['type']='.md'
-            elif tmp_dict['type']=='application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-                tmp_dict['type']='.docx'
-            elif tmp_dict['type']=='application/msword':
-                tmp_dict['type']='.doc'
+            tmp_dict = dict(req.document_list[i])
+            if tmp_dict['type'] == 'application/pdf':
+                tmp_dict['type'] = '.pdf'
+            elif tmp_dict['type'] == 'text/html':
+                tmp_dict['type'] = '.html'
+            elif tmp_dict['type'] == 'text/plain':
+                tmp_dict['type'] = '.txt'
+            elif tmp_dict['type'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+                tmp_dict['type'] = '.xlsx'
+            elif tmp_dict['type'] == 'text/x-markdown':
+                tmp_dict['type'] = '.md'
+            elif tmp_dict['type'] == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                tmp_dict['type'] = '.docx'
+            elif tmp_dict['type'] == 'application/msword':
+                tmp_dict['type'] = '.doc'
+            elif tmp_dict['type'] == 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+                tmp_dict['type'] = '.pptx'
             temporary_document_list.append(tmp_dict)
         result = await init_temporary_document_parse_task(temporary_document_list)
         return BaseResponse(data=result)

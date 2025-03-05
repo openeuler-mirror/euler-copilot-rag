@@ -1,10 +1,7 @@
-from data_chain.logger.logger import logger as logging
 import docx
-import uuid
 from io import BytesIO
 from PIL import Image
 import numpy as np
-import docx
 from docx.document import Document
 from docx.text.paragraph import Paragraph
 from docx.parts.image import ImagePart
@@ -15,12 +12,12 @@ from docx.oxml.shape import CT_Picture
 import mimetypes
 from data_chain.parser.handler.base_parser import BaseService
 from data_chain.parser.tools.ocr import BaseOCR
+from data_chain.logger.logger import logger as logging
 
 
 class DocxService(BaseService):
     def __init__(self):
         super().__init__()
-        self.ocr_tool = None
 
     def open_file(self, file_path):
         try:
@@ -73,29 +70,56 @@ class DocxService(BaseService):
                         image_parts = self.get_imageparts_from_run(run, parent)
                         if image_parts:
                             if text_part:
-                                lines.append((text_part, 'para'))
+                                lines.append(
+                                    {
+                                        'text': text_part,
+                                        'type': 'text'
+                                    }
+                                )
                                 text_part = ''
                             for image_part in image_parts:
                                 try:
                                     image_blob = image_part.image.blob
                                     content_type = image_part.content_type
                                 except Exception as e:
-                                    logging.error(f"Image blob and part get failed due to :{e}")
+                                    logging.error(f"Get Image blob and part failed due to :{e}")
+                                    continue
                                 extension = mimetypes.guess_extension(content_type).replace('.', '')
-                                lines.append(((Image.open(BytesIO(image_blob)), extension), 'image'))
+                                lines.append(
+                                    {
+                                        'image': Image.open(BytesIO(image_blob)),
+                                        'extension': extension,
+                                        'type': 'image'
+                                    }
+                                )
                         else:
                             text_part += run.text
                         run_index += 1
 
                     if text_part:
-                        lines.append((text_part, 'para'))
+                        lines.append(
+                            {
+                                'text': text_part,
+                                'type': 'text'
+                            }
+                        )
                 else:
-                    lines.append((paragraph.text, 'para'))
+                    lines.append(
+                        {
+                            'text': paragraph.text,
+                            'type': 'text'
+                        }
+                    )
             elif isinstance(child, CT_Tbl):
                 table = Table(child, parent)
                 rows = self.split_table(table)
                 for row in rows:
-                    lines.append((row, 'table'))
+                    lines.append(
+                        {
+                            'text': row,
+                            'type': 'table'
+                        }
+                    )
             elif isinstance(child, CT_Picture):
                 img_id = child.xpath('.//a:blip/@r:embed')[0]
                 part = parent.part.related_parts[img_id]
@@ -107,92 +131,14 @@ class DocxService(BaseService):
                         logging.error(f'Get image blob and content type failed due to: {e}')
                         continue
                     extension = mimetypes.guess_extension(content_type).replace('.', '')
-                    lines.append(((Image.open(BytesIO(image_blob)), extension), 'image'))
+                    lines.append(
+                        {
+                            'image': Image.open(BytesIO(image_blob)),
+                            'extension': extension,
+                            'type': 'image'
+                        }
+                    )
         return lines
-
-    async def ocr_from_images_in_lines(self, lines):
-        # 获取图像相邻文本
-        last_para_pre = ""
-        for i in range(len(lines)):
-            line = lines[i]
-            if line['type'] == 'image':
-                lines[i]['related_text'] = last_para_pre
-            elif line['type'] == 'para':
-                last_para_pre = line['text']
-            elif line['type'] == 'table':
-                pass
-        last_para_bac = ""
-        for i in range(len(lines) - 1, -1, -1):
-            line = lines[i]
-            if line['type'] == 'image':
-                lines[i]['related_text'] += last_para_bac
-            elif line['type'] == 'para':
-                last_para_bac = line['text']
-            elif line['type'] == 'table':
-                pass
-        for line in lines:
-            if line['type'] == 'image':
-                line['text'] = await self.ocr_tool.image_to_text(line['image'], text=line['related_text'])
-        return lines
-
-    async def change_lines(self, lines):
-        """
-        修整处理lines，根据不同的类型（图像、段落、表格）处理每一行，并根据method参数决定处理方式。
-
-        参数:
-        - lines (list): 需要处理的行列表，每行包含内容和类型。
-        - method (str): 处理方法，可能是"ocr"、"llm-Enhance"或其他。
-
-        返回:
-        - tuple: 包含处理后的句子列表和图像列表的元组。
-        """
-        new_lines = []
-        images = []
-        last_para_id = None
-        for line in lines:
-            if line[1] == 'image':
-                # 处理图像
-                image_tuple = line[0]
-                image_id = self.get_uuid()
-                image = image_tuple[0]
-                image_bytes = image.tobytes()
-                image_extension = image_tuple[1]
-                await self.insert_image_to_tmp_folder(image_bytes, image_id, image_extension)
-                if self.parser_method in ['ocr', 'enhanced']:
-                    # 将图片关联到图片的描述chunk上
-                    chunk_id = self.get_uuid()
-                    new_lines.append({'id': chunk_id,
-                                      'type': 'image'})
-                    new_lines[-1]['image'] = np.array(image)
-                    images.append({
-                        'id': image_id,
-                        'chunk_id': chunk_id,
-                        'extension': image_extension,
-                    })
-                else:
-                    # 将图片关联到上一个段落chunk上
-                    images.append({
-                        'id': image_id,
-                        'chunk_id': last_para_id,
-                        'extension': image_extension,
-                    })
-
-            elif line[1] == 'para':
-                # 处理段落
-                new_lines.append({'id': self.get_uuid(),
-                                  'text': line[0],
-                                  'type': line[1]})
-                last_para_id = new_lines[-1]['id']
-
-            elif line[1] == 'table':
-                # 处理表格
-                new_lines.append({'id': self.get_uuid(),
-                                  'text': line[0],
-                                  'type': line[1]})
-
-        if self.parser_method in ['ocr', 'enhanced']:
-            new_lines = await self.ocr_from_images_in_lines(new_lines)
-        return new_lines, images
 
     async def parser(self, file_path):
         """
@@ -213,7 +159,7 @@ class DocxService(BaseService):
         lines = self.get_lines(doc)
 
         lines, images = await self.change_lines(lines)
-
+        lines = await self.ocr_from_images_in_lines(lines)
         chunks = self.build_chunks_by_lines(lines)
         chunk_links = self.build_chunk_links_by_line(chunks)
         return chunks, chunk_links, images

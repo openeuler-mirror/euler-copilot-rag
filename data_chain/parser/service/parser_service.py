@@ -13,6 +13,7 @@ from data_chain.parser.handler.txt_parser import TxtService
 from data_chain.parser.handler.pdf_parser import PdfService
 from data_chain.parser.handler.md_parser import MdService
 from data_chain.parser.handler.doc_parser import DocService
+from data_chain.parser.handler.pptx_parser import PptxService
 from data_chain.stores.postgres.postgres import ChunkEntity, TemporaryChunkEntity, ChunkLinkEntity, PostgresDB, ImageEntity, TemporaryVectorItemstEntity
 from data_chain.manager.document_manager import DocumentManager, TemporaryDocumentManager
 from data_chain.manager.chunk_manager import ChunkManager, ChunkLinkManager, TemporaryChunkManager
@@ -36,6 +37,7 @@ class ParserService:
             ".xlsx": XlsxService,
             ".md": MdService,
             ".html": HtmlService,
+            ".pptx": PptxService,
         }
         if not is_temporary_document:
             self.doc = await DocumentManager.select_by_id(doc_id)
@@ -80,7 +82,7 @@ class ParserService:
     @staticmethod
     async def update_full_text_to_pg(document_id, full_text, is_temporary_document=False):
         try:
-            update_dict={'full_text': full_text}
+            update_dict = {'full_text': full_text}
             if not is_temporary_document:
                 await DocumentManager.update(document_id, update_dict)
             else:

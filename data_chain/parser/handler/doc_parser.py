@@ -7,7 +7,7 @@ from data_chain.parser.handler.base_parser import BaseService
 
 class DocService(BaseService):
     def extract_paragraph(self, paragraph):
-        sentences = self.split_sentences(paragraph, self.tokens)
+        sentences = self.split_sentences(paragraph, self.chunk_tokens)
         results = []
         for sentence in sentences:
             results.append({

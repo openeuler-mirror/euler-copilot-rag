@@ -25,7 +25,7 @@ class DocxService(BaseService):
             doc = docx.Document(file_path)
             return doc
         except Exception as e:
-            logging.error(f"Error opening file {file_path} :{e}")
+            logging.error(f"Opening docx file {file_path} failed due to:{e}")
             raise e
 
     def is_image(self, graph: Paragraph, doc: Document):
@@ -38,7 +38,7 @@ class DocxService(BaseService):
         return False
 
     # 获取run中的所有图片
-    def get_imageparts_from_run(self, run, doc: Document):
+    def get_image_parts_from_run(self, run, doc: Document):
         image_parts = []
         drawings = run._r.xpath('.//w:drawing')  # 获取所有图片
         for drawing in drawings:
@@ -68,7 +68,7 @@ class DocxService(BaseService):
 
                     while run_index < len(runs):
                         run = runs[run_index]
-                        image_parts = self.get_imageparts_from_run(run, parent)
+                        image_parts = self.get_image_parts_from_run(run, parent)
                         if image_parts:
                             if text_part:
                                 lines.append((text_part, 'para'))

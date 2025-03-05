@@ -44,7 +44,7 @@ class BaseOCR:
             logging.error(f"Ocr from image failed due to: {e}")
             return None
 
-    def merge_text_from_ocr_result(ocr_result):
+    def merge_text_from_ocr_result(self, ocr_result):
         """
         ocr结果文字内容合并接口
         参数：
@@ -59,7 +59,7 @@ class BaseOCR:
             logging.error(f'Get text from ocr result failed due to: {e}')
             return ''
 
-    def cut_ocr_result_in_part(ocr_result, max_tokens=1024):
+    def cut_ocr_result_in_part(self, ocr_result, max_tokens=1024):
         """
         ocr结果切割接口
         参数：

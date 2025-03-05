@@ -1,13 +1,14 @@
 import os
 import uuid
 import json
+
+import pptx.table
 from data_chain.logger.logger import logger as logging
 from pandas import DataFrame
 from docx.table import Table as DocxTable
+import pptx
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import secrets
-import shutil
 from data_chain.manager.document_manager import DocumentManager
 from data_chain.manager.model_manager import ModelManager
 from data_chain.parser.tools.split import split_tools
@@ -28,6 +29,7 @@ class BaseService:
         self.llm_max_tokens = None
         self.llm = None
         self.tokens = None
+        self.ocr_tool = None
 
     async def init_service(self, llm_entity, tokens, parser_method):
         self.parser_method = parser_method
@@ -38,9 +40,9 @@ class BaseService:
                 openai_api_key=Security.decrypt(
                     llm_entity.encrypted_openai_api_key,
                     json.loads(llm_entity.encrypted_config)
-                    ),
-                    max_tokens=llm_entity.max_tokens, 
-                    )
+                ),
+                max_tokens=llm_entity.max_tokens,
+            )
             self.llm_max_tokens = llm_entity.max_tokens
         self.tokens = tokens
         self.vectorizer = TfidfVectorizer()
@@ -137,7 +139,7 @@ class BaseService:
                     row_string_list = [s.replace('|', '||') for s in row.astype(str).tolist()]
                     cell_num = max(cell_num, len(row_string_list))
                     new_table.append(row_string_list)
-            elif isinstance(table, DocxTable):
+            elif isinstance(table, DocxTable) or isinstance(table, pptx.table.Table):
                 if table.rows:
                     for row in table.rows:
                         row_string_list = [s.replace('|', '||') for s in (cell.text.strip() for cell in row.cells)]
@@ -166,6 +168,84 @@ class BaseService:
                 result.append(row_text)
 
         return result
+
+    async def ocr_from_images_in_lines(self, lines):
+        # 获取图像相邻文本
+        last_para_pre = ""
+        for i in range(len(lines)):
+            line = lines[i]
+            if line['type'] == 'image':
+                lines[i]['related_text'] = last_para_pre
+            elif line['type'] == 'para':
+                last_para_pre = line['text']
+            elif line['type'] == 'table':
+                pass
+        last_para_bac = ""
+        for i in range(len(lines) - 1, -1, -1):
+            line = lines[i]
+            if line['type'] == 'image':
+                lines[i]['related_text'] += last_para_bac
+            elif line['type'] == 'para':
+                last_para_bac = line['text']
+            elif line['type'] == 'table':
+                pass
+        for line in lines:
+            if line['type'] == 'image':
+                line['text'] = await self.ocr_tool.image_to_text(line['image'], text=line['related_text'])
+        return lines
+
+    async def change_lines(self, lines):
+        """
+        修整处理lines，根据不同的类型（图像、段落、表格）处理每一行，并根据method参数决定处理方式。
+
+        参数:
+        - lines (list): 需要处理的行列表，每行包含内容和类型。
+        返回:
+        - tuple: 包含处理后的句子列表和图像列表的元组。
+        """
+        new_lines = []
+        images = []
+        last_para_id = None
+        for line in lines:
+            if line['type'] == 'image':
+                # 处理图像
+                image_id = self.get_uuid()
+                image = line['image']
+                image_bytes = image.tobytes()
+                image_extension = line['extension']
+                await self.insert_image_to_tmp_folder(image_bytes, image_id, image_extension)
+                if self.parser_method in ['ocr', 'enhanced']:
+                    # 将图片关联到图片的描述chunk上
+                    chunk_id = self.get_uuid()
+                    new_lines.append({'id': chunk_id,
+                                      'type': 'image'})
+                    new_lines[-1]['image'] = np.array(image)
+                    images.append({
+                        'id': image_id,
+                        'chunk_id': chunk_id,
+                        'extension': image_extension,
+                    })
+                else:
+                    # 将图片关联到上一个段落chunk上
+                    images.append({
+                        'id': image_id,
+                        'chunk_id': last_para_id,
+                        'extension': image_extension,
+                    })
+
+            elif line['type'] == 'para':
+                # 处理段落
+                new_lines.append({'id': self.get_uuid(),
+                                  'text': line['text'],
+                                  'type': line['type']})
+                last_para_id = new_lines[-1]['id']
+
+            elif line[1] == 'table':
+                # 处理表格
+                new_lines.append({'id': self.get_uuid(),
+                                  'text': line['text'],
+                                  'type': line['type']})
+        return new_lines, images
 
     def package_to_chunk(self, **kwargs):
         """

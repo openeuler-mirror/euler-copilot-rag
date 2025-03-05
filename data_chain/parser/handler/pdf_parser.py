@@ -38,7 +38,7 @@ class PdfService(BaseService):
                                   'text': text,
                                   'type': 'para',
                                   })
-        return sorted_lines
+        return lines
 
     def extract_table(self, page_number):
         """
@@ -93,7 +93,7 @@ class PdfService(BaseService):
             except Exception as e:
                 logging.error(f"Error converting image to numpy array: {e}")
                 continue
-            ocr_results = await self.image_model.run(img_np, text=near)
+            ocr_results = await self.image_model.image_to_text(img_np, text=near)
 
             # 获取OCR
             chunk_id = self.get_uuid()
@@ -189,7 +189,7 @@ class PdfService(BaseService):
         sentences = []
         all_image_chunks = []
         if method != "general":
-            self.image_model = BaseOCR(llm=self.llm, llm_max_tokens=self.llm_max_tokens,
+            self.image_model = BaseOCR(llm=self.llm,
                                        method=self.parser_method)
         for page_num in range(self.page_numbers):
             tables = self.extract_table(page_num)

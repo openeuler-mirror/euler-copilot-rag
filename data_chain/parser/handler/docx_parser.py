@@ -20,7 +20,7 @@ from data_chain.parser.tools.ocr import BaseOCR
 class DocxService(BaseService):
     def __init__(self):
         super().__init__()
-        self.image_model = None
+        self.ocr_tool = None
 
     def open_file(self, file_path):
         try:
@@ -116,7 +116,7 @@ class DocxService(BaseService):
         for i in range(len(lines)):
             line = lines[i]
             if line['type'] == 'image':
-                lines[i]['near_text'] = last_para_pre
+                lines[i]['related_text'] = last_para_pre
             elif line['type'] == 'para':
                 last_para_pre = line['text']
             elif line['type'] == 'table':
@@ -125,14 +125,14 @@ class DocxService(BaseService):
         for i in range(len(lines) - 1, -1, -1):
             line = lines[i]
             if line['type'] == 'image':
-                lines[i]['near_text'] = lines[i]['near_text'] + last_para_bac
+                lines[i]['related_text'] += last_para_bac
             elif line['type'] == 'para':
                 last_para_bac = line['text']
             elif line['type'] == 'table':
                 pass
         for line in lines:
             if line['type'] == 'image':
-                line['text'] = await self.image_model.run(line['image'], text=line['near_text'])
+                line['text'] = await self.ocr_tool.image_to_text(line['image'], text=line['related_text'])
         return lines
 
     async def change_lines(self, lines):
@@ -209,7 +209,7 @@ class DocxService(BaseService):
         if not doc:
             return None
         if self.parser_method != "general":
-            self.image_model = BaseOCR(llm=self.llm, llm_max_tokens=self.llm_max_tokens, method=self.parser_method)
+            self.ocr_tool = BaseOCR(llm=self.llm, method=self.parser_method)
         lines = self.get_lines(doc)
 
         lines, images = await self.change_lines(lines)

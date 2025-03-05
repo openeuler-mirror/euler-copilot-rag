@@ -90,7 +90,7 @@ class DocxService(BaseService):
                     lines.append((paragraph.text, 'para'))
             elif isinstance(child, CT_Tbl):
                 table = Table(child, parent)
-                rows=self.split_table(table)
+                rows = self.split_table(table)
                 for row in rows:
                     lines.append((row, 'table'))
             elif isinstance(child, CT_Picture):

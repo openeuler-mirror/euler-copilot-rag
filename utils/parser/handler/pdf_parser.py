@@ -7,8 +7,6 @@ from utils.parser.tools.ocr import BaseOCR
 from utils.parser.handler.base_parser import BaseService
 
 
-
-
 class PdfService(BaseService):
 
     def __init__(self):
@@ -89,7 +87,7 @@ class PdfService(BaseService):
             image = Image.open(io.BytesIO(image_bytes))
             image_id = self.get_uuid()
 
-            await self.insert_image_to_tmp_folder(image_bytes, image_id,image_ext)
+            await self.insert_image_to_tmp_folder(image_bytes, image_id, image_ext)
 
             img_np = np.array(image)
             ocr_results = await self.image_model.run(img_np, text=near)
@@ -189,8 +187,7 @@ class PdfService(BaseService):
         sentences = []
         all_image_chunks = []
         if method != "general":
-            self.image_model = BaseOCR(llm=self.llm, llm_max_tokens=self.llm_max_tokens,
-                                       method=self.parser_method)
+            self.image_model = BaseOCR(llm=self.llm, llm_max_tokens=self.llm_max_tokens, method=self.parser_method)
         for page_num in range(self.page_numbers):
             tables = self.extract_table(page_num)
             text = self.extract_text(page_num)

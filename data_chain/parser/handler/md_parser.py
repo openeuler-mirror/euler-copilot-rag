@@ -26,7 +26,7 @@ class MdService(BaseService):
         else:
             type = "para"
             lines = lines[0]
-            lines = self.split_sentences(lines, self.tokens)
+            lines = self.split_sentences(lines, self.chunk_tokens)
         for line in lines:
             results.append({
                 'type': type,

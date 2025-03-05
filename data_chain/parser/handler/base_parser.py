@@ -28,10 +28,10 @@ class BaseService:
         self.vectorizer = None
         self.llm_max_tokens = None
         self.llm = None
-        self.tokens = None
+        self.chunk_tokens = None
         self.ocr_tool = None
 
-    async def init_service(self, llm_entity, tokens, parser_method):
+    async def init_service(self, llm_entity, chunk_tokens, parser_method):
         self.parser_method = parser_method
         if llm_entity is not None:
             self.llm = LLM(
@@ -44,7 +44,7 @@ class BaseService:
                 max_tokens=llm_entity.max_tokens,
             )
             self.llm_max_tokens = llm_entity.max_tokens
-        self.tokens = tokens
+        self.chunk_tokens = chunk_tokens
         self.vectorizer = TfidfVectorizer()
 
     @staticmethod
@@ -82,8 +82,8 @@ class BaseService:
                 if text['text'] == "":
                     continue
                 token_len = split_tools.get_tokens(text)
-                if now_len + token_len < max(self.tokens // 2, 128) or (
-                        now_len + token_len < self.tokens and self.check_similarity(now_text, text['text'])):
+                if now_len + token_len < max(self.chunk_tokens // 2, 128) or (
+                        now_len + token_len < self.chunk_tokens and self.check_similarity(now_text, text['text'])):
                     now_text += text['text'] + '\n'
                     now_len += token_len
                 else:
@@ -152,7 +152,7 @@ class BaseService:
             logging.error(f"split tables error as{e}")
             return []
 
-        max_tokens = (self.tokens - cell_num) // cell_num
+        max_tokens = (self.chunk_tokens - cell_num) // cell_num
         for row in new_table:
             new_line = []
             max_len = 0

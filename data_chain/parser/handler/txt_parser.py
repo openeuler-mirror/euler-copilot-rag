@@ -10,7 +10,7 @@ class TxtService(BaseService):
 
     # 提取段落分词结果
     def extract_paragraph(self, paragraph):
-        sentences = self.split_sentences(paragraph, self.tokens)
+        sentences = self.split_sentences(paragraph, self.chunk_tokens)
         results = []
         for sentence in sentences:
             results.append({

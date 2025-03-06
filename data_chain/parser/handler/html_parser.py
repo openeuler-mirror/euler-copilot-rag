@@ -44,7 +44,7 @@ class HtmlService(BaseService):
 
         return node_dict
 
-    def parser(self, file_path):
+    async def parser(self, file_path):
         html_content = self.open_file(file_path)
         # 解析 HTML 内容
         soup = BeautifulSoup(html_content, 'lxml')

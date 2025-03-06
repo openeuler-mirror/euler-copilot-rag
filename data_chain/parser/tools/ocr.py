@@ -67,7 +67,7 @@ class BaseOCR:
         max_tokens:最大token数
         """
         tokens = 0
-        ocr_result_part = None
+        ocr_result_part = []
         ocr_result_parts = []
         for _ in ocr_result[0]:
             if _ is not None and len(_) > 0:
@@ -77,9 +77,9 @@ class BaseOCR:
                     ocr_result_part = [_]
                     tokens += sub_tokens
                 else:
-                    ocr_result_parts.append(_)
+                    ocr_result_part.append(_)
                     tokens += sub_tokens
-        if len(ocr_result_parts) > 0:
+        if len(ocr_result_part) > 0:
             ocr_result_parts.append(ocr_result_part)
         return ocr_result_parts
 

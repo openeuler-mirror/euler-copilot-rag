@@ -77,9 +77,9 @@ class BaseOCR:
                     ocr_result_part = [_]
                     tokens += sub_tokens
                 else:
-                    ocr_result_part.append(_)
+                    ocr_result_parts.append(_)
                     tokens += sub_tokens
-        if len(ocr_result_part) > 0:
+        if len(ocr_result_parts) > 0:
             ocr_result_parts.append(ocr_result_part)
         return ocr_result_parts
 
@@ -110,7 +110,7 @@ class BaseOCR:
                         part=part)
                     pre_part_description = await self.llm.nostream([], prompt, user_call)
                 except Exception as e:
-                    logging.error(f'OCR resutl part enhance failed due to: {e}')
+                    logging.error(f"OCR resutl part enhance failed due to: {e}")
                     pre_part_description = pre_part_description_cp
             return pre_part_description
         except Exception as e:

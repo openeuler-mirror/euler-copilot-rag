@@ -67,7 +67,7 @@ class BaseOCR:
         max_tokens:最大token数
         """
         tokens = 0
-        ocr_result_part = None
+        ocr_result_part = []
         ocr_result_parts = []
         for _ in ocr_result[0]:
             if _ is not None and len(_) > 0:
@@ -110,7 +110,7 @@ class BaseOCR:
                         part=part)
                     pre_part_description = await self.llm.nostream([], prompt, user_call)
                 except Exception as e:
-                    logging.error(f'OCR resutl part enhance failed due to: {e}')
+                    logging.error(f"OCR result part enhance failed due to: {e}")
                     pre_part_description = pre_part_description_cp
             return pre_part_description
         except Exception as e:

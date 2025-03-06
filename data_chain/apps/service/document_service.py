@@ -117,9 +117,6 @@ async def init_document_parse_task(doc_id):
     # 写入task记录
     if document_entity is None:
         return False
-    # 判断文件后缀
-    if document_entity.extension not in ParseExtensionEnum.get_all_values():
-        return False
     task_entity = await TaskManager.insert(TaskEntity(user_id=document_entity.user_id,
                                                       op_id=doc_id,
                                                       type=TaskConstant.PARSE_DOCUMENT,

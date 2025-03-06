@@ -110,7 +110,7 @@ class BaseOCR:
                         part=part)
                     pre_part_description = await self.llm.nostream([], prompt, user_call)
                 except Exception as e:
-                    logging.error(f"OCR resutl part enhance failed due to: {e}")
+                    logging.error(f"OCR result part enhance failed due to: {e}")
                     pre_part_description = pre_part_description_cp
             return pre_part_description
         except Exception as e:

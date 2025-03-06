@@ -78,6 +78,8 @@ class ParseExtensionEnum(BaseConstant):
     XLSX = ".xlsx"
     HTML = ".html"
     MD = ".md"
+    PPTX = ".pptx"
+
 class ChunkRelevance(BaseConstant):
     IRRELEVANT = 1
     WEAKLY_RELEVANT = 2

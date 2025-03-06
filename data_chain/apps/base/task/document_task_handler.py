@@ -59,6 +59,11 @@ class DocumentTaskHandler():
             answer = await parser.parser(document_entity.id, file_path)
             chunk_list, chunk_link_list, images = answer['chunk_list'], answer['chunk_link_list'], answer[
                 'image_chunks']
+            new_chunk_list=[]
+            for chunk in chunk_list:
+                if len(chunk['text'].strip())!=0:
+                    new_chunk_list.append(chunk)
+            chunk_list = new_chunk_list
             chunk_id_set = set()
             for chunk in chunk_list:
                 chunk_id_set.add(chunk['id'])
@@ -125,6 +130,8 @@ class DocumentTaskHandler():
             await TaskManager.update(task_entity.id, {'status': TaskConstant.TASK_STATUS_SUCCESS})
             TaskRedisHandler.put_task_by_tail(config['REDIS_SUCCESS_TASK_QUEUE_NAME'], str(task_entity.id))
         except Exception as e:
+            import traceback
+            print(traceback.format_exc())
             TaskRedisHandler.put_task_by_tail(config['REDIS_RESTART_TASK_QUEUE_NAME'], str(task_entity.id))
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
@@ -167,6 +174,11 @@ class DocumentTaskHandler():
             parser_result = await parser.parser(document_entity.id, file_path, is_temporary_document=True)
             chunk_list, chunk_link_list, images = parser_result['chunk_list'], parser_result['chunk_link_list'], parser_result[
                 'image_chunks']
+            new_chunk_list=[]
+            for chunk in chunk_list:
+                if len(chunk['text'].strip())!=0:
+                    new_chunk_list.append(chunk)
+            chunk_list = new_chunk_list
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Parse temporary document {document_entity.name} completed, waiting for uploading',

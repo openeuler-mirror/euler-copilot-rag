@@ -44,6 +44,8 @@ async def get_model_by_kb_id(kb_id):
         model_entity = await ModelManager.select_by_user_id(kb_entity.user_id)
     else:
         return None
+    if model_entity is None:
+        return None
     return ModelConvertor.convert_entity_to_dto(model_entity)
 
 

@@ -80,7 +80,7 @@ class ParserService:
         return {"chunk_list": chunk_list, "chunk_link_list": chunk_link_list, "image_chunks": image_chunks}
 
     @staticmethod
-    async def update_full_text_to_pg(document_id, full_text, is_temporary_document=False):
+    async def upload_full_text_to_database(document_id, full_text, is_temporary_document=False):
         try:
             update_dict = {'full_text': full_text}
             if not is_temporary_document:
@@ -92,7 +92,7 @@ class ParserService:
             raise e
 
     @staticmethod
-    async def upload_chunks_to_pg(chunks, is_temporary_document=False):
+    async def upload_chunks_to_database(chunks, is_temporary_document=False):
         if len(chunks) == 0:
             return
         try:
@@ -143,7 +143,7 @@ class ParserService:
             raise e
 
     @staticmethod
-    async def upload_chunk_links_to_pg(chunk_links: List[Dict], is_temporary_document: bool = False):
+    async def upload_chunk_links_to_database(chunk_links: List[Dict], is_temporary_document: bool = False):
         try:
             chunk_link_entity_list = []
             if not is_temporary_document:
@@ -178,7 +178,7 @@ class ParserService:
                     shutil.rmtree(output_dir)
 
     @staticmethod
-    async def upload_images_to_pg(images, is_temporary_document: bool = False):
+    async def upload_images_to_database(images, is_temporary_document: bool = False):
         try:
             image_entity_list = []
             if not is_temporary_document:
@@ -219,7 +219,7 @@ class ParserService:
             raise e
 
     @staticmethod
-    async def insert_vectors_to_pg(vectors, is_temporary_document=False):
+    async def upload_vectors_to_database(vectors, is_temporary_document=False):
         if len(vectors) == 0:
             return
         try:

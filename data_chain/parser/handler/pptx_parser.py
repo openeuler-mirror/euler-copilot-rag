@@ -71,7 +71,7 @@ class PptxService(BaseService):
         try:
             pptx = Presentation(file_path)
         except Exception as e:
-            print(f"Pptx open failed due to: {e}")
+            logging.error(f"Pptx open failed due to: {e}")
             raise e
         if self.parser_method != "general":
             self.ocr_tool = BaseOCR(llm=self.llm, method=self.parser_method)

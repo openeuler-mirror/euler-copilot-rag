@@ -51,7 +51,7 @@ class PdfService(BaseService):
                 if text:
                     text_lines.append({"bbox": bounding_box,
                                       "text": text,
-                                      "type": "paragraph",
+                                      "type": "para",
                                       })
         return sorted(text_lines, key=lambda x: (x["bbox"][1], x["bbox"][0]))
 

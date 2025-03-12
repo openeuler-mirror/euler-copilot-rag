@@ -73,7 +73,7 @@ class DocxService(BaseService):
                                 lines.append(
                                     {
                                         'text': text_part,
-                                        'type': 'text'
+                                        'type': 'para'
                                     }
                                 )
                                 text_part = ''
@@ -100,14 +100,14 @@ class DocxService(BaseService):
                         lines.append(
                             {
                                 'text': text_part,
-                                'type': 'text'
+                                'type': 'para'
                             }
                         )
                 else:
                     lines.append(
                         {
                             'text': paragraph.text,
-                            'type': 'text'
+                            'type': 'para'
                         }
                     )
             elif isinstance(child, CT_Tbl):

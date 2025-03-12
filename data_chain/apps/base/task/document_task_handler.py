@@ -86,9 +86,9 @@ class DocumentTaskHandler():
             full_text = ''
             for chunk in chunk_list:
                 full_text += chunk['text']
-            await parser.update_full_text_to_pg(document_entity.id, full_text)
-            await parser.upload_chunks_to_pg(chunk_list)
-            await parser.upload_chunk_links_to_pg(chunk_link_list)
+            await parser.upload_full_text_to_database(document_entity.id, full_text)
+            await parser.upload_chunks_to_database(chunk_list)
+            await parser.upload_chunk_links_to_database(chunk_link_list)
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Upload document {document_entity.name} full text chunk and link completed',
@@ -103,7 +103,7 @@ class DocumentTaskHandler():
                 current_stage=4,
                 stage_cnt=7
             ))
-            await parser.upload_images_to_pg(images)
+            await parser.upload_images_to_database(images)
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Upload document {document_entity.name} images to pg completed',
@@ -112,7 +112,7 @@ class DocumentTaskHandler():
             ))
 
             vectors = await parser.embedding_chunks(chunk_list)
-            await parser.insert_vectors_to_pg(vectors)
+            await parser.upload_vectors_to_database(vectors)
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Upload document {document_entity.name} vectors completed',
@@ -188,8 +188,8 @@ class DocumentTaskHandler():
             full_text = ''
             for chunk in chunk_list:
                 full_text += chunk['text']
-            await parser.update_full_text_to_pg(document_entity.id, full_text, is_temporary_document=True)
-            await parser.upload_chunks_to_pg(chunk_list, is_temporary_document=True)
+            await parser.upload_full_text_to_database(document_entity.id, full_text, is_temporary_document=True)
+            await parser.upload_chunks_to_database(chunk_list, is_temporary_document=True)
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Upload temporary document {document_entity.name} full text chunks completed',
@@ -204,7 +204,7 @@ class DocumentTaskHandler():
                 stage_cnt=6
             ))
             vectors = await parser.embedding_chunks(chunk_list, is_temporary_document=True)
-            await parser.insert_vectors_to_pg(vectors, is_temporary_document=True)
+            await parser.upload_vectors_to_database(vectors, is_temporary_document=True)
             await TaskStatusReportManager.insert(TaskStatusReportEntity(
                 task_id=task_entity.id,
                 message=f'Upload temporary document {document_entity.name} vectors completed',

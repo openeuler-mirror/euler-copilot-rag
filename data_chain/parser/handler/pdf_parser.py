@@ -163,7 +163,7 @@ class PdfService(BaseService):
                         temp_blocks.extend([{
                             "text": span["text"],
                             "bbox": span["bbox"],  # 文本边界框 (x0, y0, x1, y1)
-                            "type": "paragraph",
+                            "type": "para",
                         }])
 
         text_blocks.extend(temp_blocks)

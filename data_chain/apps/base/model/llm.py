@@ -38,6 +38,8 @@ class LLM:
                 await q.put(frame.content)
         except Exception as e:
             await q.put(None)
+            import traceback
+            logging.error(f"Error in data producer due to: {traceback.format_exc()}")
             logging.error(f"Error in data producer due to: {e}")
             return
         await q.put(None)

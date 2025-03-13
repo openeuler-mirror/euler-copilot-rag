@@ -36,17 +36,20 @@ class BaseService:
 
     async def init_service(self, llm_entity, chunk_tokens, parser_method):
         self.parser_method = parser_method
-        if llm_entity is not None:
-            self.llm = LLM(
-                model_name=llm_entity.model_name,
-                openai_api_base=llm_entity.openai_api_base,
-                openai_api_key=Security.decrypt(
-                    llm_entity.encrypted_openai_api_key,
-                    json.loads(llm_entity.encrypted_config)
-                ),
-                max_tokens=llm_entity.max_tokens,
-            )
-            self.llm_max_tokens = llm_entity.max_tokens
+        try:
+            if llm_entity is not None:
+                self.llm = LLM(
+                    model_name=llm_entity.model_name,
+                    openai_api_base=llm_entity.openai_api_base,
+                    openai_api_key=Security.decrypt(
+                        llm_entity.encrypted_openai_api_key,
+                        json.loads(llm_entity.encrypted_config)
+                    ),
+                    max_tokens=llm_entity.max_tokens,
+                )
+                self.llm_max_tokens = llm_entity.max_tokens
+        except Exception as e:
+            logging.error(f"INIT LLM error failed due to {e}")
         self.chunk_tokens = chunk_tokens
         self.vectorizer = TfidfVectorizer()
 

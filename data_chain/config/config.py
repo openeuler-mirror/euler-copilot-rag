@@ -31,8 +31,9 @@ class ConfigModel(DictBaseModel):
     SSL_ENABLE: bool = Field(None, description="是否启用SSL连接")
     # LOG METHOD
     LOG_METHOD: str = Field('stdout', description="日志记录方式")
-    # Postgres
-    DATABASE_URL: str = Field(None, description="Postgres数据库链接url")
+    # Database
+    DATABASE_TYPE: str = Field('postgres', description="数据库类型")
+    DATABASE_URL: str = Field(None, description="Database数据库链接url")
     # MinIO
     MINIO_ENDPOINT: str = Field(None, description="MinIO连接地址")
     MINIO_ACCESS_KEY: str = Field(None, description="Minio认证ak")
@@ -50,6 +51,7 @@ class ConfigModel(DictBaseModel):
     # Task
     TASK_RETRY_TIME: int = Field(None, description="任务重试次数")
     # Embedding
+    EMBEDDING_TYPE: str = Field("openai", description="embedding 服务的类型")
     EMBEDDING_API_KEY: str = Field(None, description="embedding服务api key")
     EMBEDDING_ENDPOINT: str = Field(None, description="embedding服务url地址")
     EMBEDDING_MODEL_NAME: str = Field(None, description="embedding模型名称")

@@ -256,7 +256,7 @@ class TemporaryDocumentManager():
                 return tmp_list
         except Exception as e:
             logging.error(f"Failed to select temporary documents by page: {e}")
-            return (0, [])
+            return []
     @staticmethod
     async def select_by_id(id: uuid.UUID) -> TemporaryDocumentEntity:
         try:

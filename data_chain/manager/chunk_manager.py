@@ -3,7 +3,7 @@ from sqlalchemy import select, update, func, text, or_, and_
 from typing import List, Tuple, Dict, Optional
 import uuid
 from data_chain.logger.logger import logger as logging
-
+from data_chain.config.config import config
 from data_chain.stores.postgres.postgres import PostgresDB, ChunkEntity, ChunkLinkEntity, DocumentEntity, TemporaryChunkEntity
 from data_chain.models.service import ChunkDTO
 from data_chain.exceptions.exception import ChunkException
@@ -188,58 +188,110 @@ class ChunkManager():
                 return []
             async with await PostgresDB.get_session() as session:
                 # 构建SQL查询语句
-                if banned_ids:
-                    query = text("""
-                        SELECT 
-                            c.id, 
-                            c.document_id, 
-                            c.global_offset, 
-                            c.tokens, 
-                            c.text
-                        FROM 
-                            chunk c
-                        JOIN 
-                            document d ON c.document_id = d.id
-                        WHERE
-                            c.id NOT!=ANY(:banned_ids) AND
-                            c.kb_id = :kb_id AND
-                            c.enabled = true AND
-                            d.enabled = true AND
-                            to_tsvector(:language, c.text) @@ plainto_tsquery(:language, :content)
-                        ORDER BY 
-                            ts_rank_cd(to_tsvector(:language, c.text), plainto_tsquery(:language, :content)) DESC 
-                        LIMIT :topk;
-                    """)
-                else:
-                    query = text("""
-                        SELECT 
-                            c.id, 
-                            c.document_id, 
-                            c.global_offset, 
-                            c.tokens, 
-                            c.text
-                        FROM 
-                            chunk c
-                        JOIN 
-                            document d ON c.document_id = d.id
-                        WHERE
-                            c.kb_id = :kb_id AND
-                            c.enabled = true AND
-                            d.enabled = true AND
-                            to_tsvector(:language, c.text) @@ plainto_tsquery(:language, :content)
-                        ORDER BY 
-                            ts_rank_cd(to_tsvector(:language, c.text), plainto_tsquery(:language, :content)) DESC 
-                        LIMIT :topk;
-                    """)
-
-                # 安全地绑定参数
-                params = {
-                    'banned_ids': banned_ids,
-                    'language': 'zhparser',
-                    'kb_id': kb_id,
-                    'content': content,
-                    'topk': topk,
-                }
+                if config['DATABASE_TYPE'] == 'postgres':
+                    if banned_ids:
+                        query = text("""
+                            SELECT 
+                                c.id, 
+                                c.document_id, 
+                                c.global_offset, 
+                                c.tokens, 
+                                c.text
+                            FROM 
+                                chunk c
+                            JOIN 
+                                document d ON c.document_id = d.id
+                            WHERE
+                                c.id NOT!=ANY(:banned_ids) AND
+                                c.kb_id = :kb_id AND
+                                c.enabled = true AND
+                                d.enabled = true AND
+                                to_tsvector(:language, c.text) @@ plainto_tsquery(:language, :content)
+                            ORDER BY 
+                                ts_rank_cd(to_tsvector(:language, c.text), plainto_tsquery(:language, :content)) DESC 
+                            LIMIT :topk;
+                        """)
+                    else:
+                        query = text("""
+                            SELECT 
+                                c.id, 
+                                c.document_id, 
+                                c.global_offset, 
+                                c.tokens, 
+                                c.text
+                            FROM 
+                                chunk c
+                            JOIN 
+                                document d ON c.document_id = d.id
+                            WHERE
+                                c.kb_id = :kb_id AND
+                                c.enabled = true AND
+                                d.enabled = true AND
+                                to_tsvector(:language, c.text) @@ plainto_tsquery(:language, :content)
+                            ORDER BY 
+                                ts_rank_cd(to_tsvector(:language, c.text), plainto_tsquery(:language, :content)) DESC 
+                            LIMIT :topk;
+                        """)
+                elif config['DATABASE_TYPE'] == 'opengauss':
+                    if banned_ids:
+                        query = text("""
+                            SELECT 
+                                c.id, 
+                                c.document_id, 
+                                c.global_offset, 
+                                c.tokens, 
+                                c.text
+                            FROM 
+                                chunk c
+                            JOIN 
+                                document d ON c.document_id = d.id
+                            WHERE
+                                c.id NOT!=ANY(:banned_ids) AND
+                                c.kb_id = :kb_id AND
+                                c.enabled = true AND
+                                d.enabled = true AND
+                                to_tsvector('chparser', c.text) @@ plainto_tsquery('chparser', :content)
+                            ORDER BY 
+                                ts_rank_cd(to_tsvector('chparser', c.text), plainto_tsquery('chparser', :content)) DESC 
+                            LIMIT :topk;
+                        """)
+                    else:
+                        query = text("""
+                            SELECT 
+                                c.id, 
+                                c.document_id, 
+                                c.global_offset, 
+                                c.tokens, 
+                                c.text
+                            FROM 
+                                chunk c
+                            JOIN 
+                                document d ON c.document_id = d.id
+                            WHERE
+                                c.kb_id = :kb_id AND
+                                c.enabled = true AND
+                                d.enabled = true AND
+                                to_tsvector('chparser' c.text) @@ plainto_tsquery('chparser', :content)
+                            ORDER BY 
+                                ts_rank_cd(to_tsvector('chparser', c.text), plainto_tsquery('chparser', :content)) DESC 
+                            LIMIT :topk;
+                        """)
+                if config['DATABASE_TYPE'] == 'postgres':
+                    # 安全地绑定参数
+                    params = {
+                        'banned_ids': banned_ids,
+                        'language': 'zhparser',
+                        'kb_id': kb_id,
+                        'content': content,
+                        'topk': topk,
+                    }
+                elif config['DATABASE_TYPE'] == 'opengauss':
+                    params = {
+                        'banned_ids': banned_ids,
+                        'kb_id': kb_id,
+                        'content': content,
+                        'topk': topk,
+                    }
                 result = await session.execute(query, params)
                 return result.all()
         except Exception as e:
@@ -332,35 +384,67 @@ class TemporaryChunkManager():
                 return []
             async with await PostgresDB.get_session() as session:
                 # 构建SQL查询语句
-                if document_ids:
-                    query = text("""
-                        SELECT 
-                            c.id, 
-                            c.document_id, 
-                            c.global_offset, 
-                            c.tokens, 
-                            c.text
-                        FROM 
-                            temporary_chunk c
-                        JOIN 
-                            temporary_document d ON c.document_id = d.id
-                        WHERE
-                            c.document_id=ANY(:document_ids) AND
-                            d.status!='deleted' AND
-                            to_tsvector(:language, c.text) @@ plainto_tsquery(:language, :content) 
-                        ORDER BY 
-                            ts_rank_cd(to_tsvector(:language, c.text), plainto_tsquery(:language, :content)) DESC 
-                        LIMIT :topk;
-                    """)
-                else:
-                    return []
-                # 安全地绑定参数
-                params = {
-                    'document_ids': document_ids,
-                    'language': 'zhparser',
-                    'content': content,
-                    'topk': topk,
-                }
+                if config['DATABASE_TYPE'] == 'postgres':
+                    if document_ids:
+                        query = text("""
+                            SELECT 
+                                c.id, 
+                                c.document_id, 
+                                c.global_offset, 
+                                c.tokens, 
+                                c.text
+                            FROM 
+                                temporary_chunk c
+                            JOIN 
+                                temporary_document d ON c.document_id = d.id
+                            WHERE
+                                c.document_id=ANY(:document_ids) AND
+                                d.status!='deleted' AND
+                                to_tsvector(:language, c.text) @@ plainto_tsquery(:language, :content) 
+                            ORDER BY 
+                                ts_rank_cd(to_tsvector(:language, c.text), plainto_tsquery(:language, :content)) DESC 
+                            LIMIT :topk;
+                        """)
+                    else:
+                        return []
+                elif config['DATABASE_TYPE'] == 'opengauss':
+                    if document_ids:
+                        query = text("""
+                            SELECT 
+                                c.id, 
+                                c.document_id, 
+                                c.global_offset, 
+                                c.tokens, 
+                                c.text
+                            FROM 
+                                temporary_chunk c
+                            JOIN 
+                                temporary_document d ON c.document_id = d.id
+                            WHERE
+                                c.document_id=ANY(:document_ids) AND
+                                d.status!='deleted' AND
+                                to_tsvector('chparser', c.text) @@ plainto_tsquery('chparser', :content) 
+                            ORDER BY 
+                                ts_rank_cd(to_tsvector('chparser', c.text), plainto_tsquery('chparser', :content)) DESC 
+                            LIMIT :topk;
+                        """)
+                    else:
+                        return []
+                if config['DATABASE_TYPE'] == 'postgres':
+                    # 安全地绑定参数
+                    params = {
+                        'document_ids': document_ids,
+                        'language': 'zhparser',
+                        'content': content,
+                        'topk': topk,
+                    }
+                elif config['DATABASE_TYPE'] == 'opengauss':
+                    # 安全地绑定参数
+                    params = {
+                        'document_ids': document_ids,
+                        'content': content,
+                        'topk': topk,
+                    }
                 result = await session.execute(query, params)
                 return result.all()
         except Exception as e:

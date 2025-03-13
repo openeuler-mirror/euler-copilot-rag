@@ -274,10 +274,14 @@ class PostgresDB:
     @classmethod
     async def get_dynamic_vector_items_table(cls, uuid_str, vector_dim):
         # 使用同步引擎
-        sync_engine = create_engine(
-            config['DATABASE_URL'].replace("postgresql+asyncpg", "postgresql"),
-            echo=False, pool_recycle=300, pool_pre_ping=True)
-
+        if config['DATABASE_TYPE'] == 'postgres':
+            sync_engine = create_engine(
+                config['DATABASE_URL'].replace("postgresql+asyncpg", "postgresql"),
+                echo=False, pool_recycle=300, pool_pre_ping=True)
+        elif config['DATABASE_TYPE'] == 'opengauss':
+            sync_engine = create_engine(
+                config['DATABASE_URL'].replace("opengauss+asyncpg", "opengauss+psycopg2"),
+                echo=False, pool_recycle=300, pool_pre_ping=True)
         # 反射加载 chunk 表的元数据
         chunk_table = reflect_chunk_table(sync_engine)
 
@@ -300,13 +304,22 @@ class PostgresDB:
         )
 
         # 动态创建索引
-        index = Index(
-            f'general_text_vector_index_{uuid_str}',
-            vector_items_table.c.vector,
-            postgresql_using='hnsw',
-            postgresql_with={'m': 16, 'ef_construction': 200},
-            postgresql_ops={'vector': 'vector_cosine_ops'}
-        )
+        if config['DATABASE_TYPE']=='postgres':
+            index = Index(
+                f'general_text_vector_index_{uuid_str}',
+                vector_items_table.c.vector,
+                postgresql_using='hnsw',
+                postgresql_with={'m': 16, 'ef_construction': 200},
+                postgresql_ops={'vector': 'vector_cosine_ops'}
+            )
+        elif config['DATABASE_TYPE']=='opengauss':
+            index = Index(
+                f'general_text_vector_index_{uuid_str}',
+                vector_items_table.c.vector,
+                opengauss_using='hnsw',
+                opengauss_with={'m': 16, 'ef_construction': 200},
+                opengauss_ops={'vector': 'vector_cosine_ops'}
+            )
 
         # 将索引添加到表定义中
         vector_items_table.append_constraint(index)

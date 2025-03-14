@@ -11,9 +11,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class Vectorize():
     @staticmethod
     async def vectorize_embedding(text):
-        data = {
-                "inputs": text,
-            }
         if config['EMBEDDING_TYPE']=='openai':
             headers = {
                     "Authorization": f"Bearer {config['EMBEDDING_API_KEY']}"
@@ -33,6 +30,9 @@ class Vectorize():
                 return None
         elif config['EMBEDDING_TYPE'] =='mindie':
             try:
+                data = {
+                "inputs": text,
+                }
                 res = requests.post(url=config["EMBEDDING_ENDPOINT"], json=data, verify=False)
                 if res.status_code != 200:
                     return None

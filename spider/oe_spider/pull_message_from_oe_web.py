@@ -715,7 +715,7 @@ class PullMessageFromOeWeb:
 
     @staticmethod
     def oe_organize_message_handler(pg_url, oe_spider_method):
-        f = open('./doc/organize.txt', 'r', encoding='utf-8')
+        f = open('./docs/organize.txt', 'r', encoding='utf-8')
         lines = f.readlines()
         st = 0
         en = 0

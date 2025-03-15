@@ -537,7 +537,7 @@ class PullMessageFromOeWeb:
             id1=results[i]['cveId']
             results[i]['details'] = 'https://www.openeuler.org/zh/security/cve/detail/?cveId=' + \
                                     results[i]['cveId'] + '&packageName=' + results[i]['packageName']
-            url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/cvedatabase/getByCveIdAndPackageName?cveId=' + \
+            url='https://www.openeuler.org/api-cve/cve-security-notice-server/cvedatabase/getCVEProductPackageList?cveId=' + \
                                     results[i]['cveId'] + '&packageName=' + results[i]['packageName']
             try:
                 response = requests.get(
@@ -547,7 +547,7 @@ class PullMessageFromOeWeb:
                 for key in response.json()["result"].keys():
                     if key not in results[i].keys() or results[i][key]=='':
                         results[i][key] = response.json()["result"][key]
-                url='https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/cvedatabase/getCVEProductPackageList?cveId='+ \
+                url='https://www.openeuler.org/api-cve/cve-security-notice-server/cvedatabase/getCVEProductPackageList?cveId='+ \
                                         results[i]['cveId'] + '&packageName=' + results[i]['packageName']
                 response = requests.get(
                 url,

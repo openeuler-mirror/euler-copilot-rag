@@ -379,7 +379,7 @@ class PullMessageFromOeWeb:
 
     @staticmethod
     def pull_oe_compatibility_osv(pg_url, dataset_name):
-        url = 'https://www.openeuler.org/api-euler/api-cve/cve-security-notice-server/osv/findAll'
+        url = 'https://www.openeuler.org/api-cve/cve-security-notice-server/osv/findAll'
         headers = {
             'Content-Type': 'application/json'
         }

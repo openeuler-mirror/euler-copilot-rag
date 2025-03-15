@@ -308,7 +308,7 @@ class SqlGenerateService():
                 continue
             try:
                 if sql_var:
-                    await DiffDatabaseService.get_database_service(database_type).try_excute(sql)
+                    await DiffDatabaseService.get_database_service(database_type).try_excute(database_url,sql)
             except Exception as e:
                 logging.error(f'生成的sql执行失败由于{e}')
                 continue

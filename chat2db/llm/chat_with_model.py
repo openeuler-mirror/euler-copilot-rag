@@ -1,7 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage
-
+import re
 
 class LLM:
     def __init__(self, model_name, openai_api_base, openai_api_key, request_timeout, max_tokens, temperature):
@@ -21,4 +21,5 @@ class LLM:
     async def chat_with_model(self, system_call, user_call):
         chat = self.assemble_chat(system_call, user_call)
         response = await self.client.ainvoke(chat)
-        return response.content
+        content = re.sub(r'<think>.*?</think>\n\n', '', response.content, flags=re.DOTALL)
+        return content

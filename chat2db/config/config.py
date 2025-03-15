@@ -23,8 +23,10 @@ class ConfigModel(BaseModel):
     LLM_MODEL: str = Field(None, description="使用的语言模型名称或版本")
 
     # Vectorize
-    REMOTE_RERANKING_ENDPOINT: str = Field(None, description="远程重排序服务的Endpoint")
-    REMOTE_EMBEDDING_ENDPOINT: str = Field(None, description="远程嵌入向量生成服务的Endpoint")
+    EMBEDDING_TYPE: str = Field("openai", description="embedding 服务的类型")
+    EMBEDDING_API_KEY: str = Field(None, description="embedding服务api key")
+    EMBEDDING_ENDPOINT: str = Field(None, description="embedding服务url地址")
+    EMBEDDING_MODEL_NAME: str = Field(None, description="embedding模型名称")
 
     # security
     HALF_KEY1: str = Field(None, description='加密的密钥组件1')

@@ -1,1 +1,0 @@
-python3 /chat2db/app/app.py

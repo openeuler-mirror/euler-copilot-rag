@@ -242,14 +242,17 @@ class SqlGenerateService():
                 except Exception as e:
                     logging.info(f'sql生成失败{e}')
                     return []
-                for i in range(sql_generate_cnt):
+                ge_cnt=0
+                ge_sql_cnt=0
+                while ge_cnt<10*sql_generate_cnt and ge_sql_cnt<sql_generate_cnt:
                     sql = await llm.chat_with_model(prompt, f'请输出一条在与{database_type}下能运行的sql，以分号结尾')
                     sql = await SqlGenerateService.extract_select_statements(sql)
                     if len(sql):
-                        sql_generate_cnt -= 1
+                        ge_sql_cnt+=1
                         tmp_dict = {'database_id': database_id, 'table_id': table_id, 'sql': sql}
                         results.append(tmp_dict)
-                if sql_generate_cnt == 0:
+                    ge_cnt+=1
+                if len(results) == sql_generate_cnt:
                     break
         except Exception as e:
             logging.error(f'sql生成失败由于：{e}')

@@ -12,6 +12,7 @@ question_generate_base_on_data_prompt: '你是一个postgres数据库专家，�
 
   #05 优先生成有注释的字段相关的sql语句。
 
+  #06 不要对生成的sql进行解释。
 
   以下是表结构和注释：
 
@@ -42,7 +43,8 @@ sql_generate_base_on_data_prompt: '你是一个postgres数据库专家，你的�
   #05 sql语句中，参考问题，对查询字段进行冗余。
 
   #06 sql语句中，需要以分号结尾。
-
+  
+  #07 不要对生成的sql进行解释。
 
   以下是表结构以及表注释：
 

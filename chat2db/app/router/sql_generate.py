@@ -26,8 +26,6 @@ async def generate_sql(request: SqlGenerateRequest):
     table_id_list = request.table_id_list
     question = request.question
     use_llm_enhancements = request.use_llm_enhancements
-    if table_id_list == []:
-        table_id_list = None
     results = {}
     sql_list = await SqlGenerateService.generate_sql_base_on_exmpale(
         database_id=database_id, question=question, table_id_list=table_id_list,

@@ -46,6 +46,18 @@ class TableInfoManager():
         }
 
     @staticmethod
+    async def get_table_id_by_database_id_and_table_name(database_id, table_name):
+        with PostgresDB.get_session() as session:
+            table_info_entry = session.query(
+                TableInfo).filter(
+                TableInfo.database_id == database_id,
+                TableInfo.table_name == table_name,
+            ).first()
+        if table_info_entry:
+            return table_info_entry.id
+        return None
+
+    @staticmethod
     async def get_table_info_by_database_id(database_id, enable=None):
         with PostgresDB.get_session() as session:
             if enable is None:

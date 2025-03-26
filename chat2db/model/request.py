@@ -1,7 +1,6 @@
 import uuid
 from pydantic import BaseModel, Field
-from enum import Enum
-
+from typing import Optional
 
 class QueryRequest(BaseModel):
     question: str
@@ -17,6 +16,12 @@ class DatabaseAddRequest(BaseModel):
 class DatabaseDelRequest(BaseModel):
     database_id: uuid.UUID
 
+class DatabaseSqlGenerateRequest(BaseModel):
+    database_url: str
+    table_name_list: Optional[list[str]] = Field(default=[])
+    question: str
+    topk: int = 5
+    use_llm_enhancements: Optional[bool] = Field(default=False)
 
 class TableAddRequest(BaseModel):
     database_id: uuid.UUID

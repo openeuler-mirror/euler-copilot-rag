@@ -56,7 +56,14 @@ class DatabaseInfoManager():
             else:
                 return None
         return database_url
-
+    @staticmethod
+    async def get_database_id_by_url(database_url: str):
+        with PostgresDB.get_session() as session:
+            hashmac = hashlib.sha256(database_url.encode('utf-8')).hexdigest()
+            database_info_entry = session.query(DatabaseInfo).filter(DatabaseInfo.hashmac == hashmac).first()
+            if database_info_entry:
+                return database_info_entry.id
+        return None
     @staticmethod
     async def get_all_database_info():
         with PostgresDB.get_session() as session:

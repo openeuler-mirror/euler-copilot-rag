@@ -1,4 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import asyncio
 import yaml
 import re
 import json
@@ -131,16 +132,25 @@ class SqlGenerateService():
         data_frame_list = []
         if table_id_list is None:
             if use_llm_enhancements:
-                table_id_list = await SqlGenerateService.get_most_similar_table_id_list(database_id, question, table_choose_cnt)
+                table_id_list = await  asyncio.wait_for(SqlGenerateService.get_most_similar_table_id_list(database_id, question, table_choose_cnt))
             else:
                 try:
                     table_info_list = await TableInfoManager.get_table_info_by_database_id(database_id)
                     table_id_list = []
                     for table_info in table_info_list:
                         table_id_list.append(table_info['table_id'])
-                    sql_example_list = await SqlExampleManager.get_topk_sql_example_by_cos_dis(
-                        question_vector=question_vector,
-                        table_id_list=table_id_list, topk=table_choose_cnt * 2)
+                    max_retry=3
+                    sql_example_list = []
+                    for _ in range(max_retry):
+                        try:
+                            sql_example_list = await  asyncio.wait_for(SqlExampleManager.get_topk_sql_example_by_cos_dis(
+                                question_vector=question_vector,
+                                table_id_list=table_id_list, topk=table_choose_cnt * 2),
+                                timeout=1
+                            )
+                            break
+                        except Exception as e:
+                            logging.error(f'非增强模式下，sql_example获取失败：{e}')
                     table_id_list = []
                     for sql_example in sql_example_list:
                         table_id_list.append(sql_example['table_id'])
@@ -170,8 +180,19 @@ class SqlGenerateService():
             note = await SqlGenerateService.merge_table_and_column_info(table_info, column_info_list)
             note_list.append(note)
             try:
-                sql_example_list = await SqlExampleManager.get_topk_sql_example_by_cos_dis(
-                    question_vector, table_id_list=[table_id], topk=sql_example_choose_cnt)
+                max_retry=3
+                sql_example_list = []
+                for _ in range(max_retry):
+                    try:
+                        sql_example_list = await asyncio.wait_for(SqlExampleManager.get_topk_sql_example_by_cos_dis(
+                            question_vector, 
+                            table_id_list=[table_id], 
+                            topk=sql_example_choose_cnt),
+                            timeout=1
+                        )
+                        break
+                    except Exception as e:
+                        logging.error(f'获取id为{table_id}的表的最相近的{topk}条sql案例失败由于：{e}')
             except Exception as e:
                 sql_example_list = []
                 logging.error(f'id为{table_id}的表的最相近的{topk}条sql案例获取失败由于：{e}')

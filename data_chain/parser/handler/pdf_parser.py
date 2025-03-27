@@ -74,11 +74,11 @@ class PdfService(BaseService):
             table_df  = table.to_pandas()
             table_lines = self.split_table(table_df)
             for line in table_lines:
-                table_data.extend([{
+                table_data.append({
                     "text": line,
                     "bbox": table_bbox,
                     "type": "table",
-                } for line in table_lines])
+                })
 
 
         page.apply_redactions()

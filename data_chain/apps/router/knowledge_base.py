@@ -223,7 +223,7 @@ async def get_stream_answer(req: QueryRequest, response: Response):
         question = await question_rewrite(req.history, req.question, model_dto)
         max_tokens = tokens_upper//3*2
         bac_info = ''
-        document_chunk_list = await get_similar_chunks(content=question, kb_id=req.kb_sn, temporary_document_ids=req.document_ids, max_tokens=tokens_upper, topk=req.top_k)
+        document_chunk_list = await get_similar_chunks(content=question, kb_id=req.kb_sn, temporary_document_ids=req.document_ids, max_tokens=2*tokens_upper, topk=req.top_k)
         for i in range(len(document_chunk_list)):
             document_name = document_chunk_list[i]['document_name']
             chunk_list = document_chunk_list[i]['chunk_list']
@@ -277,7 +277,7 @@ async def get_answer(req: QueryRequest):
         question = await question_rewrite(req.history, req.question, model_dto)
         max_tokens = tokens_upper//3*2
         bac_info = ''
-        document_chunk_list = await get_similar_chunks(content=question, kb_id=req.kb_sn, temporary_document_ids=req.document_ids, max_tokens = tokens_upper, topk=req.top_k)
+        document_chunk_list = await get_similar_chunks(content=question, kb_id=req.kb_sn, temporary_document_ids=req.document_ids, max_tokens = 2*tokens_upper, topk=req.top_k)
         for i in range(len(document_chunk_list)):
             document_name = document_chunk_list[i]['document_name']
             chunk_list = document_chunk_list[i]['chunk_list']

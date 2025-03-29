@@ -30,6 +30,5 @@ class XlsxService(BaseService):
         data = self.read_xlsx(file_path)
         sentences = self.extract_table(data)
         chunks = self.build_chunks_by_lines(sentences)
-        print(chunks)
         chunk_links = self.build_chunk_links_by_line(chunks)
         return chunks, chunk_links, []

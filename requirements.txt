@@ -43,3 +43,4 @@ tika==2.6.0
 tiktoken==0.8.0
 urllib3==2.2.1
 uvicorn==0.21.0
+xlrd==2.0.1

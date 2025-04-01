@@ -20,20 +20,22 @@ class HtmlService(BaseService):
     def element_to_dict(self, element):
         node_dict = {
             "tag": element.name,  # 当前节点的标签名
-            "attributes": element.attrs if element.attrs else None,  # 标签的属性（如果有）
-            "text": element.get_text(strip=True) if element.string else None,  # 标签内的文字
+            "attributes": element.attrs if element.attrs else '',  # 标签的属性（如果有）
+            "text": element.get_text(strip=True) if element.string else '',  # 标签内的文字
             "children": [],  # 子节点列表
             "id": self.get_uuid(),
-            "type": "general",
+            "type": "para",
             "type_attr": 'leaf',
         }
 
         # 处理图片
         if element.name == "img":
             node_dict["img"] = element.get('src', None)
+            node_dict['type'] = 'img'
         # 处理列表
         elif element.name in ["ul", "ol"]:
             node_dict["list"] = [li.get_text(strip=True) for li in element.find_all('li')]
+            node_dict['type'] = 'table'
 
         # 递归处理子元素
         for child in element.children:

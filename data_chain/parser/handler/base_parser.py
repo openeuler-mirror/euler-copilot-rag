@@ -406,10 +406,10 @@ class BaseService:
         """
         chunks = []
 
-        def get_edges(node, parent_id=None, dep=0):
+        def get_edges(node, parent_id=None, dfs_order=0):
             chunk = self.package_to_chunk(text=node["text"], tokens=split_tools.get_tokens(tree["text"]), status="",
                                           type_big=node["type"], type_small='tree', type_attr=node['type_attr'],
-                                          global_offset=dep, link_to=parent_id, )
+                                          global_offset=dfs_order, link_to=parent_id, )
             node['id'] = chunk['id']
             chunks.append(chunk)
 
@@ -417,7 +417,8 @@ class BaseService:
             if 'children' in node and node['children']:
                 for child in node['children']:
                     # 递归处理子节点
-                    get_edges(child, node['id'], dep + 1)
+                    dfs_order = get_edges(child, node['id'], dfs_order+1)
+            return dfs_order
 
         get_edges(tree)
 

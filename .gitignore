@@ -18,7 +18,7 @@ start.sh
 app.log
 encrypted_config.json
 
-# neo4j docs
+# neo4j templetes
 rag_service/vectorstore/neo4j/documents
 # embedding models
 rag_service/embedding_models

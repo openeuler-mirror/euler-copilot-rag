@@ -21,7 +21,7 @@
 ```bash
 python utils/main.py \
 qa_generate \
---path docs/examples.xlsx \
+--path templetes/examples.xlsx \
 --output_path output  \
 --output_format json \
 --enhance \
@@ -60,7 +60,7 @@ qa_generate \
 ```bash
 python3 utils/main.py \
   document_governance \
-  --path docs/test_for_document.txt \
+  --path templetes/test_for_document.txt \
   --output_path output/document \
   --standardize \
   --format \

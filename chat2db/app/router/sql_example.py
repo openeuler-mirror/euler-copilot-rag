@@ -76,7 +76,7 @@ async def query_sql_example(table_id: uuid.UUID):
     )
 
 
-@router.post("/udpate", response_model=ResponseData)
+@router.post("/update", response_model=ResponseData)
 async def update_sql_example(request: SqlExampleUpdateRequest):
     sql_example_id = request.sql_example_id
     question = request.question

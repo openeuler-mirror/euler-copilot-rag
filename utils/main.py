@@ -199,7 +199,7 @@ class CLIService:
         # 子解析器：qa_generate
         qa_parser = subparsers.add_parser("qa_generate", help="问答对生成")
         qa_parser.add_argument("--path", type=str, required=True,
-                               help="待处理文件或目录路径（默认值：docs）")
+                               help="待处理文件或目录路径（默认值：templetes）")
         qa_parser.add_argument("--output_path", type=str, required=True,
                                help="结果存放目录（默认值：output）")
         qa_parser.add_argument("--output_format", type=str, choices=["json", "yaml", "xlsx"],
@@ -213,7 +213,7 @@ class CLIService:
         # 子解析器：document_governance
         doc_parser = subparsers.add_parser("document_governance", help="文档优化")
         doc_parser.add_argument("--path", type=str, required=True,
-                                help="待处理文件或目录路径（默认值：docs）")
+                                help="待处理文件或目录路径（默认值：templetes）")
         doc_parser.add_argument("--output_path", type=str, required=True,
                                 help="结果存放目录（默认值：output）")
         doc_parser.add_argument("--unique", action="store_true",

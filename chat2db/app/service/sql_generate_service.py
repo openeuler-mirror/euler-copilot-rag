@@ -62,7 +62,7 @@ class SqlGenerateService():
             table_id = table_info['table_id']
             table_id_set.add(str(table_id))
         try:
-            with open('./chat2db/docs/prompt.yaml', 'r', encoding='utf-8') as f:
+            with open('./chat2db/templetes/prompt.yaml', 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
             prompt = prompt_dict.get('table_choose_prompt', '')
             table_entries = '<table>\n'
@@ -240,7 +240,7 @@ class SqlGenerateService():
         data_frame_list = await SqlGenerateService.find_most_similar_sql_example(database_id, table_id_list, question, use_llm_enhancements)
         logging.info(f'问题{question}关联到的表信息如下{str(data_frame_list)}')
         try:
-            with open('./chat2db/docs/prompt.yaml', 'r', encoding='utf-8') as f:
+            with open('./chat2db/templetes/prompt.yaml', 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
             llm = LLM(model_name=config['LLM_MODEL'],
                       openai_api_base=config['LLM_URL'],
@@ -307,7 +307,7 @@ class SqlGenerateService():
         for i in range(5):
             data_frame = await DiffDatabaseService.get_database_service(database_type).get_rand_data(database_url, table_name)
             try:
-                with open('./chat2db/docs/prompt.yaml', 'r', encoding='utf-8') as f:
+                with open('./chat2db/templetes/prompt.yaml', 'r', encoding='utf-8') as f:
                     prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
                 prompt = prompt_dict['question_generate_base_on_data_prompt'].format(
                     note=note, data_frame=data_frame)
@@ -318,7 +318,7 @@ class SqlGenerateService():
                 logging.error(f'问题生成失败由于{e}')
                 continue
             try:
-                with open('./chat2db/docs/prompt.yaml', 'r', encoding='utf-8') as f:
+                with open('./chat2db/templetes/prompt.yaml', 'r', encoding='utf-8') as f:
                     prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
                 prompt = prompt_dict['sql_generate_base_on_data_prompt'].format(
                     database_type=database_type,
@@ -345,7 +345,7 @@ class SqlGenerateService():
     @staticmethod
     async def repair_sql(database_type, table_info, column_info_list, sql_failed, sql_failed_message, question):
         try:
-            with open('./chat2db/docs/prompt.yaml', 'r', encoding='utf-8') as f:
+            with open('./chat2db/templetes/prompt.yaml', 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
             llm = LLM(model_name=config['LLM_MODEL'],
                       openai_api_base=config['LLM_URL'],

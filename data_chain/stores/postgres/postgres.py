@@ -365,8 +365,7 @@ class PostgresDB:
             @event.listens_for(engine.sync_engine, "connect")
             def connect(dbapi_connection, connection_record):
                 dbapi_connection.run_async(register_vector)
-                connection = None
-            connection = async_sessionmaker(engine, expire_on_commit=False)()
+        connection = async_sessionmaker(engine, expire_on_commit=False)()
         return cls._ConnectionManager(engine, connection)
 
     class _ConnectionManager:

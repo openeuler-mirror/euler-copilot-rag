@@ -3,9 +3,10 @@ from uuid import uuid4
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import  TIMESTAMP, UUID, Column, String, Boolean, ForeignKey, create_engine, func, Index
+import sys
 from chat2db.config.config import config
 
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 Base = declarative_base()
 

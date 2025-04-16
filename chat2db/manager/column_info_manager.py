@@ -1,5 +1,5 @@
 from sqlalchemy import and_
-
+import sys
 from chat2db.database.postgres import ColumnInfo, PostgresDB
 
 

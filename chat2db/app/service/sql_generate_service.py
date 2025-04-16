@@ -4,6 +4,7 @@ import yaml
 import re
 import json
 import random
+import sys
 import uuid
 import logging
 from pandas.core.api import DataFrame as DataFrame
@@ -18,7 +19,7 @@ from chat2db.config.config import config
 from chat2db.app.base.vectorize import Vectorize
 
 
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 
@@ -146,7 +147,7 @@ class SqlGenerateService():
                             sql_example_list = await  asyncio.wait_for(SqlExampleManager.get_topk_sql_example_by_cos_dis(
                                 question_vector=question_vector,
                                 table_id_list=table_id_list, topk=table_choose_cnt * 2),
-                                timeout=1
+                                timeout=5
                             )
                             break
                         except Exception as e:
@@ -160,8 +161,10 @@ class SqlGenerateService():
                 table_id_list = list(set(table_id_list))
                 if len(table_id_list) < table_choose_cnt:
                     try:
-                        expand_table_id_list = await TableInfoManager.get_topk_table_by_cos_dis(
+                        expand_table_id_list = await  asyncio.wait_for(TableInfoManager.get_topk_table_by_cos_dis(
                             database_id, question_vector, table_choose_cnt - len(table_id_list))
+                            ,timeout=5
+                            )
                         table_id_list += expand_table_id_list
                     except Exception as e:
                         logging.error(f'非增强模式下，表id补充失败由于：{e}')
@@ -177,25 +180,23 @@ class SqlGenerateService():
                 column_info_list = await ColumnInfoManager.get_column_info_by_table_id(table_id)
             except Exception as e:
                 logging.error(f'表{table_id}注释获取失败由于{e}')
+                continue
+            logging.error(f'表{table_id}的注释为{table_info},列的注释为{column_info_list}')
             note = await SqlGenerateService.merge_table_and_column_info(table_info, column_info_list)
             note_list.append(note)
-            try:
-                max_retry=3
-                sql_example_list = []
-                for _ in range(max_retry):
-                    try:
-                        sql_example_list = await asyncio.wait_for(SqlExampleManager.get_topk_sql_example_by_cos_dis(
-                            question_vector, 
-                            table_id_list=[table_id], 
-                            topk=sql_example_choose_cnt),
-                            timeout=1
-                        )
-                        break
-                    except Exception as e:
-                        logging.error(f'获取id为{table_id}的表的最相近的{topk}条sql案例失败由于：{e}')
-            except Exception as e:
-                sql_example_list = []
-                logging.error(f'id为{table_id}的表的最相近的{topk}条sql案例获取失败由于：{e}')
+            max_retry=3
+            sql_example_list = []
+            for _ in range(max_retry):
+                try:
+                    sql_example_list = await asyncio.wait_for(SqlExampleManager.get_topk_sql_example_by_cos_dis(
+                        question_vector, 
+                        table_id_list=[table_id], 
+                        topk=sql_example_choose_cnt),
+                        timeout=5
+                    )
+                    break
+                except Exception as e:
+                    logging.error(f'获取id为{table_id}的表的最相近的{topk}条sql案例失败由于：{e}')
             question_sql_list = []
             for i in range(len(sql_example_list)):
                 question_sql_list.append(

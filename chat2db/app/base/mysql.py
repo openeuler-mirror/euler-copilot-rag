@@ -5,9 +5,10 @@ import concurrent.futures
 import logging
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, text
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 
@@ -18,7 +19,7 @@ class Mysql():
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(Mysql._connect_and_query, database_url)
-                result = future.result(timeout=0.1)
+                result = future.result(timeout=2)
                 return result
         except concurrent.futures.TimeoutError:
             logging.error('mysql数据库连接超时')

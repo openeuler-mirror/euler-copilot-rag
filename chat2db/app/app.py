@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+import sys
 from chat2db.app.router import sql_example
 from chat2db.app.router import sql_generate
 from chat2db.app.router import database
@@ -8,7 +9,7 @@ from chat2db.config.config import config
 import logging
 
 
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 app = FastAPI()

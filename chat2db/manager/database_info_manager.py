@@ -1,10 +1,11 @@
 import json
 import hashlib
+import sys
 import logging
 from chat2db.database.postgres import DatabaseInfo, PostgresDB
 from chat2db.security.security import Security
 
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 

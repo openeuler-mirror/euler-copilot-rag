@@ -3,6 +3,7 @@
 import logging
 import uuid
 from fastapi import APIRouter, status
+import sys
 
 from chat2db.model.request import TableAddRequest, TableDelRequest, EnableColumnRequest
 from chat2db.model.response import ResponseData
@@ -12,7 +13,7 @@ from chat2db.manager.column_info_manager import ColumnInfoManager
 from chat2db.app.service.diff_database_service import DiffDatabaseService
 from chat2db.app.base.vectorize import Vectorize
 from chat2db.app.service.keyword_service import keyword_service
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 router = APIRouter(

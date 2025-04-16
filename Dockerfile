@@ -1,4 +1,4 @@
-FROM  hub.oepkgs.net/neocopilot/data_chain_back_base:0.9.5-opengauss-arm
+FROM  hub.oepkgs.net/neocopilot/data_chain_back_end_base:0.9.5-x86-test
 
 COPY --chown=1001:1001 --chmod=750 ./ /rag-service/
 WORKDIR /rag-service

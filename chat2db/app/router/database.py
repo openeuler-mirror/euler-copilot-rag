@@ -4,7 +4,7 @@ import logging
 import uuid
 from fastapi import APIRouter, status
 from typing import Optional
-
+import sys
 from chat2db.model.request import DatabaseAddRequest, DatabaseDelRequest, DatabaseSqlGenerateRequest
 from chat2db.model.response import ResponseData
 from chat2db.manager.database_info_manager import DatabaseInfoManager
@@ -14,7 +14,7 @@ from chat2db.app.service.sql_generate_service import SqlGenerateService
 from chat2db.app.service.keyword_service import keyword_service
 from chat2db.app.base.vectorize import Vectorize
 
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 router = APIRouter(

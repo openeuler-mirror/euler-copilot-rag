@@ -1,7 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import copy
 import logging
-
+import sys
 
 class Node:
     def __init__(self, dep, pre_id):
@@ -12,7 +12,7 @@ class Node:
         self.data_frame = None
 
 
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 

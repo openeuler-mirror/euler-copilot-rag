@@ -271,7 +271,7 @@ class ChunkManager():
                                 c.kb_id = :kb_id AND
                                 c.enabled = true AND
                                 d.enabled = true AND
-                                to_tsvector('chparser' c.text) @@ plainto_tsquery('chparser', :content)
+                                to_tsvector('chparser', c.text) @@ plainto_tsquery('chparser', :content)
                             ORDER BY 
                                 ts_rank_cd(to_tsvector('chparser', c.text), plainto_tsquery('chparser', :content)) DESC 
                             LIMIT :topk;

@@ -162,11 +162,12 @@ async def get_keywords_from_chunk(chunk: str, top_k=30):
     return keywords
 
 
-async def get_chunk_tuple(content, temporary_document_ids=None, kb_id=None, topk=3):
+async def get_chunk_tuple(content, temporary_document_ids=None, kb_id=None, topk=3, return_t_cost=False):
     #
     # 这里返回的chunk_tuple_list是个n*5二维列表
     # 内部的每个列表内容： （id, document_id, global_offset, tokens, text）
     #
+    t_cost_dict = {}
     st = time.time()
     if temporary_document_ids:
         chunk_tuple_list = await TemporaryChunkManager.find_top_k_similar_chunks(
@@ -180,10 +181,12 @@ async def get_chunk_tuple(content, temporary_document_ids=None, kb_id=None, topk
             max(topk//2, 1))
     else:
         return []
+    t_cost_dict['keyword_searching'] = time.time()-st
     logging.info(f"关键字检索耗时: {time.time()-st}")
     try:
         st = time.time()
         target_vector = await Vectorize.vectorize_embedding(content)
+        t_cost_dict['text_to_vector'] = time.time()-st
         logging.info(f"向量化耗时: {time.time()-st}")
         retry_times = 3
         if target_vector is not None:
@@ -221,12 +224,16 @@ async def get_chunk_tuple(content, temporary_document_ids=None, kb_id=None, topk
                         logging.error(f"检索向量时出错: {e}")
                         continue
                 chunk_entity_list = await ChunkManager.select_by_chunk_ids(chunk_id_list)
+            t_cost_dict['vector_searching'] = time.time()-st
             logging.info(f"向量化检索耗时: {time.time()-st}")
             st = time.time()
             for chunk_entity in chunk_entity_list:
                 chunk_tuple_list.append((chunk_entity.id, chunk_entity.document_id,
                                         chunk_entity.global_offset, chunk_entity.tokens, chunk_entity.text))
+            t_cost_dict['vectors_related_texts'] = time.time()-st
             logging.info(f"向量化结果关联片段耗时: {time.time()-st}")
+        if return_t_cost:
+            return t_cost_dict, chunk_tuple_list
         return chunk_tuple_list
     except Exception as e:
         logging.error(f"片段关联失败: {e}")
@@ -234,9 +241,13 @@ async def get_chunk_tuple(content, temporary_document_ids=None, kb_id=None, topk
 
 
 async def get_similar_chunks(
-        content, kb_id=None, temporary_document_ids=None, max_tokens=4096, topk=3, devided_by_document_id=True):
+        content, kb_id=None, temporary_document_ids=None, max_tokens=4096, topk=3, devided_by_document_id=True,
+        return_t_cost=False):
     try:
-        chunk_tuple_list = await get_chunk_tuple(content=content, temporary_document_ids=temporary_document_ids, kb_id=kb_id, topk=topk)
+        if return_t_cost:
+            t_cost_dict, chunk_tuple_list = await get_chunk_tuple(content=content, temporary_document_ids=temporary_document_ids, kb_id=kb_id, topk=topk, return_t_cost=return_t_cost)
+        else:
+            chunk_tuple_list = await get_chunk_tuple(content=content, temporary_document_ids=temporary_document_ids, kb_id=kb_id, topk=topk)
         st = time.time()
         document_para_dict = {}
         exist_chunk_id_set = set()
@@ -276,6 +287,8 @@ async def get_similar_chunks(
                 if leave_ex_tokens <= 0:
                     leave_ex_tokens = 0
             new_document_para_dict[document_id] = sorted(new_document_para_dict[document_id], key=lambda x: x[2])
+        if return_t_cost:
+            t_cost_dict['text_expanding'] = time.time()-st
         logging.info(f"上下文关联耗时: {time.time()-st}")
         # if config['MODEL_ENH']:
         #     document_para_dict = await filter_or_expand_chunk_by_llm(kb_id, content, new_document_para_dict, ex_tokens)
@@ -309,6 +322,8 @@ async def get_similar_chunks(
                     chunk_list.append(text)
                     st = en
                 docuemnt_chunk_list.append({'document_name': document_name, 'chunk_list': chunk_list})
+            if return_t_cost:
+                return t_cost_dict, docuemnt_chunk_list
             return docuemnt_chunk_list
         else:
             chunk_list = []
@@ -326,6 +341,8 @@ async def get_similar_chunks(
                         en += 1
                     chunk_list.append(text)
                     st = en
+            if return_t_cost:
+                return t_cost_dict, chunk_list
             return chunk_list
     except Exception as e:
         logging.error(f"Get similar chun failed due to e: {e}")

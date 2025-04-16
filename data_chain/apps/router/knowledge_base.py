@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import urllib
 import uuid
+import time
 from typing import List
 import uuid
 from httpx import AsyncClient
@@ -208,7 +209,7 @@ async def rm_kb_task(req: RmoveTaskRequest, user_id=Depends(get_user_id)):
 
 @router.post('/get_stream_answer', response_class=HTMLResponse)
 async def get_stream_answer(req: QueryRequest, response: Response):
-    model_dto=None
+    model_dto = None
     if req.kb_sn is not None:
         model_dto = await get_model_by_kb_id(req.kb_sn)
     if model_dto is None:
@@ -216,7 +217,8 @@ async def get_stream_answer(req: QueryRequest, response: Response):
             tokens_upper = config['MODELS'][0]['MAX_TOKENS']
         else:
             logging.error("Can not find model config locally")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Can not find model config locally")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Can not find model config locally")
     else:
         tokens_upper = model_dto.max_tokens
     try:
@@ -262,7 +264,7 @@ async def get_stream_answer(req: QueryRequest, response: Response):
 
 @router.post('/get_answer', response_model=BaseResponse[dict])
 async def get_answer(req: QueryRequest):
-    model_dto=None
+    model_dto = None
     if req.kb_sn is not None:
         model_dto = await get_model_by_kb_id(req.kb_sn)
     if model_dto is None:
@@ -270,14 +272,15 @@ async def get_answer(req: QueryRequest):
             tokens_upper = config['MODELS'][0]['MAX_TOKENS']
         else:
             logging.error("Can not find model config locally")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Can not find model config locally")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Can not find model config locally")
     else:
         tokens_upper = model_dto.max_tokens
     try:
         question = await question_rewrite(req.history, req.question, model_dto)
         max_tokens = tokens_upper//3*2
         bac_info = ''
-        document_chunk_list = await get_similar_chunks(content=question, kb_id=req.kb_sn, temporary_document_ids=req.document_ids, max_tokens = 2*tokens_upper, topk=req.top_k)
+        t_cost_dict, document_chunk_list = await get_similar_chunks(content=question, kb_id=req.kb_sn, temporary_document_ids=req.document_ids, max_tokens=2*tokens_upper, topk=req.top_k, return_t_cost=True)
         for i in range(len(document_chunk_list)):
             document_name = document_chunk_list[i]['document_name']
             chunk_list = document_chunk_list[i]['chunk_list']
@@ -302,9 +305,12 @@ async def get_answer(req: QueryRequest):
         bac_info = ''
         logging.error(f"get bac info failed due to: {e}")
     try:
+        st = time.time()
         answer = await get_llm_answer(req.history, bac_info, req.question, is_stream=False, model_dto=model_dto)
+        t_cost_dict['llm_answer'] = time.time()-st
         tmp_dict = {
             'answer': answer,
+            'time_cost': t_cost_dict
         }
         if req.fetch_source:
             tmp_dict['source'] = []

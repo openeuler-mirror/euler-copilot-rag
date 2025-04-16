@@ -1,4 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+from sqlalchemy import event
+from opengauss_sqlalchemy.register_async import register_vector
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import create_engine, Index
 from uuid import uuid4
@@ -359,8 +361,12 @@ class PostgresDB:
             echo=False,
             pool_recycle=300,
             pool_pre_ping=True)
-        connection = None
-        connection = async_sessionmaker(engine, expire_on_commit=False)()
+        if config['DATABASE_TYPE'] == 'opengauss':
+            @event.listens_for(engine.sync_engine, "connect")
+            def connect(dbapi_connection, connection_record):
+                dbapi_connection.run_async(register_vector)
+                connection = None
+            connection = async_sessionmaker(engine, expire_on_commit=False)()
         return cls._ConnectionManager(engine, connection)
 
     class _ConnectionManager:

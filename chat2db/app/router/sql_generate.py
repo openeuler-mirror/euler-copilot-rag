@@ -2,6 +2,8 @@
 
 import logging
 from fastapi import APIRouter, status
+import json
+import sys
 
 from chat2db.manager.database_info_manager import DatabaseInfoManager
 from chat2db.manager.table_info_manager import TableInfoManager
@@ -11,7 +13,7 @@ from chat2db.model.response import ResponseData
 from chat2db.app.service.sql_generate_service import SqlGenerateService
 from chat2db.app.service.keyword_service import keyword_service
 from chat2db.app.service.diff_database_service import DiffDatabaseService
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 router = APIRouter(
@@ -112,9 +114,9 @@ async def execute_sql(request: SqlExcuteRequest):
         database_type = 'mysql'
     try:
         results = await DiffDatabaseService.database_map[database_type].try_excute(database_url, sql)
-        results = str(results)
     except Exception as e:
-        logging.error(f'sql执行失败由于{e}')
+        import traceback
+        logging.error(f'sql执行失败由于{traceback.format_exc()}')
         return ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="sql执行失败",
@@ -123,5 +125,5 @@ async def execute_sql(request: SqlExcuteRequest):
     return ResponseData(
         code=status.HTTP_200_OK,
         message="sql执行成功",
-        result={'results':results}
+        result=results
     )

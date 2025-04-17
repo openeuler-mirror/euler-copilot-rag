@@ -26,6 +26,8 @@ class KnowledgeBaseManager():
                 await session.refresh(entity)  # Refresh the entity to get any auto-generated values.
                 return entity
         except Exception as e:
+            import traceback
+            logging.error(f"Failed to insert entity: {traceback.format_exc()}")
             logging.error(f"Failed to insert entity: {e}")
         return None
 

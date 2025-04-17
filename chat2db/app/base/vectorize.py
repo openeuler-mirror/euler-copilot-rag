@@ -2,9 +2,10 @@ import requests
 import urllib3
 from chat2db.config.config import config
 import json
+import sys
 import logging
 
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

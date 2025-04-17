@@ -2,6 +2,7 @@
 import asyncio
 import copy
 import uuid
+import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from chat2db.app.service.diff_database_service import DiffDatabaseService
@@ -11,7 +12,7 @@ from chat2db.manager.table_info_manager import TableInfoManager
 from chat2db.manager.column_info_manager import ColumnInfoManager
 import logging
 
-logging.basicConfig(filename='app.log', level=logging.INFO,
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 

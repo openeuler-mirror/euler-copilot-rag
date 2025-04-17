@@ -273,7 +273,7 @@ if __name__ == "__main__":
                                              help="是否验证生成的sql对，True为验证，False不验证",
                                              default=False)
     parser_generate_sql_example.add_argument("--dir", type=str, required=False, help="生成的sql对输出路径",
-                                             default="docs/output_examples.xlsx")
+                                             default="templetes/output_examples.xlsx")
 
     args = parser.parse_args()
 
@@ -312,7 +312,7 @@ if __name__ == "__main__":
             print(f'database_id: ', database_id)
 
     elif args.command == "del_db":
-        response = call_del_sql_example(args.database_id)
+        response = call_del_database_info(args.database_id)
         print(response.get("message"))
 
     elif args.command == "query_db":

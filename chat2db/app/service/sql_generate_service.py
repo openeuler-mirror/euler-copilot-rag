@@ -78,7 +78,7 @@ class SqlGenerateService():
                 table_entries += '<tr>\n'+f' <td>{table_id}</td>\n<td>{table_note}</td>\n'+'</tr>\n'
             table_entries += '</table>'
             prompt = prompt.format(table_cnt=table_choose_cnt, table_entries=table_entries, question=question)
-            logging.info(f'在大模型增强模式下，选择表的prompt构造成功：{prompt}')
+            # logging.info(f'在大模型增强模式下，选择表的prompt构造成功：{prompt}')
         except Exception as e:
             logging.error(f'在大模型增强模式下，选择表的prompt构造失败由于：{e}')
             return []
@@ -133,18 +133,18 @@ class SqlGenerateService():
         data_frame_list = []
         if table_id_list is None:
             if use_llm_enhancements:
-                table_id_list = await  asyncio.wait_for(SqlGenerateService.get_most_similar_table_id_list(database_id, question, table_choose_cnt))
+                table_id_list = await SqlGenerateService.get_most_similar_table_id_list(database_id, question, table_choose_cnt)
             else:
                 try:
                     table_info_list = await TableInfoManager.get_table_info_by_database_id(database_id)
                     table_id_list = []
                     for table_info in table_info_list:
                         table_id_list.append(table_info['table_id'])
-                    max_retry=3
+                    max_retry = 3
                     sql_example_list = []
                     for _ in range(max_retry):
                         try:
-                            sql_example_list = await  asyncio.wait_for(SqlExampleManager.get_topk_sql_example_by_cos_dis(
+                            sql_example_list = await asyncio.wait_for(SqlExampleManager.get_topk_sql_example_by_cos_dis(
                                 question_vector=question_vector,
                                 table_id_list=table_id_list, topk=table_choose_cnt * 2),
                                 timeout=5
@@ -161,10 +161,9 @@ class SqlGenerateService():
                 table_id_list = list(set(table_id_list))
                 if len(table_id_list) < table_choose_cnt:
                     try:
-                        expand_table_id_list = await  asyncio.wait_for(TableInfoManager.get_topk_table_by_cos_dis(
-                            database_id, question_vector, table_choose_cnt - len(table_id_list))
-                            ,timeout=5
-                            )
+                        expand_table_id_list = await asyncio.wait_for(TableInfoManager.get_topk_table_by_cos_dis(
+                            database_id, question_vector, table_choose_cnt - len(table_id_list)), timeout=5
+                        )
                         table_id_list += expand_table_id_list
                     except Exception as e:
                         logging.error(f'非增强模式下，表id补充失败由于：{e}')
@@ -181,16 +180,15 @@ class SqlGenerateService():
             except Exception as e:
                 logging.error(f'表{table_id}注释获取失败由于{e}')
                 continue
-            logging.error(f'表{table_id}的注释为{table_info},列的注释为{column_info_list}')
             note = await SqlGenerateService.merge_table_and_column_info(table_info, column_info_list)
             note_list.append(note)
-            max_retry=3
+            max_retry = 3
             sql_example_list = []
             for _ in range(max_retry):
                 try:
                     sql_example_list = await asyncio.wait_for(SqlExampleManager.get_topk_sql_example_by_cos_dis(
-                        question_vector, 
-                        table_id_list=[table_id], 
+                        question_vector,
+                        table_id_list=[table_id],
                         topk=sql_example_choose_cnt),
                         timeout=5
                     )
@@ -239,7 +237,6 @@ class SqlGenerateService():
         if 'mysql' in database_url:
             database_type = 'mysql'
         data_frame_list = await SqlGenerateService.find_most_similar_sql_example(database_id, table_id_list, question, use_llm_enhancements)
-        logging.info(f'问题{question}关联到的表信息如下{str(data_frame_list)}')
         try:
             with open('./chat2db/docs/prompt.yaml', 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
@@ -264,16 +261,16 @@ class SqlGenerateService():
                 except Exception as e:
                     logging.info(f'sql生成失败{e}')
                     return []
-                ge_cnt=0
-                ge_sql_cnt=0
-                while ge_cnt<10*sql_generate_cnt and ge_sql_cnt<sql_generate_cnt:
+                ge_cnt = 0
+                ge_sql_cnt = 0
+                while ge_cnt < 10*sql_generate_cnt and ge_sql_cnt < sql_generate_cnt:
                     sql = await llm.chat_with_model(prompt, f'请输出一条在与{database_type}下能运行的sql，以分号结尾')
                     sql = await SqlGenerateService.extract_select_statements(sql)
                     if len(sql):
-                        ge_sql_cnt+=1
+                        ge_sql_cnt += 1
                         tmp_dict = {'database_id': database_id, 'table_id': table_id, 'sql': sql}
                         results.append(tmp_dict)
-                    ge_cnt+=1
+                    ge_cnt += 1
                 if len(results) == sql_generate_cnt:
                     break
         except Exception as e:
@@ -333,7 +330,7 @@ class SqlGenerateService():
                 continue
             try:
                 if sql_var:
-                    await DiffDatabaseService.get_database_service(database_type).try_excute(database_url,sql)
+                    await DiffDatabaseService.get_database_service(database_type).try_excute(database_url, sql)
             except Exception as e:
                 logging.error(f'生成的sql执行失败由于{e}')
                 continue

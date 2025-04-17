@@ -8,18 +8,19 @@ from sqlalchemy import create_engine, text
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
+from chat2db.app.base.meta_databbase import MetaDatabase
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 
-class Mysql():
+class Mysql(MetaDatabase):
     executor = ThreadPoolExecutor(max_workers=10)
 
     async def test_database_connection(database_url):
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(Mysql._connect_and_query, database_url)
-                result = future.result(timeout=2)
+                result = future.result(timeout=5)
                 return result
         except concurrent.futures.TimeoutError:
             logging.error('mysql数据库连接超时')
@@ -212,5 +213,5 @@ class Mysql():
             pool_pre_ping=True
         )
         with sessionmaker(engine)() as session:
-            result=session.execute(text(sql_str)).all()
-        return result
+            result = session.execute(text(sql_str)).all()
+        return Mysql.result_to_json(result)

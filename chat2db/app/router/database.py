@@ -9,6 +9,7 @@ from chat2db.model.request import DatabaseAddRequest, DatabaseDelRequest, Databa
 from chat2db.model.response import ResponseData
 from chat2db.manager.database_info_manager import DatabaseInfoManager
 from chat2db.manager.table_info_manager import TableInfoManager
+from chat2db.manager.column_info_manager import ColumnInfoManager
 from chat2db.app.service.diff_database_service import DiffDatabaseService
 from chat2db.app.service.sql_generate_service import SqlGenerateService
 from chat2db.app.service.keyword_service import keyword_service
@@ -141,21 +142,33 @@ async def generate_sql_from_database(request: DatabaseSqlGenerateRequest):
             message="无法连接当前数据库",
             result={}
         )
+    tmp_table_name_list = await DiffDatabaseService.get_database_service(database_type).get_all_table_name_from_database_url(database_url)
     database_id = await DatabaseInfoManager.get_database_id_by_url(database_url)
     if database_id is None:
         database_id = await DatabaseInfoManager.add_database(database_url)
-    if table_name_list is not None:
-        table_id_list = []
-        tmp_table_name_list = await DiffDatabaseService.get_database_service(database_type).get_all_table_name_from_database_url(database_url)
-        for table_name in table_name_list:
-            if table_name not in tmp_table_name_list:
-                continue
-            table_id = await TableInfoManager.get_table_id_by_database_id_and_table_name(database_id, table_name)
-            if table_id is None:
+        for table_name in tmp_table_name_list:
+            try:
                 tmp_dict = await DiffDatabaseService.get_database_service(database_type).get_table_info(database_url, table_name)
                 table_note = tmp_dict['table_note']
                 table_note_vector = await Vectorize.vectorize_embedding(table_note)
                 table_id = await TableInfoManager.add_table_info(database_id, table_name, table_note, table_note_vector)
+                column_info_list = await DiffDatabaseService.get_database_service(database_type).get_column_info(database_url, table_name)
+                for column_info in column_info_list:
+                    await ColumnInfoManager.add_column_info_with_table_id(
+                        table_id, column_info['column_name'],
+                        column_info['column_type'],
+                        column_info['column_note'])
+            except Exception as e:
+                import traceback
+                logging.error(f'{table_name}')
+                logging.error(f'表格信息获取失败由于：{traceback.format_exc()}')
+                continue
+    if table_name_list:
+        table_id_list = []
+        for table_name in table_name_list:
+            table_id = await TableInfoManager.get_table_id_by_database_id_and_table_name(database_id, table_name)
+            if table_id is None:
+                continue
             table_id_list.append(table_id)
     else:
         table_id_list = None

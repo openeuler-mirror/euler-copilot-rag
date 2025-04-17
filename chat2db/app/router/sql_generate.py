@@ -2,6 +2,7 @@
 
 import logging
 from fastapi import APIRouter, status
+import json
 import sys
 
 from chat2db.manager.database_info_manager import DatabaseInfoManager
@@ -113,9 +114,9 @@ async def execute_sql(request: SqlExcuteRequest):
         database_type = 'mysql'
     try:
         results = await DiffDatabaseService.database_map[database_type].try_excute(database_url, sql)
-        results = str(results)
     except Exception as e:
-        logging.error(f'sql执行失败由于{e}')
+        import traceback
+        logging.error(f'sql执行失败由于{traceback.format_exc()}')
         return ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="sql执行失败",
@@ -124,5 +125,5 @@ async def execute_sql(request: SqlExcuteRequest):
     return ResponseData(
         code=status.HTTP_200_OK,
         message="sql执行成功",
-        result={'results':results}
+        result=results
     )

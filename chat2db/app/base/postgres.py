@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, text
 import sys
 from concurrent.futures import ThreadPoolExecutor
-
+from chat2db.app.base.meta_databbase import MetaDatabase
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
@@ -15,14 +15,14 @@ def handler(signum, frame):
     raise TimeoutError("超时")
 
 
-class Postgres():
+class Postgres(MetaDatabase):
     executor = ThreadPoolExecutor(max_workers=10)
 
     async def test_database_connection(database_url):
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(Postgres._connect_and_query, database_url)
-                result = future.result(timeout=2) 
+                result = future.result(timeout=5) 
                 return result
         except concurrent.futures.TimeoutError:
             logging.error('postgres数据库连接超时')
@@ -141,9 +141,11 @@ class Postgres():
                     t.relkind = 'r' AND
                     d.objsubid = 0 AND
                     t.relname = :table_name; """
-            table_note = conn.execute(text(sql_str), {'table_name': table_name}).one()[0]
-        if table_note == '':
-            table_note = table_name
+            result = conn.execute(text(sql_str), {'table_name': table_name}).one_or_none()
+            if result is None:
+                table_note = table_name
+            else:
+                table_note = result[0]
         table_note = {
             'table_name': table_name,
             'table_note': table_note
@@ -231,4 +233,4 @@ class Postgres():
         )
         with sessionmaker(engine)() as session:
             result=session.execute(text(sql_str)).all()
-        return result
+        return Postgres.result_to_json(result)

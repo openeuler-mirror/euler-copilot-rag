@@ -253,7 +253,7 @@ class SqlGenerateService():
                 table_id = table_info['table_id']
                 column_info_list = data_frame.get('column_info_list', '')
                 note = await SqlGenerateService.merge_table_and_column_info(table_info, column_info_list)
-                sql_example = await SqlGenerateService.megre_sql_example(data_frame.get('sql_example_list', []))
+                sql_example = await SqlGenerateService.merge_sql_example(data_frame.get('sql_example_list', []))
                 try:
                     prompt = prompt.format(
                         database_url=database_url, note=note, k=len(data_frame.get('sql_example_list', [])),

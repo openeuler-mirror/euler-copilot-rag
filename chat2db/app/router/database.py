@@ -173,7 +173,7 @@ async def generate_sql_from_database(request: DatabaseSqlGenerateRequest):
     else:
         table_id_list = None
     results = {}
-    sql_list = await SqlGenerateService.generate_sql_base_on_exmpale(
+    sql_list = await SqlGenerateService.generate_sql_base_on_example(
         database_id=database_id, question=question, table_id_list=table_id_list,
         use_llm_enhancements=use_llm_enhancements)
     try:

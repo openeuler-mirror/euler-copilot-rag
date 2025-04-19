@@ -47,7 +47,7 @@ async def add_database_info(request: DatabaseAddRequest):
         return ResponseData(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             message="数据库连接添加失败，当前存在重复数据库配置",
-            result={}
+            result={'database_id': database_id}
         )
     return ResponseData(
         code=status.HTTP_200_OK,
@@ -59,7 +59,11 @@ async def add_database_info(request: DatabaseAddRequest):
 @router.post("/del", response_model=ResponseData)
 async def del_database_info(request: DatabaseDelRequest):
     database_id = request.database_id
-    flag = await DatabaseInfoManager.del_database_by_id(database_id)
+    database_url = request.database_url
+    if database_id:
+        flag = await DatabaseInfoManager.del_database_by_id(database_id)
+    else:
+        flag= await DatabaseInfoManager.del_database_by_url(database_url)
     if not flag:
         return ResponseData(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,

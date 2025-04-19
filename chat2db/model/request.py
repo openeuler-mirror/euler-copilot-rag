@@ -14,7 +14,8 @@ class DatabaseAddRequest(BaseModel):
 
 
 class DatabaseDelRequest(BaseModel):
-    database_id: uuid.UUID
+    database_id: Optional[uuid.UUID] = Field(default=None, description="数据库id")
+    database_url: Optional[str] = Field(default=None, description="数据库url")
 
 class DatabaseSqlGenerateRequest(BaseModel):
     database_url: str

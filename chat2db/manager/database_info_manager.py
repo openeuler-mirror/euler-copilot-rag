@@ -37,7 +37,23 @@ class DatabaseInfoManager():
                 return False
             session.commit()
         return True
-
+    
+    @staticmethod
+    async def del_database_by_url(database_url):
+        with PostgresDB.get_session() as session:
+            hashmac = hashlib.sha256(database_url.encode('utf-8')).hexdigest()
+            database_info_entry = session.query(DatabaseInfo).filter(DatabaseInfo.hashmac == hashmac).first()
+            if database_info_entry:
+                database_info_to_delete = session.query(DatabaseInfo).filter(DatabaseInfo.id == database_info_entry.id).first()
+                if database_info_to_delete:
+                    session.delete(database_info_to_delete)
+                else:
+                    return False
+            else:
+                return False
+            session.commit()
+        return True
+    
     @staticmethod
     async def get_database_url_by_id(id):
         with PostgresDB.get_session() as session:

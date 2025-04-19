@@ -120,9 +120,7 @@ class SqlGenerateService():
         except Exception as e:
             logging.error(f'数据库{database_id}信息获取失败由于{e}')
             return []
-        database_type = 'postgres'
-        if 'mysql' in database_url:
-            database_type = 'mysql'
+        database_type = DiffDatabaseService.get_database_type_from_url(database_url)
         del database_url
         try:
             question_vector = await Vectorize.vectorize_embedding(question)
@@ -233,9 +231,7 @@ class SqlGenerateService():
             return {}
         if database_url is None:
             raise Exception('数据库配置不存在')
-        database_type = 'postgres'
-        if 'mysql' in database_url:
-            database_type = 'mysql'
+        database_type = DiffDatabaseService.get_database_type_from_url(database_url)
         data_frame_list = await SqlGenerateService.find_most_similar_sql_example(database_id, table_id_list, question, use_llm_enhancements)
         try:
             with open('./chat2db/templetes/prompt.yaml', 'r', encoding='utf-8') as f:
@@ -280,10 +276,7 @@ class SqlGenerateService():
     @staticmethod
     async def generate_sql_base_on_data(database_url, table_name, sql_var=False):
         database_type = None
-        if 'postgres' in database_url:
-            database_type = 'postgres'
-        if 'mysql' in database_url:
-            database_type = 'mysql'
+        database_type = DiffDatabaseService.get_database_type_from_url(database_url)
         flag = await DiffDatabaseService.get_database_service(database_type).test_database_connection(database_url)
         if not flag:
             return None

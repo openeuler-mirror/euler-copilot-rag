@@ -2,7 +2,6 @@
 
 import logging
 from fastapi import APIRouter, status
-import json
 import sys
 
 from chat2db.manager.database_info_manager import DatabaseInfoManager
@@ -54,15 +53,13 @@ async def repair_sql(request: SqlRepairRequest):
     database_id = request.database_id
     table_id = request.table_id
     database_url = await DatabaseInfoManager.get_database_url_by_id(database_id)
+    database_type = DiffDatabaseService.get_database_type_from_url(database_url)
     if database_url is None:
         return ResponseData(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             message="当前数据库配置不存在",
             result={}
         )
-    database_type = 'postgres'
-    if 'mysql' in database_url:
-        database_type = 'mysql'
     table_info = await TableInfoManager.get_table_info_by_table_id(table_id)
     if table_info is None:
         return ResponseData(
@@ -93,8 +90,8 @@ async def repair_sql(request: SqlRepairRequest):
         code=status.HTTP_200_OK,
         message="sql修复成功",
         result={'database_id': database_id,
-                           'table_id': table_id,
-                           'sql': sql}
+                'table_id': table_id,
+                'sql': sql}
     )
 
 
@@ -109,9 +106,7 @@ async def execute_sql(request: SqlExcuteRequest):
             message="当前数据库配置不存在",
             result={}
         )
-    database_type = 'postgres'
-    if 'mysql' in database_url:
-        database_type = 'mysql'
+    database_type = DiffDatabaseService.get_database_type_from_url(database_url)
     try:
         results = await DiffDatabaseService.database_map[database_type].try_excute(database_url, sql)
     except Exception as e:
@@ -120,7 +115,7 @@ async def execute_sql(request: SqlExcuteRequest):
         return ResponseData(
             code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="sql执行失败",
-            result={'Error':str(e)}
+            result={'Error': str(e)}
         )
     return ResponseData(
         code=status.HTTP_200_OK,

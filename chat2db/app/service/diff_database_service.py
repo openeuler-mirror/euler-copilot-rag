@@ -5,8 +5,8 @@ from chat2db.app.base.postgres import Postgres
 
 
 class DiffDatabaseService():
-    database_types = ["mysql", "postgres", "opengauss"]
-    database_map = {"mysql": Mysql, "postgres": Postgres}
+    database_types = ["mysql", "postgresql", "opengauss"]
+    database_map = {"mysql": Mysql, "postgresql": Postgres, "opengauss": Postgres}
 
     @staticmethod
     def get_database_service(database_type):
@@ -21,7 +21,7 @@ class DiffDatabaseService():
             database_type = result.scheme.split('+')[0]
         except Exception as e:
             raise e
-        return database_type
+        return database_type.lower()
 
     @staticmethod
     def is_database_type_allow(database_type):

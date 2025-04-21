@@ -26,15 +26,13 @@ router = APIRouter(
 @router.post("/add", response_model=ResponseData)
 async def add_database_info(request: DatabaseAddRequest):
     database_url = request.database_url
-    if 'mysql' not in database_url and 'postgres' not in database_url:
+    database_type = DiffDatabaseService.get_database_type_from_url(database_url)
+    if not DiffDatabaseService.is_database_type_allow(database_type):
         return ResponseData(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             message="不支持当前数据库",
             result={}
         )
-    database_type = 'postgres'
-    if 'mysql' in database_url:
-        database_type = 'mysql'
     flag = await DiffDatabaseService.get_database_service(database_type).test_database_connection(database_url)
     if not flag:
         return ResponseData(
@@ -47,7 +45,7 @@ async def add_database_info(request: DatabaseAddRequest):
         return ResponseData(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             message="数据库连接添加失败，当前存在重复数据库配置",
-            result={}
+            result={'database_id': database_id}
         )
     return ResponseData(
         code=status.HTTP_200_OK,
@@ -59,7 +57,11 @@ async def add_database_info(request: DatabaseAddRequest):
 @router.post("/del", response_model=ResponseData)
 async def del_database_info(request: DatabaseDelRequest):
     database_id = request.database_id
-    flag = await DatabaseInfoManager.del_database_by_id(database_id)
+    database_url = request.database_url
+    if database_id:
+        flag = await DatabaseInfoManager.del_database_by_id(database_id)
+    else:
+        flag = await DatabaseInfoManager.del_database_by_url(database_url)
     if not flag:
         return ResponseData(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -86,21 +88,19 @@ async def query_database_info():
 @router.get("/list", response_model=ResponseData)
 async def list_table_in_database(database_id: uuid.UUID, table_filter: str = ''):
     database_url = await DatabaseInfoManager.get_database_url_by_id(database_id)
+    database_type = DiffDatabaseService.get_database_type_from_url(database_url)
     if database_url is None:
         return ResponseData(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             message="查询数据库内表格配置失败,数据库配置不存在",
             result={}
         )
-    if 'mysql' not in database_url and 'postgres' not in database_url:
+    if not DiffDatabaseService.is_database_type_allow(database_type):
         return ResponseData(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             message="不支持当前数据库",
             result={}
         )
-    database_type = 'postgres'
-    if 'mysql' in database_url:
-        database_type = 'mysql'
     flag = await DiffDatabaseService.get_database_service(database_type).test_database_connection(database_url)
     if not flag:
         return ResponseData(
@@ -126,15 +126,13 @@ async def generate_sql_from_database(request: DatabaseSqlGenerateRequest):
     table_name_list = request.table_name_list
     question = request.question
     use_llm_enhancements = request.use_llm_enhancements
-    if 'mysql' not in database_url and 'postgres' not in database_url:
+    database_type = DiffDatabaseService.get_database_type_from_url(database_url)
+    if not DiffDatabaseService.is_database_type_allow(database_type):
         return ResponseData(
             code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             message="不支持当前数据库",
             result={}
         )
-    database_type = 'postgres'
-    if 'mysql' in database_url:
-        database_type = 'mysql'
     flag = await DiffDatabaseService.get_database_service(database_type).test_database_connection(database_url)
     if not flag:
         return ResponseData(
@@ -173,7 +171,7 @@ async def generate_sql_from_database(request: DatabaseSqlGenerateRequest):
     else:
         table_id_list = None
     results = {}
-    sql_list = await SqlGenerateService.generate_sql_base_on_exmpale(
+    sql_list = await SqlGenerateService.generate_sql_base_on_example(
         database_id=database_id, question=question, table_id_list=table_id_list,
         use_llm_enhancements=use_llm_enhancements)
     try:

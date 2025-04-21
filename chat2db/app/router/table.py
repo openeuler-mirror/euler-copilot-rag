@@ -31,9 +31,7 @@ async def add_database_info(request: TableAddRequest):
             message="当前数据库配置不存在",
             result={}
         )
-    database_type = 'postgres'
-    if 'mysql' in database_url:
-        database_type = 'mysql'
+    database_type = DiffDatabaseService.get_database_type_from_url(database_url)
     flag = await DiffDatabaseService.get_database_service(database_type).test_database_connection(database_url)
     if not flag:
         return ResponseData(

@@ -2,7 +2,7 @@ import logging
 from uuid import uuid4
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import  TIMESTAMP, UUID, Column, String, Boolean, ForeignKey, create_engine, func, Index
+from sqlalchemy import TIMESTAMP, UUID, Column, String, Boolean, ForeignKey, create_engine, func, Index
 import sys
 from chat2db.config.config import config
 
@@ -91,6 +91,12 @@ class PostgresDB:
                 pool_pre_ping=True)
 
             Base.metadata.create_all(cls.engine)
+            if 'opengauss' in config['DATABASE_URL']:
+                from sqlalchemy import event
+                from opengauss_sqlalchemy.register_async import register_vector
+                @event.listens_for(cls.engine.sync_engine, "connect")
+                def connect(dbapi_connection, connection_record):
+                    dbapi_connection.run_async(register_vector)
         return cls._engine
 
     @classmethod

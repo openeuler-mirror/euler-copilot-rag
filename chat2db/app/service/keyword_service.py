@@ -58,9 +58,7 @@ class KeywordManager():
 
     async def add(self, database_id, table_id, column_name):
         database_url = await DatabaseInfoManager.get_database_url_by_id(database_id)
-        database_type = 'postgres'
-        if 'mysql' in database_url:
-            database_type = 'mysql'
+        database_type = DiffDatabaseService.get_database_type_from_url(database_url)
         table_info = await TableInfoManager.get_table_info_by_table_id(table_id)
         table_name = table_info['table_name']
         tmp_dict = await DiffDatabaseService.get_database_service(
@@ -108,9 +106,7 @@ class KeywordManager():
             results = []
             if database_id in self.keyword_asset_dict.keys():
                 database_url = await DatabaseInfoManager.get_database_url_by_id(database_id)
-                database_type = 'postgres'
-                if 'mysql' in database_url:
-                    database_type = 'mysql'
+                database_type = DiffDatabaseService.get_database_type_from_url(database_url)
                 for table_id in self.keyword_asset_dict[database_id].keys():
                     if table_id_list is None or table_id in table_id_list:
                         table_info = self.keyword_asset_dict[database_id][table_id]['table_info']

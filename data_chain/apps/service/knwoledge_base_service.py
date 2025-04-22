@@ -28,7 +28,6 @@ from data_chain.stores.postgres.postgres import KnowledgeBaseEntity
 from data_chain.config.config import config
 
 
-
 async def _validate_knowledge_base_belong_to_user(user_id: uuid.UUID, kb_id: str) -> bool:
     kb_entity = await KnowledgeBaseManager.select_by_id(kb_id)
     if kb_entity is None:
@@ -53,7 +52,7 @@ async def list_knowledge_base_task(page_number, page_size, params) -> List[TaskD
             knowledge_base_dto = KnowledgeConvertor.convert_entity_to_dto(
                 knowledge_base_entity, document_type_entity_list)
             latest_task_status_report_entity_list = await TaskStatusReportManager.select_latest_report_by_task_ids([task_entity.id])
-            if len(latest_task_status_report_entity_list)>1:
+            if len(latest_task_status_report_entity_list) >= 1:
                 task_dto = TaskConvertor.convert_entity_to_dto(task_entity, latest_task_status_report_entity_list)
             else:
                 task_dto = TaskConvertor.convert_entity_to_dto(task_entity, [])
@@ -70,7 +69,8 @@ async def rm_all_knowledge_base_task(user_id: uuid.UUID, types: List[str]) -> Ta
         task_entity_list = await TaskManager.select_by_user_id_and_task_type_list(user_id, types)
         for task_entity in task_entity_list:
             task_id = task_entity.id
-            await stop_knowledge_base_task(task_id)
+            if task_entity.status == TaskConstant.TASK_STATUS_PENDING or task_entity.status == TaskConstant.TASK_STATUS_RUNNING:
+                await stop_knowledge_base_task(task_id)
             await TaskManager.update(task_id, {'status': TaskConstant.TASK_STATUS_DELETED})
         return True
     except Exception as e:
@@ -80,7 +80,11 @@ async def rm_all_knowledge_base_task(user_id: uuid.UUID, types: List[str]) -> Ta
 
 async def rm_knowledge_base_task(task_id: uuid.UUID) -> TaskDTO:
     try:
-        await stop_knowledge_base_task(task_id)
+        task_entity = await TaskManager.select_by_id(task_id)
+        if task_entity is None:
+            return
+        if task_entity.status == TaskConstant.TASK_STATUS_PENDING or task_entity.status == TaskConstant.TASK_STATUS_RUNNING:
+            await stop_knowledge_base_task(task_id)
         await TaskManager.update(task_id, {'status': TaskConstant.TASK_STATUS_DELETED})
         return True
     except Exception as e:
@@ -116,13 +120,13 @@ async def create_knowledge_base(tmp_dict) -> KnowledgeBaseDTO:
         raise KnowledgeBaseException("Create knowledge base error.")
 
 
-async def update_knowledge_base(update_dict:dict) -> KnowledgeBaseDTO:
+async def update_knowledge_base(update_dict: dict) -> KnowledgeBaseDTO:
     kb_id = update_dict['id']
-    document_type_list = update_dict.get('document_type_list',None)
+    document_type_list = update_dict.get('document_type_list', None)
     if document_type_list is not None:
         del update_dict['document_type_list']
     else:
-        document_type_list=[]
+        document_type_list = []
     knowledge_base_entity = await KnowledgeBaseManager.select_by_user_id_and_kb_name(
         update_dict['user_id'], update_dict['name'])
     if knowledge_base_entity and knowledge_base_entity.id != kb_id:
@@ -144,10 +148,10 @@ async def list_knowledge_base(params, page_number=1, page_size=1) -> Tuple[List[
             document_type_entity_list = await DocumentTypeManager.select_by_knowledge_base_id(knowledge_base_entity.id)
             knowledge_base_dto_list.append(
                 KnowledgeConvertor.convert_entity_to_dto(
-                knowledge_base_entity, 
-                document_type_entity_list
+                    knowledge_base_entity,
+                    document_type_entity_list
                 )
-                )
+            )
         return (knowledge_base_dto_list, total)
     except Exception as e:
         logging.error("List knowledge base error: {}".format(e))
@@ -184,7 +188,7 @@ async def parse_knowledge_yaml_file(user_id: uuid.UUID, unzip_folder_path: str):
     if not os.path.exists(knowledge_yaml_path):
         return None
     # 解析knowledge.yaml
-    parse_methods=set(ParseMethodEnum.get_all_values())
+    parse_methods = set(ParseMethodEnum.get_all_values())
     with open(knowledge_yaml_path, 'r')as kb_file:
         data = yaml.safe_load(kb_file)
         # 写入knoweldge_base表
@@ -195,9 +199,9 @@ async def parse_knowledge_yaml_file(user_id: uuid.UUID, unzip_folder_path: str):
             data['embedding_model'] = list(embedding_model_out_dimensions.keys())[0]
         if 'default_chunk_size' not in data.keys() or not isinstance(data['default_chunk_size'], int):
             data['default_chunk_size'] = 1024
-        parse_mathod=data.get('default_parser_method', ParseMethodEnum.GENERAL)
+        parse_mathod = data.get('default_parser_method', ParseMethodEnum.GENERAL)
         if parse_mathod not in parse_methods:
-            parse_mathod=ParseMethodEnum.GENERAL
+            parse_mathod = ParseMethodEnum.GENERAL
         knowledge_base_entity = KnowledgeBaseEntity(
             name=data['name'],
             user_id=user_id,

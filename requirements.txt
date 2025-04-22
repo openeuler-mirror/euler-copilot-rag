@@ -3,7 +3,6 @@ aiomysql==0.2.0
 apscheduler==3.10.0
 asgi-correlation-id==4.3.1
 asyncpg==0.29.0
-asyncpg==0.29.0
 beautifulsoup4==4.12.3
 chardet==5.2.0
 cryptography==42.0.2

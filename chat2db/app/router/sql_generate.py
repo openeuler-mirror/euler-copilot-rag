@@ -28,7 +28,7 @@ async def generate_sql(request: SqlGenerateRequest):
     question = request.question
     use_llm_enhancements = request.use_llm_enhancements
     results = {}
-    sql_list = await SqlGenerateService.generate_sql_base_on_exmpale(
+    sql_list = await SqlGenerateService.generate_sql_base_on_example(
         database_id=database_id, question=question, table_id_list=table_id_list,
         use_llm_enhancements=use_llm_enhancements)
     try:

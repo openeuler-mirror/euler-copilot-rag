@@ -1,26 +1,37 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-from typing import List
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 
-from data_chain.apps.service.user_service import verify_csrf_token, get_user_id, verify_user
-from data_chain.models.api import BaseResponse
-from data_chain.models.constant import EmbeddingModelEnum, ParseMethodEnum
+from fastapi import APIRouter, Depends, Query, Body
+from typing import Annotated
+from uuid import UUID
+from data_chain.entities.enum import ParseMethod
+from data_chain.entities.response_data import (
+    ListLLMResponse,
+    ListEmbeddingResponse,
+    ListTokenizerResponse,
+    ListParserMethodResponse
+)
+from data_chain.apps.service.session_service import get_user_sub, verify_user
 
-from fastapi import APIRouter
-from fastapi import Depends
-
-
-router = APIRouter(prefix='/other', tags=['Other Api'])
-
-
-@router.get('/embedding_model', response_model=BaseResponse[List[str]],
-            dependencies=[Depends(verify_user),
-                          Depends(verify_csrf_token)])
-async def embedding_model():
-    return BaseResponse(data=EmbeddingModelEnum.get_all_values())
+router = APIRouter(prefix='/other', tags=['Other'])
 
 
-@router.get('/parse_method', response_model=BaseResponse[List[str]],
-            dependencies=[Depends(verify_user),
-                          Depends(verify_csrf_token)])
-async def parse_method():
-    return BaseResponse(data=ParseMethodEnum.get_all_values())
+@router.get('/llm', response_model=ListLLMResponse, dependencies=[Depends(verify_user)])
+async def list_llms_by_user_sub(
+    user_sub: Annotated[str, Depends(get_user_sub)],
+):
+    return ListLLMResponse()
+
+
+@router.get('/embedding', response_model=ListEmbeddingResponse, dependencies=[Depends(verify_user)])
+async def list_embeddings():
+    return ListEmbeddingResponse()
+
+
+@router.get('/tokenizer', response_model=ListTokenizerResponse, dependencies=[Depends(verify_user)])
+async def list_tokenizers():
+    return ListTokenizerResponse()
+
+
+@router.get('parser_method', response_model=ListParserMethodResponse, dependencies=[Depends(verify_user)])
+async def list_parser_method():
+    return ListParserMethodResponse()

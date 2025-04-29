@@ -1,79 +1,29 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-from typing import List
-import tiktoken
-from fastapi import APIRouter, Depends, status
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
+from data_chain.apps.service.session_service import get_user_sub, verify_user
+from fastapi import APIRouter, Depends, Query, Body
+from typing import Annotated
+from uuid import UUID
+from data_chain.entities.request_data import (
+    ListChunkRequest,
+    UpdateChunkRequest
+)
+
+from data_chain.entities.response_data import (
+    ListChunkResponse,
+    UpdateChunkResponse
+)
+
+router = APIRouter(prefix='/chunk', tags=['Chunk'])
 
 
-from data_chain.models.service import ChunkDTO
-from data_chain.models.api import Page, BaseResponse, ListChunkRequest, SwitchChunkRequest,GetChunkRequest
-from data_chain.exceptions.err_code import ErrorCode
-from data_chain.exceptions.exception import DocumentException
-from data_chain.apps.service.chunk_service import _validate_chunk_belong_to_user, list_chunk, switch_chunk,get_similar_chunks,get_similar_full_text, get_keywords_from_chunk
-from data_chain.apps.service.document_service import _validate_doucument_belong_to_user
-from data_chain.apps.service.user_service import verify_csrf_token, get_user_id, verify_user
-
-router = APIRouter(prefix='/chunk', tags=['Corpus'])
+@router.get('', response_model=ListChunkResponse, dependencies=[Depends(verify_user)])
+async def list_chunks_by_document_id(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        req: Annotated[ListChunkRequest, Body()],
+):
+    return ListChunkResponse()
 
 
-@router.post('/list', response_model=BaseResponse[Page[ChunkDTO]],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def list(req: ListChunkRequest, user_id=Depends(get_user_id)):
-    try:
-        await _validate_doucument_belong_to_user(user_id, req.document_id)
-        params = dict(req)
-        chunk_list, total = await list_chunk(params, req.page_number, req.page_size)
-        chunk_page = Page(page_number=req.page_number, page_size=req.page_size,
-                          total=total,
-                          data_list=chunk_list)
-        return BaseResponse(data=chunk_page)
-    except Exception as e:
-        return BaseResponse(retcode=ErrorCode.CREATE_CHUNK_ERROR, data=str(e.args[0]))
-
-
-@router.post('/switch', response_model=BaseResponse[str],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def switch(req: SwitchChunkRequest, user_id=Depends(get_user_id)):
-    try:
-        for id in req.ids:
-            await _validate_chunk_belong_to_user(user_id, id)
-        for id in req.ids:
-            await switch_chunk(id, req.enabled)
-        return BaseResponse(data='success')
-    except Exception as e:
-        return BaseResponse(retcode=ErrorCode.SWITCH_CHUNK_ERROR, data=str(e.args[0]))
-
-@router.post('/get', response_model=BaseResponse[List[str]])
-async def get(req:GetChunkRequest):
-    try:
-        content = req.content
-        kb_sn=req.kb_sn
-        topk=req.topk
-        retrieval_mode=req.retrieval_mode
-        enc = tiktoken.encoding_for_model("gpt-4") 
-        str_len_keywords_len_ratio_pair_list=[(30,1),(60,0.75),(120,0.55),(240,0.35),(1000,0.1)]
-        content_len=len(enc.encode(content))
-        ratio=0
-        for str_len,keywords_len_ratio in str_len_keywords_len_ratio_pair_list:
-            if content_len<=str_len:
-                ratio=keywords_len_ratio
-                break
-        if ratio==0:
-            keywords_cnt=100
-        else:
-            keywords_cnt=int(content_len*ratio)
-        if len(enc.encode(content)) > 100:
-            keywords=await get_keywords_from_chunk(content,keywords_cnt)
-            content=''
-            for keyword in keywords:
-                content+=keyword+' '
-        if retrieval_mode=='chunk':
-            chunk_list=await get_similar_chunks(content=content,kb_id=kb_sn,topk=topk,devided_by_document_id=False)
-        elif retrieval_mode=='full_text':
-            chunk_list=await get_similar_full_text(content=content,kb_id=kb_sn,topk=topk)
-        else:
-            chunk_list=[]
-        return BaseResponse(data=chunk_list)
-    except Exception as e:
-        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, data=str(e.args[0]))
+@router.put('', response_model=UpdateChunkResponse, dependencies=[Depends(verify_user)])
+async def update_chunk_by_id(user_sub: Annotated[str, Depends(get_user_sub)], req: UpdateChunkRequest):
+    return UpdateChunkResponse()

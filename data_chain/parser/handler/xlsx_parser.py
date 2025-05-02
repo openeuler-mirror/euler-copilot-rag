@@ -9,7 +9,7 @@ class XlsxService(BaseService):
     @staticmethod
     def read_xlsx(file_path):
         try:
-            data = pd.read_excel(file_path)
+            data = pd.read_excel(file_path, sheet_name=None, header=None)
             return data
         except Exception as e:
             logging.error(f"Error opening file {file_path} :{e}")
@@ -17,14 +17,19 @@ class XlsxService(BaseService):
 
     # 提取列表分词结果
     def extract_table(self, data):
-        lines = self.split_table(data)
-        results = []
-        for line in lines:
-            results.append({
-                'type': 'table',
-                'text': line,
-            })
-        return results
+        all_results = []
+        # 遍历每个sheet的数据
+        for sheet_name, df in data.items():
+            lines = self.split_table(df)
+            results = []
+            for line in lines:
+                results.append({
+                    'type': 'table',
+                    'text': line,
+                    'sheet_name': sheet_name
+                })
+            all_results.extend(results)
+        return all_results
 
     async def parser(self, file_path):
         data = self.read_xlsx(file_path)

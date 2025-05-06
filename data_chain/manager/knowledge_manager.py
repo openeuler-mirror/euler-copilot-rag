@@ -1,130 +1,151 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from typing import Dict, List, Tuple, Optional
 import uuid
 from data_chain.logger.logger import logger as logging
-from sqlalchemy import and_, select, delete, update, func, between
-from datetime import datetime, timezone
-from data_chain.entities.request_data import ListKnowledgeBaseRequest
-from data_chain.stores.database.database import DataBase, KnowledgeBaseEntity, DocumentTypeEntity, DocumentEntity
-from data_chain.entities.enum import KnowledgeBaseStatus, DocumentStatus
+from sqlalchemy import and_, select, delete, func,between
+from datetime import datetime,timezone
+from data_chain.stores.postgres.postgres import PostgresDB, KnowledgeBaseEntity
+from data_chain.models.constant import KnowledgeStatusEnum
+from data_chain.models.constant import embedding_model_out_dimensions
+
 
 
 class KnowledgeBaseManager():
-    """知识库管理类"""
+
     @staticmethod
-    async def add_knowledge_base(knowledge_base_entity: KnowledgeBaseEntity) -> KnowledgeBaseEntity:
-        """添加知识库"""
+    async def insert(entity: KnowledgeBaseEntity) -> Optional[KnowledgeBaseEntity]:
         try:
-            async with await DataBase.get_session() as session:
-                session.add(knowledge_base_entity)
+            async with await PostgresDB.get_session() as session:
+                vector_items_table = await PostgresDB.get_dynamic_vector_items_table(
+                    str(entity.vector_items_id),
+                    embedding_model_out_dimensions[entity.embedding_model]
+                )
+                await PostgresDB.create_table(vector_items_table)
+                session.add(entity)
                 await session.commit()
-                return knowledge_base_entity
+                await session.refresh(entity)  # Refresh the entity to get any auto-generated values.
+                return entity
         except Exception as e:
-            err = "添加知识库失败"
-            logging.exception("[KnowledgeBaseManager] %s", err)
+            import traceback
+            logging.error(f"Failed to insert entity: {traceback.format_exc()}")
+            logging.error(f"Failed to insert entity: {e}")
+        return None
 
     @staticmethod
-    async def get_knowledge_base_by_kb_id(kb_id: uuid.UUID) -> KnowledgeBaseEntity:
-        """根据知识库ID获取知识库"""
+    async def update(id: uuid.UUID, update_dict: Dict) -> Optional[KnowledgeBaseEntity]:
         try:
-            async with await DataBase.get_session() as session:
-                stmt = select(KnowledgeBaseEntity).where(and_(KnowledgeBaseEntity.id == kb_id,
-                                                              KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELTED))
+            async with await PostgresDB.get_session() as session:
+                stmt = select(KnowledgeBaseEntity).where(KnowledgeBaseEntity.id == id).with_for_update()
                 result = await session.execute(stmt)
-                knowledge_base_entity = result.scalars().first()
-                return knowledge_base_entity
+                entity = result.scalars().first()
+
+                if 'status' in update_dict.keys() and update_dict['status'] != KnowledgeStatusEnum.IDLE:
+                    if entity.status != KnowledgeStatusEnum.IDLE:
+                        return None
+                if entity is not None:
+                    for key, value in update_dict.items():
+                        setattr(entity, key, value)
+                    await session.commit()
+                    await session.refresh(entity)  # Refresh the entity to ensure it's up to date.
+                    return entity
         except Exception as e:
-            err = "获取知识库失败"
-            logging.exception("[KnowledgeBaseManager] %s", err)
-            raise e
+            logging.error(f"Failed to update entity: {e}")
+        return None
 
     @staticmethod
-    async def list_knowledge_base(req: ListKnowledgeBaseRequest) -> Tuple[int, List[KnowledgeBaseEntity]]:
-        """列出知识库"""
-        try:
-            async with await DataBase.get_session() as session:
-                stmt = select(KnowledgeBaseEntity).where(KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELTED)
-                if req.team_id:
-                    stmt = stmt.where(KnowledgeBaseEntity.team_id == req.team_id)
-                if req.kb_id:
-                    stmt = stmt.where(KnowledgeBaseEntity.id == req.kb_id)
-                if req.kb_name:
-                    stmt = stmt.where(KnowledgeBaseEntity.name.like(f"%{req.kb_name}%"))
-                if req.author_name:
-                    stmt = stmt.where(KnowledgeBaseEntity.author_name.like(f"%{req.author_name}%"))
-                count_stmt = select(func.count()).select_from(stmt.subquery())
-                total = (await session.execute(count_stmt)).scalar()
-                stmt = stmt.limit(req.page_size).offset((req.page - 1) * req.page_size)
-                stmt = stmt.order_by(KnowledgeBaseEntity.created_time.desc())
-                result = await session.execute(stmt)
-                knowledge_base_entities = result.scalars().all()
-                return (total, knowledge_base_entities)
-        except Exception as e:
-            err = "列出知识库失败"
-            logging.exception("[KnowledgeBaseManager] %s", err)
-            raise e
+    async def select_by_id(id: uuid.UUID) -> KnowledgeBaseEntity:
+        async with await PostgresDB.get_session() as session:  # 假设get_async_session返回一个异步会话
+            stmt = select(KnowledgeBaseEntity).where(KnowledgeBaseEntity.id == id)
+            result = await session.execute(stmt)
+            entity = result.scalars().first()
+            return entity
+        return None
 
     @staticmethod
-    async def list_knowledge_base_by_team_ids(team_ids: List[uuid.UUID]) -> List[KnowledgeBaseEntity]:
-        """根据团队ID获取知识库"""
+    async def select_by_user_id_and_kb_name(user_id: uuid.UUID, kb_name: str) -> KnowledgeBaseEntity:
         try:
-            async with await DataBase.get_session() as session:
+            async with await PostgresDB.get_session() as session:
                 stmt = select(KnowledgeBaseEntity).where(
-                    and_(KnowledgeBaseEntity.team_id.in_(team_ids),
-                         KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELTED.value))
+                    and_(KnowledgeBaseEntity.user_id == user_id, KnowledgeBaseEntity.name == kb_name))
                 result = await session.execute(stmt)
-                knowledge_base_entities = result.scalars().all()
-                return knowledge_base_entities
+                entity = result.scalars().first()
+                return entity
         except Exception as e:
-            err = "获取知识库失败"
-            logging.exception("[KnowledgeBaseManager] %s", err)
-            raise e
+            logging.error(f"Failed to select by user id and kb name: {e}")
+        return None
 
     @staticmethod
-    async def list_doc_types_by_kb_id(kb_id: uuid.UUID) -> List[DocumentTypeEntity]:
-        """列出知识库文档类型"""
+    async def select_by_page(params: Dict, page_number: int, page_size: int) -> Tuple[int, List[KnowledgeBaseEntity]]:
         try:
-            async with await DataBase.get_session() as session:
-                stmt = select(DocumentTypeEntity).where(DocumentTypeEntity.kb_id == kb_id)
-                result = await session.execute(stmt)
-                document_type_entities = result.scalars().all()
-                return document_type_entities
+            async with await PostgresDB.get_session() as session:
+                base_query = select(KnowledgeBaseEntity).where(
+                    KnowledgeBaseEntity.status != KnowledgeStatusEnum.IMPORTING)
+                # 构建过滤条件
+                filters = []
+                if 'id' in params.keys():
+                    filters.append(KnowledgeBaseEntity.id == params['id'])
+                if 'user_id' in params.keys():
+                    filters.append(KnowledgeBaseEntity.user_id == params['user_id'])
+                if 'name' in params.keys():
+                    filters.append(KnowledgeBaseEntity.name.ilike(f"%{params['name']}%"))
+                if 'created_time_start' in params and 'created_time_end' in params:
+                    filters.append(between(KnowledgeBaseEntity.created_time,
+                                              datetime.strptime(params['created_time_start'], '%Y-%m-%d %H:%M').replace(tzinfo=timezone.utc),
+                                              datetime.strptime(params['created_time_end'], '%Y-%m-%d %H:%M').replace(tzinfo=timezone.utc)))
+                # 应用过滤条件
+                query = base_query.where(*filters)
+
+                # 排序
+                if 'created_time_order' in params.keys():
+                    if params['created_time_order'] == 'desc':
+                        query = query.order_by(KnowledgeBaseEntity.created_time.desc())
+                    elif params['created_time_order'] == 'asc':
+                        query = query.order_by(KnowledgeBaseEntity.created_time.asc())
+                if 'document_count_order' in params.keys():
+                    if params['document_count_order'] == 'desc':
+                        query = query.order_by(KnowledgeBaseEntity.document_number.desc())
+                    elif params['document_count_order'] == 'asc':
+                        query = query.order_by(KnowledgeBaseEntity.document_number.asc())
+
+                # 获取总数
+                count_query = select(func.count()).select_from(query.subquery())
+                total = await session.scalar(count_query)
+                # 分页查询
+                paginated_query = query.offset((page_number - 1) * page_size).limit(page_size)
+                results = await session.scalars(paginated_query)
+                knowledge_base_entity_list = results.all()
+
+                return (total, knowledge_base_entity_list)
         except Exception as e:
-            err = "列出知识库文档类型失败"
-            logging.exception("[KnowledgeBaseManager] %s", err)
-            raise e
+            logging.error(f"Failed to select by page: {e}")
+            return (0, [])
 
     @staticmethod
-    async def update_knowledge_base_by_kb_id(kb_id: uuid.UUID, kb_dict: Dict[str, str]) -> KnowledgeBaseEntity:
-        """根据知识库ID更新知识库"""
+    async def delete(kb_id: str) -> int:
         try:
-            async with await DataBase.get_session() as session:
-                stmt = update(KnowledgeBaseEntity).where(KnowledgeBaseEntity.id == kb_id).values(**kb_dict)
-                await session.execute(stmt)
-                await session.commit()
+            async with await PostgresDB.get_session() as session:
                 stmt = select(KnowledgeBaseEntity).where(KnowledgeBaseEntity.id == kb_id)
                 result = await session.execute(stmt)
                 knowledge_base_entity = result.scalars().first()
-                return knowledge_base_entity
-        except Exception as e:
-            err = "更新知识库失败"
-            logging.exception("[KnowledgeBaseManager] %s", err)
-            raise e
 
-    @staticmethod
-    async def update_doc_cnt_and_doc_size(kb_id: uuid.UUID) -> None:
-        """根据知识库ID更新知识库文档数量和文档大小,获取document表内状态不是deleted的文档数量和大小"""
-        try:
-            async with await DataBase.get_session() as session:
-                stmt = select(func.count(DocumentEntity.id), func.sum(DocumentEntity.size)).where(
-                    and_(DocumentEntity.kb_id == kb_id, DocumentEntity.status != DocumentStatus.DELETED))
-                result = await session.execute(stmt)
-                doc_cnt, doc_size = result.first()
-                stmt = update(KnowledgeBaseEntity).where(KnowledgeBaseEntity.id == kb_id).values(
-                    document_count=doc_cnt, document_size=doc_size)
-                await session.execute(stmt)
-                await session.commit()
+                if knowledge_base_entity:
+                    try:
+                        vector_items_id = str(knowledge_base_entity.vector_items_id)
+                        vector_dim = embedding_model_out_dimensions[knowledge_base_entity.embedding_model]
+                        vector_items_table = await PostgresDB.get_dynamic_vector_items_table(
+                            vector_items_id,
+                            vector_dim
+                        )
+                        await PostgresDB.drop_table(vector_items_table)
+                    except Exception as e:
+                        logging.error(f"Failed to delete vector items table: {e}")
+                    delete_stmt = delete(KnowledgeBaseEntity).where(KnowledgeBaseEntity.id == kb_id)
+                    result = await session.execute(delete_stmt)
+                    cnt = result.rowcount
+                    await session.commit()
+                    return cnt
+                else:
+                    return 0
         except Exception as e:
-            err = "更新知识库文档数量和大小失败"
-            logging.exception("[KnowledgeBaseManager] %s", err)
-            raise e
+            logging.error(f"Failed to delete knowledge base entity: {e}")
+            return 0

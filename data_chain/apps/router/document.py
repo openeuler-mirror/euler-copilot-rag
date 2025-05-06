@@ -16,11 +16,11 @@ from data_chain.entities.response_data import (
     DeleteDocumentResponse
 )
 from data_chain.apps.service.session_service import get_user_sub, verify_user
-
+from data_chain.apps.service.router_service import get_route_info
 router = APIRouter(prefix='/doc', tags=['Document'])
 
 
-@router.get('', response_model=ListDocumentResponse, dependencies=[Depends(verify_user)])
+@router.post('/list', response_model=ListDocumentResponse, dependencies=[Depends(verify_user)])
 async def list_doc(
     user_sub: Annotated[str, Depends(get_user_sub)],
     req: Annotated[ListDocumentRequest, Body()]

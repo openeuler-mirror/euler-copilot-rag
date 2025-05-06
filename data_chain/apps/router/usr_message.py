@@ -10,11 +10,11 @@ from data_chain.entities.response_data import (
     DeleteUserMessageResponse
 )
 from data_chain.apps.service.session_service import get_user_sub, verify_user
-
+from data_chain.apps.service.router_service import get_route_info
 router = APIRouter(prefix='/usr_msg', tags=['User Message'])
 
 
-@router.get('', response_model=ListUserMessageResponse, dependencies=[Depends(verify_user)])
+@router.post('/list', response_model=ListUserMessageResponse, dependencies=[Depends(verify_user)])
 async def list_user_msgs_by_user_sub(
     user_sub: Annotated[str, Depends(get_user_sub)],
     msg_type: Annotated[UserMessageType, Query(alias="msgType")],

@@ -16,22 +16,24 @@ from data_chain.entities.response_data import (
     DeleteTestingResponse
 )
 from data_chain.apps.service.session_service import get_user_sub, verify_user
-
+from data_chain.apps.service.router_service import get_route_info
 router = APIRouter(prefix='/testing', tags=['Testing'])
 
 
-@router.get('', response_model=ListTestingResponse, dependencies=[Depends(verify_user)])
+@router.post('/list', response_model=ListTestingResponse, dependencies=[Depends(verify_user)])
 async def list_testing_by_dataset_id(
     user_sub: Annotated[str, Depends(get_user_sub)],
+    action: Annotated[str, Depends(get_route_info)],
     req: Annotated[ListTestingRequest, Body()],
 ):
     return ListTestingResponse()
 
 
-@router.get('/testcase', response_model=ListTestCaseResponse,
-            dependencies=[Depends(verify_user)])
+@router.post('/testcase', response_model=ListTestCaseResponse,
+             dependencies=[Depends(verify_user)])
 async def list_test_case_by_testing_id(
         user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
         testing_id: Annotated[UUID, Query(alias="testingId")]):
     return ListTestCaseResponse()
 
@@ -39,6 +41,7 @@ async def list_test_case_by_testing_id(
 @router.get('/download', dependencies=[Depends(verify_user)])
 async def download_testing_report_by_testing_id(
         user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
         testing_id: Annotated[UUID, Query(alias="testingId")]):
     # try:
     #     await _validate_doucument_belong_to_user(user_id, id)
@@ -69,6 +72,7 @@ async def download_testing_report_by_testing_id(
     '', response_model=CreateTestingResponsing, dependencies=[Depends(verify_user)])
 async def create_testing(
         user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
         req: Annotated[CreateTestingRequest, Body()]):
     return CreateTestingResponsing()
 
@@ -77,6 +81,7 @@ async def create_testing(
              dependencies=[Depends(verify_user)])
 async def run_testing_by_testing_id(
         user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
         testing_id: Annotated[UUID, Query(alias="testingId")],
         run: Annotated[bool, Query()]):
     return RunTestingResponse()
@@ -86,6 +91,7 @@ async def run_testing_by_testing_id(
             dependencies=[Depends(verify_user)])
 async def update_testing_by_testing_id(
         user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
         testing_id: Annotated[UUID, Query(alias="testingId")],
         req: Annotated[UpdateTestingRequest, Body(...)]):
     return UpdateTestingResponse()
@@ -95,5 +101,6 @@ async def update_testing_by_testing_id(
                dependencies=[Depends(verify_user)])
 async def delete_testing_by_testing_ids(
         user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
         testing_ids: Annotated[list[UUID], Query(alias="testingId")]):
     return DeleteTestingResponse()

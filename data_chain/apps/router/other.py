@@ -8,10 +8,10 @@ from data_chain.entities.response_data import (
     ListLLMResponse,
     ListEmbeddingResponse,
     ListTokenizerResponse,
-    ListParserMethodResponse
+    ListParseMethodResponse
 )
 from data_chain.apps.service.session_service import get_user_sub, verify_user
-
+from data_chain.apps.service.router_service import get_route_info
 router = APIRouter(prefix='/other', tags=['Other'])
 
 
@@ -32,6 +32,6 @@ async def list_tokenizers():
     return ListTokenizerResponse()
 
 
-@router.get('parser_method', response_model=ListParserMethodResponse, dependencies=[Depends(verify_user)])
-async def list_parser_method():
-    return ListParserMethodResponse()
+@router.get('/parse_method', response_model=ListParseMethodResponse, dependencies=[Depends(verify_user)])
+async def list_parse_method():
+    return ListParseMethodResponse()

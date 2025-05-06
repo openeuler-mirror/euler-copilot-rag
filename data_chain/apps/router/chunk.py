@@ -12,11 +12,11 @@ from data_chain.entities.response_data import (
     ListChunkResponse,
     UpdateChunkResponse
 )
-
+from data_chain.apps.service.router_service import get_route_info
 router = APIRouter(prefix='/chunk', tags=['Chunk'])
 
 
-@router.get('', response_model=ListChunkResponse, dependencies=[Depends(verify_user)])
+@router.post('/list', response_model=ListChunkResponse, dependencies=[Depends(verify_user)])
 async def list_chunks_by_document_id(
         user_sub: Annotated[str, Depends(get_user_sub)],
         req: Annotated[ListChunkRequest, Body()],

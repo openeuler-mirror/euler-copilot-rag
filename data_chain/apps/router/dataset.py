@@ -20,11 +20,11 @@ from data_chain.entities.response_data import (
     DeleteDatasetResponse,
 )
 from data_chain.apps.service.session_service import get_user_sub, verify_user
-
+from data_chain.apps.service.router_service import get_route_info
 router = APIRouter(prefix='/dataset', tags=['Dataset'])
 
 
-@router.get('', response_model=ListDatasetResponse, dependencies=[Depends(verify_user)])
+@router.post('/list', response_model=ListDatasetResponse, dependencies=[Depends(verify_user)])
 async def list_datasets_by_kb_id(
     user_sub: Annotated[str, Depends(get_user_sub)],
     req: Annotated[ListDatasetRequest, Body()],
@@ -32,7 +32,7 @@ async def list_datasets_by_kb_id(
     return ListDatasetResponse()
 
 
-@router.get('/data', response_model=ListDataInDatasetResponse, dependencies=[Depends(verify_user)])
+@router.post('/data', response_model=ListDataInDatasetResponse, dependencies=[Depends(verify_user)])
 async def list_data_in_dataset_by_dataset_id(
         user_sub: Annotated[str, Depends(get_user_sub)],
         req: Annotated[ListDataInDatasetRequest, Body()]):

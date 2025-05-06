@@ -13,10 +13,11 @@ from data_chain.entities.response_data import (
     DeleteTaskResponse
 )
 from data_chain.entities.enum import TaskType
+from data_chain.apps.service.router_service import get_route_info
 router = APIRouter(prefix='/task', tags=['Task'])
 
 
-@router.get('', response_model=ListTaskResponse, dependencies=[Depends(verify_user)])
+@router.post('', response_model=ListTaskResponse, dependencies=[Depends(verify_user)])
 async def list_task(
     user_sub: Annotated[str, Depends(get_user_sub)],
     req: Annotated[ListTaskRequest, Body()]

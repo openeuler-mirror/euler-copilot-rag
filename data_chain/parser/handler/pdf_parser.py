@@ -51,8 +51,8 @@ class PdfService(BaseService):
                 if text:
                     text_lines.append({"bbox": bounding_box,
                                       "text": text,
-                                      "type": "para",
-                                      })
+                                       "type": "para",
+                                       })
         return sorted(text_lines, key=lambda x: (x["bbox"][1], x["bbox"][0]))
 
     def extract_table(self, page_number: int) -> list[dict]:
@@ -71,7 +71,7 @@ class PdfService(BaseService):
         for table in tables:
             table_bbox = fitz.Rect(table.bbox)
             page.add_redact_annot(table.bbox)
-            table_df  = table.to_pandas()
+            table_df = table.to_pandas()
             table_lines = self.split_table(table_df)
             for line in table_lines:
                 table_data.append({
@@ -79,7 +79,6 @@ class PdfService(BaseService):
                     "bbox": table_bbox,
                     "type": "table",
                 })
-
 
         page.apply_redactions()
         return table_data
@@ -103,17 +102,21 @@ class PdfService(BaseService):
         image_results = []
         image_chunks = []
         for image_info in image_list:
-            # 获取图片的xref
-            xref = image_info[0]
-            # 提取基础图片（如果存在）
-            base_image = self.pdf_document.extract_image(xref)
-            position = page.get_image_rects(xref)[0]
-            # 获取图片的二进制数据
-            image_bytes = base_image["image"]
-            # 获取图片的扩展名
-            image_ext = base_image["ext"]
-            # 获取图片的边界框
-            bounding_box = (position.x0, position.y0, position.x1, position.y1)
+            try:
+                # 获取图片的xref
+                xref = image_info[0]
+                # 提取基础图片（如果存在）
+                base_image = self.pdf_document.extract_image(xref)
+                position = page.get_image_rects(xref)[0]
+                # 获取图片的二进制数据
+                image_bytes = base_image["image"]
+                # 获取图片的扩展名
+                image_ext = base_image["ext"]
+                # 获取图片的边界框
+                bounding_box = (position.x0, position.y0, position.x1, position.y1)
+            except Exception as e:
+                logging.error(f"Error extracting image {image_info}: {e}")
+                continue
             nearby_text = self.find_near_words(bounding_box, text)
 
             image = Image.open(io.BytesIO(image_bytes))

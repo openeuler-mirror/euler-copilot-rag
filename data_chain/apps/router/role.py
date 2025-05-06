@@ -10,17 +10,25 @@ from data_chain.entities.request_data import (
 )
 
 from data_chain.entities.response_data import (
+    ListActionResponse,
     ListRoleResponse,
     CreateRoleResponse,
     UpdateRoleResponse,
     DeleteRoleResponse
 )
 from data_chain.apps.service.session_service import get_user_sub, verify_user
-
+from data_chain.apps.service.router_service import get_route_info
 router = APIRouter(prefix='/role', tags=['Role'])
 
 
-@router.get('', response_model=ListRoleResponse, dependencies=[Depends(verify_user)])
+@router.get('/action', response_model=ListActionResponse, dependencies=[Depends(verify_user)])
+async def list_actions(
+    user_sub: Annotated[str, Depends(get_user_sub)],
+):
+    return ListActionResponse()
+
+
+@router.post('/list', response_model=ListRoleResponse, dependencies=[Depends(verify_user)])
 async def list_role_by_team_id(
     user_sub: Annotated[str, Depends(get_user_sub)],
     req: Annotated[ListRoleRequest, Body()],

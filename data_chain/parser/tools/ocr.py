@@ -100,6 +100,7 @@ class BaseOCR:
                 return ''
             pre_part_description = ""
             ocr_result_parts = await self.cut_ocr_result_in_part(ocr_result, self.max_tokens // 5*2)
+            image_related_text = split_tools.get_k_tokens_words_from_content(image_related_text, self.max_tokens // 5*3)
             user_call = '请详细输出图片的摘要，不要输出其他内容'
             for part in ocr_result_parts:
                 pre_part_description_cp = pre_part_description

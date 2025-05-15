@@ -1,29 +1,68 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 from typing import Any, Dict
+import base64
+import hashlib
+import json
 import uuid
 from data_chain.entities.request_data import (
     CreateTeamRequest,
-    CreateKnowledgeBaseRequest
+    UpdateKnowledgeBaseRequest,
+    DocumentType as DocumentTypeRequest,
+    CreateKnowledgeBaseRequest,
+    UpdateDocumentRequest,
+    UpdateChunkRequest,
+    CreateDatasetRequest,
+    CreateTestingRequest,
+    UpdateTestingRequest
 )
 from data_chain.entities.response_data import (
     User,
     Team,
     Knowledgebase,
-    DocumentType
+    DocumentType as DocumentTypeResponse,
+    Document,
+    Chunk,
+    LLM,
+    Dataset,
+    Data,
+    Testing,
+    TestCase,
+    Task
 )
 
-from data_chain.entities.enum import UserStatus, TeamStatus
+from data_chain.entities.enum import (
+    UserStatus,
+    TeamStatus,
+    TaskType,
+    TaskStatus,
+    KnowledgeBaseStatus,
+    DocumentStatus,
+    ChunkType,
+    SearchMethod,
+    TestingStatus,
+    TestCaseStatus
+)
 from data_chain.entities.common import default_roles
 from data_chain.stores.database.database import (
     UserEntity,
     TeamEntity,
     KnowledgeBaseEntity,
     DocumentTypeEntity,
+    DocumentEntity,
+    ChunkEntity,
+    DataSetEntity,
+    DataSetDocEntity,
+    QAEntity,
+    TestingEntity,
+    TestCaseEntity,
+    TaskEntity,
+    TaskReportEntity,
     TeamUserEntity,
     UserRoleEntity,
     RoleEntity,
     RoleActionEntity
 )
+from data_chain.config.config import config
 from data_chain.logger.logger import logger as logging
 
 
@@ -84,6 +123,23 @@ class Convertor:
             raise e
 
     @staticmethod
+    async def convert_update_team_request_to_dict(
+            req: CreateTeamRequest) -> dict:
+        """将更新团队请求转换为字典"""
+        try:
+
+            req_dict = {
+                'name': req.team_name,
+                'description': req.description,
+                'is_public': req.is_public
+            }
+            return req_dict
+        except Exception as e:
+            err = "更新团队请求转换为字典失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
     async def convert_team_entity_to_team(team_entity: TeamEntity) -> Team:
         """将团队实体转换为团队"""
         try:
@@ -93,7 +149,8 @@ class Convertor:
                 description=team_entity.description,
                 authorName=team_entity.author_name,
                 memberCount=team_entity.member_cnt,
-                isPublic=team_entity.is_public
+                isPublic=team_entity.is_public,
+                createdTime=team_entity.created_time.strftime('%Y-%m-%d %H:%M')
             )
             return team
         except Exception as e:
@@ -169,6 +226,26 @@ class Convertor:
             raise e
 
     @staticmethod
+    async def convert_update_knowledge_base_request_to_dict(
+            req: UpdateKnowledgeBaseRequest) -> dict:
+        """将更新知识库请求转换为字典"""
+        try:
+            req_dict = {
+                'name': req.kb_name,
+                'description': req.description,
+                'tokenizer': req.tokenizer.value,
+                'upload_count_limit': req.upload_count_limit,
+                'upload_size_limit': req.upload_size_limit,
+                'default_parse_method': req.default_parse_method.value,
+                'default_chunk_size': req.default_chunk_size
+            }
+            return req_dict
+        except Exception as e:
+            err = "更新知识库请求转换为字典失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
     async def convert_knowledge_base_entity_to_knowledge_base(
             knowledge_base_entity: KnowledgeBaseEntity) -> Knowledgebase:
         """将知识库实体转换为知识库"""
@@ -184,9 +261,10 @@ class Convertor:
                 docSize=knowledge_base_entity.doc_size,
                 uploadCountLimit=knowledge_base_entity.upload_count_limit,
                 uploadSizeLimit=knowledge_base_entity.upload_size_limit,
-                defaultParserMethod=knowledge_base_entity.default_parse_method,
+                defaultParseMethod=knowledge_base_entity.default_parse_method,
                 defaultChunkSize=knowledge_base_entity.default_chunk_size,
                 createdTime=knowledge_base_entity.created_time.strftime('%Y-%m-%d %H:%M'),
+                docTypes=[],
             )
             return knowledge_base
         except Exception as e:
@@ -195,11 +273,11 @@ class Convertor:
             raise e
 
     @staticmethod
-    async def convert_document_type_entity_to_document_type(
-            document_type_entity: DocumentTypeEntity) -> DocumentType:
+    async def convert_document_type_entity_to_document_type_response(
+            document_type_entity: DocumentTypeEntity) -> DocumentTypeResponse:
         """将文档类型实体转换为文档类型"""
         try:
-            document_type = DocumentType(
+            document_type = DocumentTypeResponse(
                 docTypeId=document_type_entity.id,
                 docTypeName=document_type_entity.name
             )
@@ -230,5 +308,322 @@ class Convertor:
             return knowledge_base_entity
         except Exception as e:
             err = "创建知识库请求转换为知识库实体失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_kb_id_and_requeset_document_type_to_document_type_entity(
+            kb_id: uuid.UUID, document_type: DocumentTypeRequest) -> DocumentTypeEntity:
+        """将知识库ID和文档类型转换为文档类型实体"""
+        try:
+            document_type_entity = DocumentTypeEntity(
+                id=document_type.doc_type_id,
+                kb_id=kb_id,
+                name=document_type.doc_type_name
+            )
+            return document_type_entity
+        except Exception as e:
+            err = "知识库ID和文档类型转换为文档类型实体失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_document_entity_and_document_type_entity_to_document(
+            document_entity: DocumentEntity, document_type_entity: DocumentTypeEntity) -> Document:
+        """将文档实体和文档类型实体转换为文档"""
+        try:
+            document_type_response = await Convertor.convert_document_type_entity_to_document_type_response(
+                document_type_entity
+            )
+            document = Document(
+                docId=document_entity.id,
+                docName=document_entity.name,
+                docType=document_type_response,
+                chunkSize=document_entity.chunk_size,
+                createdTime=document_entity.created_time.strftime('%Y-%m-%d %H:%M'),
+                parseMethod=document_entity.parse_method,
+                enabled=document_entity.enabled,
+                authorName=document_entity.author_name,
+                status=DocumentStatus(document_entity.status),
+            )
+            return document
+        except Exception as e:
+            err = "文档实体和文档类型实体转换为文档失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_task_entity_to_task(
+            task_entity: TaskEntity, task_report: TaskReportEntity = None) -> Task:
+        """将任务实体和任务报告实体转换为任务"""
+        try:
+            task_completed = 0
+            if task_report is not None:
+                task_completed = task_report.current_stage/task_report.stage_cnt*100
+            task = Task(
+                opId=task_entity.op_id,
+                opName=task_entity.op_name,
+                taskId=task_entity.id,
+                taskStatus=TaskStatus(task_entity.status),
+                taskType=TaskType(task_entity.type),
+                taskCompleted=task_completed,
+                createdTime=task_entity.created_time.strftime('%Y-%m-%d %H:%M')
+            )
+            return task
+        except Exception as e:
+            err = "任务实体和任务报告实体转换为任务失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_update_document_request_to_dict(
+            req: UpdateDocumentRequest) -> dict:
+        """将更新文档请求转换为字典"""
+        try:
+            req_dict = {
+                'name': req.doc_name,
+                'type_id': req.doc_type_id,
+                'parse_method': req.parse_method.value,
+                'chunk_size': req.chunk_size,
+                'enabled': req.enabled
+            }
+            return req_dict
+        except Exception as e:
+            err = "更新文档请求转换为字典失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_update_chunk_request_to_dict(
+            req: UpdateChunkRequest) -> dict:
+        """将更新分片请求转换为字典"""
+        try:
+            req_dict = {
+                'text': req.text,
+                'enabled': req.enabled
+            }
+            return req_dict
+        except Exception as e:
+            err = "更新分片请求转换为字典失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_chunk_entity_to_chunk(
+            chunk_entity: ChunkEntity) -> Chunk:
+        """将chunk实体转换为chunk"""
+        try:
+            chunk = Chunk(
+                chunkId=chunk_entity.id,
+                chunkType=ChunkType(chunk_entity.type),
+                text=chunk_entity.text
+            )
+            return chunk
+        except Exception as e:
+            err = "chunk实体转换为chunk失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_dataset_entity_to_dataset(
+            dataset_entity: DataSetEntity) -> Dataset:
+        """将数据集实体转换为数据集"""
+        try:
+            dataset = Dataset(
+                datasetId=dataset_entity.id,
+                datasetName=dataset_entity.name,
+                description=dataset_entity.description,
+                dataCnt=dataset_entity.data_cnt,
+                isDataCleared=dataset_entity.is_data_cleared,
+                isChunkRelated=dataset_entity.is_chunk_related,
+                isImported=dataset_entity.is_imported,
+                score=dataset_entity.score,
+                authorName=dataset_entity.author_name,
+                status=dataset_entity.status,
+            )
+            return dataset
+        except Exception as e:
+            err = "数据集实体转换为数据集失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_llm_config_to_llm() -> LLM:
+        try:
+            with open('./data_chain/llm/icon/ollama.svg', 'r', encoding='utf-8') as file:
+                svg_content = file.read()
+            svg_bytes = svg_content.encode('utf-8')
+            base64_bytes = base64.b64encode(svg_bytes)
+            base64_string = base64_bytes.decode('utf-8')
+            config_params = {
+                'MODEL_NAME': config['MODEL_NAME'],
+                'OPENAI_API_BASE': config['OPENAI_API_BASE'],
+                'OPENAI_API_KEY': config['OPENAI_API_KEY'],
+                'REQUEST_TIMEOUT': config['REQUEST_TIMEOUT'],
+                'MAX_TOKENS': config['MAX_TOKENS'],
+                'TEMPERATURE': config['TEMPERATURE']
+            }
+            config_json = json.dumps(config_params, sort_keys=True, ensure_ascii=False).encode('utf-8')
+            hash_object = hashlib.sha256(config_json)
+            hash_hex = hash_object.hexdigest()
+            llm = LLM(
+                llmId=hash_hex,
+                llmName=config['MODEL_NAME'],
+                llmIcon=base64_string,
+            )
+            return llm
+        except Exception as e:
+            err = "llm配置转换为llm失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_qa_entity_to_data(
+            qa_entity: QAEntity) -> Data:
+        """将QA实体转换为数据"""
+        try:
+            data = Data(
+                dataId=qa_entity.id,
+                docName=qa_entity.doc_name,
+                question=qa_entity.question,
+                answer=qa_entity.answer,
+                chunk=qa_entity.chunk,
+                chunkType=ChunkType(qa_entity.chunk_type),
+            )
+            return data
+        except Exception as e:
+            err = "QA实体转换为数据失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_create_dataset_request_to_dataset_entity(
+            user_sub: str, team_id: str, req: CreateDatasetRequest) -> DataSetEntity:
+        """将创建数据集请求转换为数据集实体"""
+        try:
+            dataset_entity = DataSetEntity(
+                team_id=team_id,
+                author_id=user_sub,
+                author_name=user_sub,
+                kb_id=req.kb_id,
+                llm_id=req.llm_id,
+                name=req.dataset_name,
+                description=req.description,
+                data_cnt=req.data_cnt,
+                is_data_cleared=req.is_data_cleared,
+                is_chunk_related=req.is_chunk_related,
+            )
+            return dataset_entity
+        except Exception as e:
+            err = "创建数据集请求转换为数据集实体失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_dataset_id_and_doc_id_to_dataset_doc_entity(
+            dataset_id: uuid.UUID, doc_id: uuid.UUID) -> DataSetDocEntity:
+        """将数据集ID和文档ID转换为数据集文档实体"""
+        try:
+            dataset_doc_entity = DataSetDocEntity(
+                dataset_id=dataset_id,
+                doc_id=doc_id
+            )
+            return dataset_doc_entity
+        except Exception as e:
+            err = "数据集ID和文档ID转换为数据集文档实体失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_testing_entity_to_testing(testing_entity: TestingEntity) -> Testing:
+        """将测试实体转换为测试"""
+        try:
+            testing = Testing(
+                testingId=testing_entity.id,
+                testingName=testing_entity.name,
+                description=testing_entity.description,
+                searchMethod=SearchMethod(testing_entity.search_method),
+                aveScore=testing_entity.ave_score,
+                avePre=testing_entity.ave_pre,
+                aveRec=testing_entity.ave_rec,
+                aveFai=testing_entity.ave_fai,
+                aveRel=testing_entity.ave_rel,
+                aveLcs=testing_entity.ave_lcs,
+                aveLeve=testing_entity.ave_leve,
+                aveJac=testing_entity.ave_jac,
+                authorName=testing_entity.author_name,
+                topk=testing_entity.top_k,
+                status=TestingStatus(testing_entity.status),
+            )
+            return testing
+        except Exception as e:
+            err = "测试实体转换为测试失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_test_case_entity_to_test_case(test_case_entity: TestCaseEntity) -> TestCase:
+        """将测试用例实体转换为测试用例"""
+        try:
+            test_case = TestCase(
+                testCaseId=test_case_entity.id,
+                question=test_case_entity.question,
+                answer=test_case_entity.answer,
+                llmAnswer=test_case_entity.llm_answer,
+                relatedChunk=test_case_entity.related_chunk,
+                docName=test_case_entity.doc_name,
+                score=test_case_entity.score,
+                pre=test_case_entity.pre,
+                rec=test_case_entity.rec,
+                fai=test_case_entity.fai,
+                rel=test_case_entity.rel,
+                lcs=test_case_entity.lcs,
+                leve=test_case_entity.leve,
+                jac=test_case_entity.jac,
+                status=TestCaseStatus(test_case_entity.status),
+            )
+            return test_case
+        except Exception as e:
+            err = "测试用例实体转换为测试用例失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_create_testing_request_to_testing_entity(
+            user_sub: str, team_id: uuid.UUID, kb_id: uuid.UUID, req: CreateTestingRequest) -> TestingEntity:
+        """将创建测试请求转换为测试实体"""
+        try:
+            testing_entity = TestingEntity(
+                team_id=team_id,
+                kb_id=kb_id,
+                author_id=user_sub,
+                author_name=user_sub,
+                dataset_id=req.dataset_id,
+                name=req.testing_name,
+                description=req.description,
+                llm_id=req.llm_id,
+                search_method=req.search_method.value,
+                top_k=req.top_k,
+            )
+            return testing_entity
+        except Exception as e:
+            err = "创建测试请求转换为测试实体失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_update_testing_request_to_dict(req: UpdateTestingRequest) -> dict:
+        """将更新测试请求转换为字典"""
+        try:
+            req_dict = {
+                'name': req.testing_name,
+                'description': req.description,
+                'llm_id': req.llm_id,
+                'search_method': req.search_method.value,
+                'top_k': req.top_k,
+            }
+            return req_dict
+        except Exception as e:
+            err = "更新测试请求转换为字典失败"
             logging.exception("[Convertor] %s", err)
             raise e

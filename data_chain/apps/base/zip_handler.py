@@ -10,7 +10,7 @@ from data_chain.logger.logger import logger as logging
 class ZipHandler():
 
     @staticmethod
-    def check_zip_file(zip_file_path: str, max_file_num: int = 4096, max_file_size: int = 10 * 1024 * 1024 * 1024) -> None:
+    def check_zip_file(zip_file_path: str, max_file_num: int = 4096, max_file_size: int = 10 * 1024 * 1024 * 1024) -> bool:
         '''检查压缩文件的数量和大小'''
         total_size = 0
         try:
@@ -18,24 +18,22 @@ class ZipHandler():
             if len(to_zip_file.filelist) > max_file_num:
                 err = f"压缩文件{zip_file_path}的数量超过了上限"
                 logging.error("[ZipHandler] %s", err)
-                raise err
+                return False
             for file in to_zip_file.filelist:
                 total_size += file.file_size
                 if total_size > max_file_size:
                     err = f"压缩文件{zip_file_path}的尺寸超过了上限"
                     logging.error("[ZipHandler] %s", err)
-                    raise err
-            to_zip_file.namelist()
-            for member in to_zip_file.infolist():
-                to_zip_file.open(member)
+                    return False
+            return True
         except zipfile.BadZipFile:
             err = f"文件 {zip_file_path} 可能不是有效的ZIP文件."
             logging.error("[ZipHandler] %s", err)
-            raise e
+            return False
         except Exception as e:
             err = f"处理文件 {zip_file_path} 时出错: {e}"
             logging.error("[ZipHandler] %s", err)
-            raise e
+            return False
 
     @staticmethod
     async def zip_dir(start_dir: str, zip_name: str) -> None:

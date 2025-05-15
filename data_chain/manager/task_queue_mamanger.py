@@ -41,10 +41,23 @@ class TaskQueueManager():
         try:
             async with MongoDB.get_session() as session:
                 task_colletion = MongoDB.get_collection('witchiand_task')
-                task = await task_colletion.find_one({"status": status.value}, sort=[("created_time", 1)], session=session)
+                task = await task_colletion.find_one({"status": status}, sort=[("created_time", 1)], session=session)
                 return Task(**task) if task else None
         except Exception as e:
             err = "获取最早的任务失败"
+            logging.exception("[TaskQueueManager] %s", err)
+            raise e
+
+    @staticmethod
+    async def get_task_by_id(task_id: uuid.UUID) -> Task:
+        """根据任务ID获取任务"""
+        try:
+            async with MongoDB.get_session() as session:
+                task_colletion = MongoDB.get_collection('witchiand_task')
+                task = await task_colletion.find_one({"_id": task_id}, session=session)
+                return Task(**task) if task else None
+        except Exception as e:
+            err = "获取任务失败"
             logging.exception("[TaskQueueManager] %s", err)
             raise e
 

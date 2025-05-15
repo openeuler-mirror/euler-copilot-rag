@@ -21,7 +21,7 @@ class DocumentTypeManager():
                 return document_type_entity
         except Exception as e:
             err = "添加文档类型失败"
-            logging.exception("[DocumentTypeManager] %s", err)
+            logging.error("[DocumentTypeManager] %s", err)
 
     @staticmethod
     async def add_document_types(
@@ -35,6 +35,23 @@ class DocumentTypeManager():
         except Exception as e:
             err = "批量添加文档类型失败"
             logging.exception("[DocumentTypeManager] %s", err)
+
+    @staticmethod
+    async def get_document_type_by_id(
+            doc_type_id: uuid.UUID) -> DocumentTypeEntity:
+        """根据文档类型ID查询文档类型"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = (
+                    select(DocumentTypeEntity)
+                    .where(DocumentTypeEntity.id == doc_type_id)
+                )
+                result = await session.execute(stmt)
+                return result.scalars().one_or_none()
+        except Exception as e:
+            err = "查询文档类型失败"
+            logging.exception("[DocumentTypeManager] %s", err)
+            raise e
 
     @staticmethod
     async def update_doc_type_by_doc_type_id(

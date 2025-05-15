@@ -54,5 +54,5 @@ async def update_role_by_role_id(
 @router.delete('', response_model=DeleteRoleResponse, dependencies=[Depends(verify_user)])
 async def delete_role_by_role_ids(
         user_sub: Annotated[str, Depends(get_user_sub)],
-        role_ids: Annotated[list[UUID], Query(alias="roleId")]):
+        role_ids: Annotated[list[UUID], Body(alias="roleId")]):
     return DeleteRoleResponse()

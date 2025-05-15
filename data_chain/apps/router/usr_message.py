@@ -33,5 +33,5 @@ async def update_user_msg_by_msg_id(
 @router.delete('', response_model=DeleteUserMessageResponse, dependencies=[Depends(verify_user)])
 async def delete_user_msg_by_msg_ids(
         user_sub: Annotated[str, Depends(get_user_sub)],
-        msg_ids: Annotated[list[UUID], Query(alias="msgId")]):
+        msg_ids: Annotated[list[UUID], Body(alias="msgIds")]):
     return DeleteUserMessageResponse()

@@ -34,9 +34,10 @@ router = APIRouter(prefix='/kb', tags=['Knowledge Base'])
 @router.get('', response_model=ListAllKnowledgeBaseResponse, dependencies=[Depends(verify_user)])
 async def list_kb_by_user_sub(
     user_sub: Annotated[str, Depends(get_user_sub)],
-    action: Annotated[str, Depends(get_route_info)]
+    action: Annotated[str, Depends(get_route_info)],
+    kb_name: str | None = Query(default=None, alias="kbName")
 ):
-    list_all_kb_msg = await KnowledgeBaseService.list_kb_by_user_sub(user_sub)
+    list_all_kb_msg = await KnowledgeBaseService.list_kb_by_user_sub(user_sub, kb_name=kb_name)
     return ListAllKnowledgeBaseResponse(result=list_all_kb_msg)
 
 
@@ -60,8 +61,8 @@ async def list_doc_types_by_kb_id(
 ):
     if not await KnowledgeBaseService.validate_user_action_to_knowledge_base(user_sub, kb_id, action):
         raise Exception("用户没有权限访问该知识库的文档类型")
-    list_doc_types_msg = await KnowledgeBaseService.list_doc_types_by_kb_id(kb_id)
-    return ListDocumentTypesResponse(result=list_doc_types_msg)
+    doc_types = await KnowledgeBaseService.list_doc_types_by_kb_id(kb_id)
+    return ListDocumentTypesResponse(result=doc_types)
 
 
 @router.get('/download', dependencies=[Depends(verify_user)])
@@ -116,7 +117,7 @@ async def import_kbs(user_sub: Annotated[str, Depends(get_user_sub)],
                      kb_packages: list[UploadFile] = File(...)):
     if not await TeamService.validate_user_action_in_team(user_sub, team_id, action):
         raise Exception("用户没有权限在该团队导入知识库")
-    kb_import_task_ids = await KnowledgeBaseService.import_kb(user_sub, team_id, kb_packages)
+    kb_import_task_ids = await KnowledgeBaseService.import_kbs(user_sub, team_id, kb_packages)
     return ImportKnowledgeBaseResponse(result=kb_import_task_ids)
 
 
@@ -128,7 +129,7 @@ async def export_kb_by_kb_ids(
     for kb_id in kb_ids:
         if not await KnowledgeBaseService.validate_user_action_to_knowledge_base(user_sub, kb_id, action):
             raise Exception("用户没有权限在该知识库导出知识库")
-    kb_export_task_ids = KnowledgeBaseService.export_kb_by_kb_ids(kb_ids)
+    kb_export_task_ids = await KnowledgeBaseService.export_kb_by_kb_ids(kb_ids)
     return ExportKnowledgeBaseResponse(result=kb_export_task_ids)
 
 
@@ -148,7 +149,7 @@ async def update_kb_by_kb_id(
 async def delete_kb_by_kb_ids(
         user_sub: Annotated[str, Depends(get_user_sub)],
         action: Annotated[str, Depends(get_route_info)],
-        kb_ids: Annotated[list[UUID], Query(alias="kbIds")]):
+        kb_ids: Annotated[list[UUID], Body(alias="kbIds")]):
     for kb_id in kb_ids:
         if not await KnowledgeBaseService.validate_user_action_to_knowledge_base(user_sub, kb_id, action):
             raise Exception("用户没有权限在该知识库删除知识库")

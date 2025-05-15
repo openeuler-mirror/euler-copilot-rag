@@ -88,7 +88,7 @@ async def update_team_by_team_id(
         action: Annotated[str, Depends(get_route_info)],
         team_id: Annotated[UUID, Query(alias="teamId")],
         req: Annotated[UpdateTeamRequest, Body()]):
-    if not TeamService.validate_user_action_in_team(user_sub, team_id, action):
+    if not (await TeamService.validate_user_action_in_team(user_sub, team_id, action)):
         raise Exception('用户没有权限修改该团队')
     team_id = await TeamService.update_team_by_team_id(user_sub, team_id, req)
     return UpdateTeamResponse(message='团队更新成功', result=team_id)
@@ -117,7 +117,7 @@ async def delete_team_by_team_id(
         user_sub: Annotated[str, Depends(get_user_sub)],
         action: Annotated[str, Depends(get_route_info)],
         team_id: Annotated[UUID, Query(alias="teamId")]):
-    if not TeamService.validate_user_action_in_team(user_sub, team_id, action):
+    if not (await TeamService.validate_user_action_in_team(user_sub, team_id, action)):
         raise Exception('用户没有权限删除该团队')
     team_id = await TeamService.soft_delete_team_by_team_id(team_id)
     return DeleteTeamResponse(message='团队删除成功', result=team_id)
@@ -128,5 +128,5 @@ async def delete_team_user_by_team_id_and_user_subs(
         user_sub: Annotated[str, Depends(get_user_sub)],
         action: Annotated[str, Depends(get_route_info)],
         team_id: Annotated[UUID, Query(alias="teamId")],
-        user_subs: Annotated[list[str], Query(alias="userSub")]):
+        user_subs: Annotated[list[str], Body(alias="userSub")]):
     return DeleteTeamUserResponse()

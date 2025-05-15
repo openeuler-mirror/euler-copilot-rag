@@ -1,422 +1,262 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import aiofiles
+from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
 import uuid
 import traceback
-from typing import Dict, List, Tuple
-from fastapi import File, UploadFile
-import os
 import shutil
-import secrets
-from data_chain.logger.logger import logger as logging
-from data_chain.apps.base.convertor.task_convertor import TaskConvertor
-from data_chain.apps.base.task.document_task_handler import DocumentTaskHandler
-from data_chain.apps.base.task.task_handler import TaskRedisHandler, TaskHandler
+import os
+from data_chain.entities.request_data import (
+    ListDocumentRequest,
+    UpdateDocumentRequest
+)
+from data_chain.entities.response_data import (
+    Task,
+    Document,
+    ListDocumentMsg,
+    ListDocumentResponse
+)
+from data_chain.apps.base.convertor import Convertor
+from data_chain.apps.service.task_queue_service import TaskQueueService
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
-from data_chain.manager.document_manager import DocumentManager, TemporaryDocumentManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
-from data_chain.manager.chunk_manager import ChunkManager, TemporaryChunkManager
-from data_chain.manager.vector_items_manager import VectorItemsManager, TemporaryVectorItemsManager
-from data_chain.manager.task_manager import TaskManager, TaskStatusReportManager
-from data_chain.models.service import DocumentDTO, TemporaryDocumentDTO, TaskDTO
-from data_chain.apps.service.embedding_service import Vectorize
-from data_chain.models.constant import DocumentEmbeddingConstant, OssConstant, TaskConstant, TaskActionEnum, \
-    ParseExtensionEnum,TemporaryDocumentStatusEnum
+from data_chain.manager.document_manager import DocumentManager
+from data_chain.manager.role_manager import RoleManager
+from data_chain.manager.task_manager import TaskManager
+from data_chain.manager.task_report_manager import TaskReportManager
+from data_chain.stores.database.database import DocumentEntity
 from data_chain.stores.minio.minio import MinIO
-from data_chain.apps.base.convertor.document_convertor import DocumentConvertor
-from data_chain.exceptions.exception import DocumentException, KnowledgeBaseException
-from data_chain.models.constant import DocumentEmbeddingConstant, embedding_model_out_dimensions
-from data_chain.stores.postgres.postgres import PostgresDB, DocumentEntity, TemporaryDocumentEntity, TaskEntity
-from data_chain.config.config import config
+from data_chain.entities.enum import ParseMethod, DataSetStatus, DocumentStatus, TaskType
+from data_chain.entities.common import DOC_PATH_IN_OS, DOC_PATH_IN_MINIO, DEFAULt_DOC_TYPE_ID
+from data_chain.logger.logger import logger as logging
 
 
-async def _validate_doucument_belong_to_user(user_id, document_id) -> bool:
-    document_entity = await DocumentManager.select_by_id(document_id)
-    if document_entity is None:
-        raise DocumentException("Document not exist")
-    if document_entity.user_id != user_id:
-        raise DocumentException("Document not belong to user")
+class DocumentService:
+    """文档服务类"""
+    @staticmethod
+    async def validate_user_action_to_document(user_sub: str, doc_id: uuid.UUID, action: str) -> bool:
+        """验证用户对文档的操作权限"""
+        try:
+            doc_entity = await DocumentManager.get_document_by_doc_id(doc_id)
+            if doc_entity is None:
+                err = f"文档不存在, 文档ID: {doc_id}"
+                logging.error("[DocumentService] %s", err)
+                return False
+            action_entity = await RoleManager.get_action_by_team_id_user_sub_and_action(
+                user_sub, doc_entity.team_id, action)
+            if action_entity is None:
+                return False
+            return True
+        except Exception as e:
+            err = "验证用户对文档的操作权限失败"
+            logging.exception("[DocumentService] %s", err)
+            raise e
 
+    @staticmethod
+    async def list_doc(req: ListDocumentRequest) -> ListDocumentMsg:
+        """列出文档"""
+        try:
+            (total, doc_entities) = await DocumentManager.list_document(req)
+            doc_ids = [doc_entity.id for doc_entity in doc_entities]
+            task_entities = await TaskManager.list_current_tasks_by_op_ids(doc_ids)
+            task_ids = [task_entity.id for task_entity in task_entities]
+            task_dict = {task_entity.op_id: task_entity for task_entity in task_entities}
+            task_report_entities = await TaskReportManager.list_current_task_report_by_task_ids(task_ids)
+            task_report_dict = {task_report_entity.task_id: task_report_entity for task_report_entity in
+                                task_report_entities}
+            documents = []
+            for doc_entity in doc_entities:
+                doc_type_entity = await DocumentTypeManager.get_document_type_by_id(doc_entity.type_id)
+                document = await Convertor.convert_document_entity_and_document_type_entity_to_document(
+                    doc_entity, doc_type_entity)
+                if doc_entity.id in task_dict.keys():
+                    task_entity = task_dict[doc_entity.id]
+                    task_report = task_report_dict.get(task_entity.id, None)
+                    task = await Convertor.convert_task_entity_to_task(task_entity, task_report)
+                    document.parse_task = task
+                documents.append(document)
+            list_document_msg = ListDocumentMsg(total=total, documents=documents)
+            return list_document_msg
+        except Exception as e:
+            err = "列出文档失败"
+            logging.exception("[DocumentService] %s", err)
+            raise e
 
-async def list_documents_by_knowledgebase_id(params, page_number, page_size) -> Tuple[List[DocumentDTO], int]:
-    result_list = []
-    try:
-        total, document_entity_list = await DocumentManager.select_by_page(params, page_number, page_size)
-        doc_ids=[]
-        doc_type_ids=[]
-        for document_entity in document_entity_list:
-            doc_ids.append(document_entity.id)
-            doc_type_ids.append(document_entity.type_id)
-        doc_type_ids = list(set(doc_type_ids))
-        document_type_entity_list = await DocumentTypeManager.select_by_ids(doc_type_ids)
-        task_entity_list = await TaskManager.select_latest_task_by_op_ids(doc_ids)
-        task_ids=[]
-        for task_entity in task_entity_list:
-            task_ids.append(task_entity.id)
-        task_report_entity_list=await TaskStatusReportManager.select_latest_report_by_task_ids(task_ids)
-        document_type_dict={}
-        for document_type_entity in document_type_entity_list:
-            document_type_dict[document_type_entity.id]=document_type_entity
-        task_dict={}
-        for task_entity in task_entity_list:
-            task_dict[task_entity.op_id]=task_entity
-        task_report_dict={}
-        for task_report_entity in task_report_entity_list:
-            task_report_dict[task_report_entity.task_id]=task_report_entity
-        for document_entity in document_entity_list:
-            document_type_entity=document_type_dict[document_entity.type_id]
-            doc_dto = DocumentConvertor.convert_entity_to_dto(document_entity, document_type_entity)
-            task_entity=task_dict.get(document_entity.id,None)
-            task_dto=None
-            if task_entity is not None:
-                task_report_entity=task_report_dict.get(task_entity.id,None)
-                task_report_entity_list=[]
-                if task_report_entity is not None:
-                    task_report_entity_list=[task_report_entity]
-                task_dto = TaskConvertor.convert_entity_to_dto(task_entity, task_report_entity_list)
-            if task_dto is not None:
-                doc_dto.task = task_dto
-            result_list.append(doc_dto)
-        return (result_list, total)
-    except Exception as e:
-        logging.error("List document by kb_id={} error: {}".format(params['kb_id'], e))
-        raise e
+    @staticmethod
+    async def generate_doc_download_url(doc_id: uuid.UUID) -> str:
+        """生成文档下载链接"""
+        try:
+            download_url = await MinIO.generate_download_link(
+                DOC_PATH_IN_MINIO,
+                str(doc_id))
+            return download_url
+        except Exception as e:
+            err = "生成文档下载链接失败"
+            logging.exception("[DocumentService] %s", err)
+            raise e
 
+    @staticmethod
+    async def get_doc_name_and_extension(doc_id: uuid.UUID) -> tuple[str, str]:
+        """获取文档名称和扩展名"""
+        try:
+            doc_entity = await DocumentManager.get_document_by_doc_id(doc_id)
+            if doc_entity is None:
+                err = f"获取文档失败, 文档ID: {doc_id}"
+                logging.error("[DocumentService] %s", err)
+                raise ValueError(err)
+            return doc_entity.name, doc_entity.extension
+        except Exception as e:
+            err = "获取文档名称和扩展名失败"
+            logging.exception("[DocumentService] %s", err)
+            raise e
 
-async def update_document(tmp_dict) -> DocumentDTO:
-    try:
-        old_document_entity = await DocumentManager.select_by_id(tmp_dict['id'])
-        if 'type_id' in tmp_dict:
-            document_type_entity = await DocumentTypeManager.select_by_id(tmp_dict['type_id'])
-            if document_type_entity.kb_id is not None and old_document_entity.kb_id != document_type_entity.kb_id:
-                raise KnowledgeBaseException("Update document error.")
-        await DocumentManager.update(tmp_dict['id'], tmp_dict)
-
-        new_document_entity = await DocumentManager.select_by_id(tmp_dict['id'])
-        document_type_entity = await DocumentTypeManager.select_by_id(new_document_entity.type_id)
-        return DocumentConvertor.convert_entity_to_dto(new_document_entity, document_type_entity)
-    except Exception as e:
-        logging.error("Update document error: {}".format(e))
-        raise KnowledgeBaseException("Update document error.")
-
-
-async def stop_document_parse_task(doc_id: uuid.UUID) -> TaskDTO:
-    try:
-        doc_entity = await DocumentManager.select_by_id(doc_id)
-        if doc_entity.status == DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_STATUS_PENDING:
-            return
-        task_entity = await TaskManager.select_by_op_id(doc_id)
-        task_id = task_entity.id
-        await TaskHandler.restart_or_clear_task(task_id, TaskActionEnum.CANCEL)
-    except Exception as e:
-        logging.error("Stop docuemnt parse task={} error: {}".format(task_id, e))
-
-
-async def init_document_parse_task(doc_id):
-    update_dict = {'status': DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_STATUS_RUNNING}
-    document_entity = await DocumentManager.update(doc_id, update_dict)
-
-    # 写入task记录
-    if document_entity is None:
-        return False
-    task_entity = await TaskManager.insert(TaskEntity(user_id=document_entity.user_id,
-                                                      op_id=doc_id,
-                                                      type=TaskConstant.PARSE_DOCUMENT,
-                                                      retry=0,
-                                                      status=TaskConstant.TASK_STATUS_PENDING))
-    # 提交redis任务队列
-    TaskRedisHandler.put_task_by_tail(config['REDIS_PENDING_TASK_QUEUE_NAME'], str(task_entity.id))
-    return True
-
-
-async def run_document(update_dict) -> DocumentDTO:
-    try:
-        doc_id = update_dict['id']
-        run = update_dict['run']
-        if run == DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_RUN:
-            await init_document_parse_task(doc_id)
-        elif run == DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_CANCEL:
-            await stop_document_parse_task(doc_id)
-        updated_document_entity = await DocumentManager.select_by_id(doc_id)
-        document_type_entity = await DocumentTypeManager.select_by_id(updated_document_entity.type_id)
-        return DocumentConvertor.convert_entity_to_dto(updated_document_entity, document_type_entity)
-    except Exception as e:
-        logging.error("Embedding document ({}) error: {}".format(update_dict['run'], e))
-        raise DocumentException(f"Embedding document ({update_dict['run']}) error.")
-
-
-async def switch_document(document_id, enabled) -> DocumentDTO:
-    try:
-        await DocumentManager.update(document_id, {'enabled': enabled})
-
-        updated_document_entity = await DocumentManager.select_by_id(document_id)
-        document_type_entity = await DocumentTypeManager.select_by_id(updated_document_entity.type_id)
-        return DocumentConvertor.convert_entity_to_dto(updated_document_entity, document_type_entity)
-    except Exception as e:
-        logging.error("Switch document status ({}) error: {}".format(enabled, e))
-        raise DocumentException(f"Switch document status ({enabled}) error.")
-
-
-async def delete_document(ids: List[uuid.UUID]) -> int:
-    if len(ids) == 0:
-        return 0
-    try:
-        # 删除document表的记录
-        deleted_document_entity_list = await DocumentManager.select_by_ids(ids)
-        for deleted_document_entity in deleted_document_entity_list:
-            # 删除document_type表的记录
-            if deleted_document_entity.status == DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_STATUS_RUNNING:
-                await stop_document_parse_task(deleted_document_entity.id)
-                await TaskManager.update_task_by_op_id(deleted_document_entity.id, {'status': TaskConstant.TASK_STATUS_DELETED})
-        # 同步删除minIO里面的文件
-        for deleted_document_entity in deleted_document_entity_list:
-            await MinIO.delete_object(OssConstant.MINIO_BUCKET_DOCUMENT, str(deleted_document_entity.id))
-        deleted_cnt = await DocumentManager.delete_by_ids(ids)
-        # 修改kb里面的文档数量和文档大小
-        knowledge_base_entity = await KnowledgeBaseManager.select_by_id(deleted_document_entity_list[0].kb_id)
-        total_cnt, total_sz = await DocumentManager.select_cnt_and_sz_by_kb_id(knowledge_base_entity.id)
-        update_dict = {'document_number': total_cnt,
-                       'document_size': total_sz}
-        await KnowledgeBaseManager.update(knowledge_base_entity.id, update_dict)
-        return deleted_cnt
-    except Exception as e:
-        logging.error(f"Delete document ({ids}) error: {e}")
-        raise DocumentException(f"Delete document ({ids}) error.")
-
-
-async def submit_upload_document_task(
-        user_id: uuid.UUID, kb_id: uuid.UUID, files: List[UploadFile] = File(...)) -> bool:
-    target_dir = None
-    try:
-        # 创建目标目录
-        file_upload_successfully_list = []
-        target_dir = os.path.join(OssConstant.UPLOAD_DOCUMENT_SAVE_FOLDER, str(user_id), secrets.token_hex(16))
-        if os.path.exists(target_dir):
-            shutil.rmtree(target_dir)
-        os.makedirs(target_dir)
-        for file in files:
-            try:
-                # 1. 将文件写入本地stash目录
-                document_file_path = await DocumentTaskHandler.save_document_file_to_local(target_dir, file)
-            except Exception as e:
-                logging.error(f"save_document_file_to_local error: {e}")
-                continue
-            kb_entity = await KnowledgeBaseManager.select_by_id(kb_id)
-            # 2. 更新document记录
-            file_name = file.filename
-            if await DocumentManager.select_by_knowledge_base_id_and_file_name(kb_entity.id, file_name):
-                name = os.path.splitext(file_name)[0]
-                extension = os.path.splitext(file_name)[1]
-                file_name = name[:128]+'_'+secrets.token_hex(16)+extension
-            document_entity = await DocumentManager.insert(
-                DocumentEntity(
-                    kb_id=kb_id, user_id=user_id, name=file_name,
-                    extension=os.path.splitext(file.filename)[1],
-                    size=os.path.getsize(document_file_path),
-                    parser_method=kb_entity.default_parser_method,
-                    type_id='00000000-0000-0000-0000-000000000000',
-                    chunk_size=kb_entity.default_chunk_size,
-                    enabled=True,
-                    status=DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_STATUS_RUNNING)
-            )
-            if not await MinIO.put_object(OssConstant.MINIO_BUCKET_DOCUMENT, str(document_entity.id), document_file_path):
-                logging.error(f"上传文件到minIO失败，文件名：{file.filename}")
-                await DocumentManager.delete_by_id(document_entity.id)
-                continue
-            # 3. 创建task表记录
-            task_entity = await TaskManager.insert(TaskEntity(user_id=user_id,
-                                                              op_id=document_entity.id,
-                                                              type=TaskConstant.PARSE_DOCUMENT,
-                                                              retry=0,
-                                                              status=TaskConstant.TASK_STATUS_PENDING))
-            # 4. 提交redis任务队列
-            TaskRedisHandler.put_task_by_tail(config['REDIS_PENDING_TASK_QUEUE_NAME'], str(task_entity.id))
-            file_upload_successfully_list.append(file.filename)
-        # 5.更新kb的文档数和文档总大小
-        total_cnt, total_sz = await DocumentManager.select_cnt_and_sz_by_kb_id(kb_id)
-        update_dict = {'document_number': total_cnt,
-                       'document_size': total_sz}
-        await KnowledgeBaseManager.update(kb_id, update_dict)
-    except Exception as e:
-        raise e
-    finally:
-        if target_dir is not None and os.path.exists(target_dir):
-            shutil.rmtree(target_dir)
-    return file_upload_successfully_list
-
-
-async def generate_document_download_link(id) -> List[Dict]:
-    return await MinIO.generate_download_link(OssConstant.MINIO_BUCKET_DOCUMENT, str(id))
-
-
-async def get_file_name_and_extension(document_id):
-    try:
-        document_entity = await DocumentManager.select_by_id(document_id)
-        return document_entity.name, document_entity.extension.replace('.', '')
-    except Exception as e:
-        logging.error("Get ({}) file name and extension error: {}".format(document_id, e))
-        raise DocumentException(f"Get ({document_id})  file name and extension error.")
-
-
-async def init_temporary_document_parse_task(
-        temporary_document_list: List[Dict]) -> List[uuid.UUID]:
-    try:
-        results = []
-        ids=[]
-        for temporary_document in temporary_document_list:
-            ids.append(temporary_document['id'])
-        tmp_dict=await get_temporary_document_parse_status(ids)
-        doc_status_dict={}
-        for i in range(len(tmp_dict)):
-            doc_status_dict[tmp_dict[i]['id']]=tmp_dict[i]['status']
-        for temporary_document in temporary_document_list:
-            if temporary_document['id'] in doc_status_dict and \
-                (
-                doc_status_dict[temporary_document['id']] ==TaskConstant.TASK_STATUS_PENDING or \
-                doc_status_dict[temporary_document['id']] ==TaskConstant.TASK_STATUS_RUNNING
-                ):
-                    continue
-            temporary_entity=await TemporaryDocumentManager.select_by_id(temporary_document['id'])
-            if temporary_entity is None:
-                temporary_entity=await TemporaryDocumentManager.insert(
-                    TemporaryDocumentEntity(
-                        id=temporary_document['id'],
-                        name=temporary_document['name'],
-                        extension=temporary_document['type'],
-                        bucket_name=temporary_document['bucket_name'],
-                        parser_method=temporary_document['parser_method'],
-                        chunk_size=temporary_document['chunk_size'],
-                        status=TemporaryDocumentStatusEnum.EXIST
-                    )
-                )
-            else:
-                temporary_document['extension']=temporary_document['type']
-                del temporary_document['type']
-                temporary_document['status']=TemporaryDocumentStatusEnum.EXIST
-                temporary_entity=await TemporaryDocumentManager.update(
-                        temporary_document['id'],
-                        temporary_document
-                )
-            if temporary_entity is None:
-                continue
-            task_entity = await TaskManager.insert(
-                TaskEntity(
-                    op_id=temporary_document['id'],
-                    type=TaskConstant.PARSE_TEMPORARY_DOCUMENT,
-                    retry=0,
-                    status=TaskConstant.TASK_STATUS_PENDING
-                )
-            )
-            TaskRedisHandler.put_task_by_tail(config['REDIS_PENDING_TASK_QUEUE_NAME'], str(task_entity.id))
-            results.append(temporary_document['id'])
-        return results
-    except Exception as e:
-        raise DocumentException("Init temporary docuemnt parse task={} error: {}".format(temporary_document_list, e))
-
-
-async def get_related_document(
-        content: str,
-        top_k: int,
-        temporary_document_ids: List[uuid.UUID] = None,
-        kb_id: uuid.UUID = None
-        ) -> List[uuid.UUID]:
-    if top_k==0:
-        return []
-    results = []
-    try:
-        if temporary_document_ids:
-            chunk_tuple_list = TemporaryChunkManager.find_top_k_similar_chunks(
-                temporary_document_ids, content, max(top_k // 2, 1))
-        elif kb_id:
-            chunk_tuple_list = await ChunkManager.find_top_k_similar_chunks(kb_id, content, max(top_k//2, 1))
-        else:
-            return []
-        for chunk_tuple in chunk_tuple_list:
-            results.append(chunk_tuple[0])
-    except Exception as e:
-        logging.error(f"Failed to find similar chunks by keywords due to: {e}")
-        return []
-    try:
-        target_vector = await Vectorize.vectorize_embedding(content)
-        if target_vector is not None:
-            chunk_entity_list = []
-            if temporary_document_ids:
-                chunk_id_list = await TemporaryVectorItemsManager.find_top_k_similar_temporary_vectors(target_vector, temporary_document_ids, top_k-len(chunk_tuple_list))
-                chunk_entity_list = await TemporaryChunkManager.select_by_temporary_chunk_ids(chunk_id_list)
-            elif kb_id:
-                kb_entity = await KnowledgeBaseManager.select_by_id(kb_id)
-                if kb_entity is None:
-                    return []
-                embedding_model = kb_entity.embedding_model
-                vector_items_id = kb_entity.vector_items_id
-                dim = embedding_model_out_dimensions[embedding_model]
-                vector_items_table = await PostgresDB.get_dynamic_vector_items_table(vector_items_id, dim)
-                chunk_id_list = await VectorItemsManager.find_top_k_similar_vectors(vector_items_table, target_vector, kb_id, top_k-len(chunk_tuple_list))
-                chunk_entity_list = await ChunkManager.select_by_chunk_ids(chunk_id_list)
-            for chunk_entity in chunk_entity_list:
-                results.append(chunk_entity.id)
-    except Exception as e:
-        logging.error(f"Failed to find similar chunks by vecrot due to: {e}")
-    return results
-
-
-async def stop_temporary_document_parse_task(doc_id):
-    try:
-        task_entity = await TaskManager.select_by_op_id(doc_id)
-        task_id = task_entity.id
-        await TaskHandler.restart_or_clear_task(task_id, TaskActionEnum.CANCEL)
-    except Exception as e:
-        logging.error("Stop temporary docuemnt parse task={} error: {}".format(task_id, e))
-
-
-async def delete_temporary_document(doc_ids) -> List[TemporaryDocumentDTO]:
-    if len(doc_ids) == 0:
-        return []
-    try:
-        # 删除document表的记录
-        for doc_id in doc_ids:
-            await stop_temporary_document_parse_task(doc_id)
-        tmp_list=await TemporaryDocumentManager.select_by_ids(doc_ids)
-        doc_ids=[]
-        for tmp in tmp_list:
-            doc_ids.append(tmp.id)
-        await TemporaryDocumentManager.update_all(doc_ids, {"status": TemporaryDocumentStatusEnum.DELETED})
-        tmp_list = await TemporaryDocumentManager.select_by_ids(doc_ids)
-        tmp_set = set()
-        for tmp in tmp_list:
-            tmp_set.add(tmp.id)
-        results = []
-        for doc_id in doc_ids:
-            if doc_id not in tmp_set:
-                results.append(doc_id)
-        return results
-    except Exception as e:
-        logging.error("Delete temporary document ({}) error: {}".format(doc_ids, e))
-        raise DocumentException(f"Delete temporary document ({doc_ids}) error.")
-
-
-async def get_temporary_document_parse_status(doc_ids) -> List[TemporaryDocumentDTO]:
-    try:
-        results = []
-        temporary_document_list = await TemporaryDocumentManager.select_by_ids(doc_ids)
-        doc_ids=[]
-        for temporary_document in temporary_document_list:
-            doc_ids.append(temporary_document.id)
-        task_entity_list=await TaskManager.select_latest_task_by_op_ids(doc_ids)
-        task_entity_dict={}
-        for task_entity in task_entity_list:
-            task_entity_dict[task_entity.op_id]=task_entity
-        for i in range(len(temporary_document_list)):
-            task_entity = task_entity_dict.get(temporary_document_list[i].id,None)
+    @staticmethod
+    async def get_doc_report(doc_id: uuid.UUID) -> Document:
+        """获取文档报告"""
+        try:
+            doc_entity = await DocumentManager.get_document_by_doc_id(doc_id)
+            if doc_entity is None:
+                err = f"获取文档报告失败, 文档ID: {doc_id}"
+                logging.error("[DocumentService] %s", err)
+                raise ValueError(err)
+            task_entity = await TaskManager.get_current_task_by_op_id(doc_id)
             if task_entity is None:
-                task_status = TaskConstant.TASK_STATUS_FAILED
-            else:
-                task_status = task_entity.status
-            results.append(
-                TemporaryDocumentDTO(
-                id=temporary_document_list[i].id,
-                status=task_status
-            )
-            )
-        return results
-    except Exception as e:
-        logging.error(f"Get temporary documents ({doc_ids}) parser status error due to: {e}")
-        return []
+                return ''
+            task_report_entities = await TaskReportManager.list_all_task_report_by_task_id(task_entity.id)
+            task_report = ''
+            for task_report_entity in task_report_entities:
+                task_report += f"任务报告ID: {task_report_entity.id}, " \
+                    f"任务报告内容: {task_report_entity.message}, " \
+                    f"任务报告创建时间: {task_report_entity.created_time}\n"
+            return task_report
+        except Exception as e:
+            err = "获取文档报告失败"
+            logging.exception("[DocumentService] %s", err)
+            raise e
+
+    @staticmethod
+    async def upload_docs(user_sub: str, kb_id: uuid.UUID, docs: list[UploadFile]) -> list[uuid.UUID]:
+        """上传文档"""
+        kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
+        if kb_entity is None:
+            err = f"知识库不存在, 知识库ID: {kb_id}"
+            logging.error("[DocumentService] %s", err)
+            raise ValueError(err)
+        doc_cnt = len(docs)
+        doc_sz = 0
+        for doc in docs:
+            doc_sz += doc.size
+        if doc_cnt > kb_entity.upload_count_limit or doc_sz > kb_entity.upload_size_limit*1024*1024:
+            err = f"上传文档数量或大小超过限制, 知识库ID: {kb_id}, 上传文档数量: {doc_cnt}, 上传文档大小: {doc_sz}"
+            logging.error("[DocumentService] %s", err)
+            raise ValueError(err)
+        doc_entities = []
+        for doc in docs:
+            try:
+                id = uuid.uuid4()
+                tmp_path = os.path.join(DOC_PATH_IN_OS, str(id))
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
+                os.makedirs(tmp_path)
+                document_file_path = os.path.join(tmp_path, doc.filename)
+                async with aiofiles.open(document_file_path, "wb") as f:
+                    content = await doc.read()
+                    await f.write(content)
+                await MinIO.put_object(
+                    bucket_name=DOC_PATH_IN_MINIO,
+                    file_index=str(id),
+                    file_path=document_file_path
+                )
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
+                doc_entity = DocumentEntity(
+                    id=id,
+                    team_id=kb_entity.team_id,
+                    kb_id=kb_entity.id,
+                    author_id=user_sub,
+                    author_name=user_sub,
+                    name=doc.filename,
+                    extension=doc.filename.split('.')[-1],
+                    size=doc.size,
+                    parse_method=kb_entity.default_parse_method,
+                    parse_relut_topology=None,
+                    chunk_size=kb_entity.default_chunk_size,
+                    type_id=DEFAULt_DOC_TYPE_ID,
+                    enabled=True,
+                    status=DataSetStatus.IDLE.value,
+                    full_text='',
+                    abstract='',
+                    abstract_vector=None
+                )
+                doc_entities.append(doc_entity)
+            except Exception as e:
+                err = f"上传文档失败, 文档名: {doc.filename}, 错误信息: {e}"
+                logging.error("[DocumentService] %s", err)
+                continue
+        index = 0
+        while index < len(doc_entities):
+            try:
+                await DocumentManager.add_documents(doc_entities[index:index+1024])
+                index += 1024
+            except Exception as e:
+                err = f"上传文档失败, 文档名: {doc_entity.name}, 错误信息: {e}"
+                logging.error("[DocumentService] %s", err)
+                continue
+        for doc_entity in doc_entities:
+            await TaskQueueService.init_task(TaskType.DOC_PARSE.value, doc_entity.id)
+        doc_ids = [doc_entity.id for doc_entity in doc_entities]
+        await KnowledgeBaseManager.update_doc_cnt_and_doc_size(kb_id=kb_entity.id)
+        return doc_ids
+
+    @staticmethod
+    async def parse_docs(doc_ids: list[uuid.UUID], parse: bool) -> list[uuid.UUID]:
+        """解析文档"""
+        try:
+            doc_ids_success = []
+            for doc_id in doc_ids:
+                doc_entity = await DocumentManager.get_document_by_doc_id(doc_id)
+                if parse:
+                    if doc_entity.status != DocumentStatus.IDLE.value:
+                        continue
+                    task_id = await TaskQueueService.init_task(TaskType.DOC_PARSE.value, doc_id)
+                    if task_id:
+                        doc_ids_success.append(doc_id)
+                else:
+                    if doc_entity.status != DocumentStatus.PENDING.value and doc_entity.status != DocumentStatus.RUNNING.value:
+                        continue
+                    task_entity = await TaskManager.get_current_task_by_op_id(doc_id)
+                    task_id = await TaskQueueService.stop_task(task_entity.id)
+                    if task_id:
+                        doc_ids_success.append(doc_id)
+            return doc_ids_success
+        except Exception as e:
+            err = "解析文档失败"
+            logging.exception("[DocumentService] %s", err)
+            raise e
+
+    @staticmethod
+    async def update_doc(doc_id: uuid.UUID, req: UpdateDocumentRequest) -> uuid.UUID:
+        """更新文档"""
+        doc_dict = await Convertor.convert_update_document_request_to_dict(req)
+        await DocumentManager.update_document_by_doc_id(doc_id, doc_dict)
+        return doc_id
+
+    @staticmethod
+    async def delete_docs_by_ids(doc_ids: list[uuid.UUID]) -> list[uuid.UUID]:
+        """删除文档"""
+        try:
+            task_entities = await TaskManager.list_current_tasks_by_op_ids(doc_ids)
+            for task_entity in task_entities:
+                await TaskQueueService.stop_task(task_entity.id)
+            doc_entities = await DocumentManager.update_document_by_doc_ids(
+                doc_ids, {"status": DocumentStatus.DELETED.value})
+            doc_ids = [doc_entity.id for doc_entity in doc_entities]
+            kb_entities = await KnowledgeBaseManager.list_kb_entity_by_doc_ids(doc_ids)
+            kb_ids = [kb_entity.id for kb_entity in kb_entities]
+            kb_ids = list(set(kb_ids))
+            for kb_id in kb_ids:
+                await KnowledgeBaseManager.update_doc_cnt_and_doc_size(kb_id=kb_id)
+            return doc_ids
+        except Exception as e:
+            err = "删除文档失败"
+            logging.exception("[DocumentService] %s", err)
+            raise e

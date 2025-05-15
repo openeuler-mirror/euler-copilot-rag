@@ -50,7 +50,7 @@ class ListTeamUserRequest(BaseModel):
 class CreateTeamRequest(BaseModel):
     team_name: str = Field(default='这是一个默认的团队名称', min_length=1, max_length=30, alias="teamName")
     description: str = Field(default='', max_length=150)
-    is_public: bool = Field(default=False)
+    is_public: bool = Field(default=False, alias="isPublic")
 
 
 class UpdateTeamRequest(BaseModel):

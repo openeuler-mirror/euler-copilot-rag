@@ -358,8 +358,10 @@ class Convertor:
         """将任务实体和任务报告实体转换为任务"""
         try:
             task_completed = 0
+            finished_time = None
             if task_report is not None:
                 task_completed = task_report.current_stage/task_report.stage_cnt*100
+                finished_time = task_report.finished_time.strftime('%Y-%m-%d %H:%M')
             task = Task(
                 opId=task_entity.op_id,
                 opName=task_entity.op_name,
@@ -367,6 +369,7 @@ class Convertor:
                 taskStatus=TaskStatus(task_entity.status),
                 taskType=TaskType(task_entity.type),
                 taskCompleted=task_completed,
+                finishedTime=finished_time,
                 createdTime=task_entity.created_time.strftime('%Y-%m-%d %H:%M')
             )
             return task

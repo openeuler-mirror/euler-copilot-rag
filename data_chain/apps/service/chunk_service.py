@@ -1,377 +1,152 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import aiofiles
+from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
 import uuid
-import random
-import time
-import jieba
 import traceback
-import asyncio
-
-import jieba.analyse
-from data_chain.logger.logger import logger as logging
-from data_chain.apps.service.llm_service import get_question_chunk_relation
-from data_chain.models.constant import ChunkRelevance
-from data_chain.manager.document_manager import DocumentManager, TemporaryDocumentManager
+import os
+from data_chain.entities.request_data import (
+    ListChunkRequest,
+    UpdateChunkRequest,
+    SearchChunkRequest,
+)
+from data_chain.entities.response_data import (
+    Task,
+    Document,
+    Chunk,
+    DocChunk,
+    ListChunkMsg,
+    SearchChunkMsg
+)
+from data_chain.apps.base.convertor import Convertor
+from data_chain.apps.service.task_queue_service import TaskQueueService
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
-from data_chain.manager.chunk_manager import ChunkManager, TemporaryChunkManager
-from data_chain.manager.vector_items_manager import VectorItemsManager, TemporaryVectorItemsManager
-from data_chain.exceptions.exception import ChunkException
-from data_chain.stores.postgres.postgres import PostgresDB
-from data_chain.models.constant import embedding_model_out_dimensions, DocumentEmbeddingConstant
-from data_chain.apps.service.embedding_service import Vectorize
-from data_chain.config.config import config
-from data_chain.apps.base.convertor.chunk_convertor import ChunkConvertor
+from data_chain.manager.document_type_manager import DocumentTypeManager
+from data_chain.manager.document_manager import DocumentManager
+from data_chain.manager.chunk_manager import ChunkManager
+from data_chain.manager.role_manager import RoleManager
+from data_chain.manager.task_manager import TaskManager
+from data_chain.manager.task_report_manager import TaskReportManager
+from data_chain.stores.database.database import DocumentEntity
+from data_chain.stores.minio.minio import MinIO
+from data_chain.entities.enum import ParseMethod, DataSetStatus, DocumentStatus, TaskType
+from data_chain.entities.common import DOC_PATH_IN_OS, DOC_PATH_IN_MINIO, DEFAULt_DOC_TYPE_ID
+from data_chain.logger.logger import logger as logging
+from data_chain.rag.base_searcher import BaseSearcher
+from data_chain.parser.tools.token_tool import TokenTool
+from data_chain.embedding.embedding import Embedding
 
 
-async def _validate_chunk_belong_to_user(user_id: uuid.UUID, chunk_id: uuid.UUID) -> bool:
-    chunk_entity = await ChunkManager.select_by_chunk_id(chunk_id)
-    if chunk_entity is None:
-        raise ChunkException("Chunk not exist")
-    if chunk_entity.user_id != user_id:
-        raise ChunkException("Chunk not belong to user")
+class ChunkService:
+    """Chunk Service"""
+    async def validate_user_action_to_chunk(user_sub: str, chunk_id: uuid.UUID, action: str) -> bool:
+        """验证用户对分片的操作权限"""
+        try:
+            chunk_entity = await ChunkManager.get_chunk_by_chunk_id(chunk_id)
+            if chunk_entity is None:
+                err = f"分片不存在，分片ID: {chunk_id}"
+                logging.error("[ChunkService] %s", err)
+                return False
+            action_entity = await RoleManager.get_action_by_team_id_user_sub_and_action(
+                user_sub, chunk_entity.team_id, action)
+            if action_entity is None:
+                return False
+            return True
+        except Exception as e:
+            err = "验证用户对分片的操作权限失败"
+            logging.exception("[ChunkService] %s", err)
+            raise e
 
+    async def list_chunks_by_document_id(req: ListChunkRequest) -> ListChunkMsg:
+        """根据文档ID列出分片"""
+        try:
+            doc_entity = await DocumentManager.get_document_by_doc_id(req.doc_id)
+            if doc_entity.status != DocumentStatus.IDLE.value:
+                return ListChunkMsg(total=0, chunks=[])
+            total, chunk_entities = await ChunkManager.list_chunk(req)
+            chunks = []
+            for chunk_entity in chunk_entities:
+                chunk = await Convertor.convert_chunk_entity_to_chunk(chunk_entity)
+                chunks.append(chunk)
+            return ListChunkMsg(total=total, chunks=chunks)
+        except Exception as e:
+            err = "根据文档ID列出分片失败"
+            logging.exception("[ChunkService] %s", err)
+            raise e
 
-async def list_chunk(params, page_number, page_size):
-    doc_entity = await DocumentManager.select_by_id(params['document_id'])
-    if doc_entity is None or doc_entity.status == DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_STATUS_RUNNING:
-        return [], 0
+    async def search_chunks(req: SearchChunkRequest) -> SearchChunkMsg:
+        """根据查询条件搜索分片"""
+        chunk_entities = []
+        for kb_id in req.kb_ids:
+            try:
+                chunk_entities += await BaseSearcher.search(req.search_method.value, kb_id, req.query, 2*req.top_k, req.doc_ids, req.banned_ids)
+            except Exception as e:
+                err = f"[ChunkService] 搜索分片失败，error: {e}"
+                logging.exception(err)
+                return SearchChunkMsg(total=0, chunks=[])
+        if len(chunk_entities) == 0:
+            return SearchChunkMsg(docChunks=[])
+        if req.is_rerank:
+            chunk_entities = await BaseSearcher.rerank(chunk_entities, req.query)
+        chunk_entities = chunk_entities[:req.top_k]
 
-    chunk_entity_list, total = await ChunkManager.select_by_page(params, page_number, page_size)
-    chunk_dto_list = []
-    for chunk_entity in chunk_entity_list:
-        chunk_dto = ChunkConvertor.convert_entity_to_dto(chunk_entity)
-        chunk_dto_list.append(chunk_dto)
-    return (chunk_dto_list, total)
-
-
-async def switch_chunk(id, enabled):
-    await ChunkManager.update(id, {'enabled': enabled})
-    doc_entity = await DocumentManager.select_by_id(id)
-    if doc_entity is None:
-        return
-    kb_entity = await KnowledgeBaseManager.select_by_id(doc_entity.kb_id)
-    if kb_entity is None:
-        return
-    try:
-        VectorItems = await PostgresDB.get_dynamic_vector_items_table(
-            kb_entity.vector_items_id, embedding_model_out_dimensions[kb_entity.embedding_model])
-    except Exception as e:
-        raise ChunkException("Failed to get vector items table")
-        return
-    await VectorItemsManager.update_by_chunk_id(VectorItems, id, {'enabled': enabled})
-
-
-async def expand_chunk(document_id, global_offset, expand_method='all', max_tokens=1024, is_temporary_document=False):
-    #
-    # 这里返回的ex_chunk_tuple_list是个n*5二维列表
-    # 内部的每个列表内容： [id, document_id, global_offset, tokens, text]
-    #
-    if is_temporary_document:
-        ex_chunk_tuple_list = await TemporaryChunkManager.fetch_surrounding_temporary_context(document_id, global_offset, expand_method=expand_method, max_tokens=max_tokens)
-    else:
-        ex_chunk_tuple_list = await ChunkManager.fetch_surrounding_context(document_id, global_offset, expand_method=expand_method, max_tokens=max_tokens)
-    return ex_chunk_tuple_list
-
-
-async def filter_or_expand_chunk_by_llm(kb_id, content, document_para_dict, maxtokens):
-    exist_chunk_id_set = set()
-    new_document_para_dict = {}
-    for document_id in document_para_dict.keys():
-        for chunk_tuple in document_para_dict[document_id]:
-            chunk_id = chunk_tuple[0]
-            exist_chunk_id_set.add(chunk_id)
-    for document_id in document_para_dict.keys():
-        chunk_tuple_list = document_para_dict[document_id]
-        new_document_para_dict[document_id] = []
-        st = 0
-        en = 0
-        while st < len(chunk_tuple_list):
-            chunk = ''
-            tokens = 0
-            while en < len(chunk_tuple_list) and (en == st or chunk_tuple_list[en][2]-chunk_tuple_list[en-1][2] == 1):
-                tokens += chunk_tuple_list[en][3]
-                chunk += chunk_tuple_list[en][4]
-                en += 1
-            relation = await get_question_chunk_relation(content, chunk)
-            fisrt_global_offset = chunk_tuple_list[st][2]
-            last_global_offset = chunk_tuple_list[en-1][2]
-            ex_chunk_tuple_list = []
-            if relation == ChunkRelevance.IRRELEVANT:
-                if random.random() < 0.5:
-                    ex_chunk_tuple_list = await ChunkManager.find_top_k_similar_chunks(kb_id, content, 1)
-                else:
-                    kb_entity = await KnowledgeBaseManager.select_by_id(kb_id)
-                    if kb_entity is None:
-                        ex_chunk_tuple_list = []
-                    else:
-                        embedding_model = kb_entity.embedding_model
-                        vector_items_id = kb_entity.vector_items_id
-                        dim = embedding_model_out_dimensions[embedding_model]
-                        vector_items_table = await PostgresDB.get_dynamic_vector_items_table(vector_items_id, dim)
-                        target_vector = await Vectorize.vectorize_embedding(content)
-                        chunk_id_list = await VectorItemsManager.find_top_k_similar_vectors(vector_items_table, target_vector, kb_id, 1)
-                        chunk_entity_list = await ChunkManager.select_by_chunk_ids(chunk_id_list)
-                        for chunk_entity in chunk_entity_list:
-                            ex_chunk_tuple_list.append((chunk_entity.id, chunk_entity.document_id,
-                                                        chunk_entity.global_offset, chunk_entity.tokens, chunk_entity.text))
-            elif relation == ChunkRelevance.WEAKLY_RELEVANT:
-                if random.random() < 0.5:
-                    new_document_para_dict[document_id] += chunk_tuple_list[st:en]
-            elif relation == ChunkRelevance.RELEVANT_BUT_LACKS_PREVIOUS_CONTEXT:
-                new_document_para_dict[document_id] += chunk_tuple_list[st:en]
-                ex_chunk_tuple_list = await expand_chunk(document_id, fisrt_global_offset, expand_method='pre', max_tokens=maxtokens-tokens)
-            elif relation == ChunkRelevance.RELEVANT_BUT_LACKS_FOLLOWING_CONTEXT:
-                new_document_para_dict[document_id] += chunk_tuple_list[st:en]
-                ex_chunk_tuple_list = await expand_chunk(document_id, last_global_offset, expand_method='nex', max_tokens=maxtokens-tokens)
-            elif relation == ChunkRelevance.RELEVANT_BUT_LACKS_BOTH_CONTEXTS:
-                new_document_para_dict[document_id] += chunk_tuple_list[st:en]
-                ex_chunk_tuple_list = await expand_chunk(document_id, fisrt_global_offset, expand_method='pre', max_tokens=(maxtokens-tokens)//2)
-                ex_chunk_tuple_list += await expand_chunk(document_id, last_global_offset, expand_method='nex', max_tokens=(maxtokens-tokens)//2)
-            elif relation == ChunkRelevance.RELEVANT_AND_COMPLETE:
-                new_document_para_dict[document_id] += chunk_tuple_list[st:en]
-            for ex_chunk_tuple in ex_chunk_tuple_list:
-                chunk_id = ex_chunk_tuple[0]
-                if chunk_id not in exist_chunk_id_set:
-                    new_document_para_dict[document_id].append(ex_chunk_tuple)
-                    exist_chunk_id_set.add(chunk_id)
-            new_document_para_dict[document_id] = sorted(new_document_para_dict[document_id], key=lambda x: x[2])
-            st = en
-
-
-async def get_keywords_from_content(content: str, top_k: int = 3):
-    words = list(jieba.cut(content))
-    keywords = set(jieba.analyse.extract_tags(content, topK=top_k))
-    result = []
-    exist_words = set()
-    for word in words:
-        if word in keywords and word not in exist_words:
-            exist_words.add(word)
-            result.append(word)
-    return result
-
-
-async def rerank_chunks(content: str, chunks: list[str], top_k: int = 3):
-    pass
-
-
-async def get_keywords_from_chunk(chunk: str, top_k=30):
-    try:
-        keywords = jieba.analyse.extract_tags(chunk, topK=top_k, withWeight=True)
-    except Exception as e:
-        logging.error(f"get_keywords_from_chunk error due to: {e}")
-        keywords = []
-    return keywords
-
-
-async def get_chunk_tuple(content, temporary_document_ids=None, kb_id=None, topk=3, return_t_cost=False):
-    #
-    # 这里返回的chunk_tuple_list是个n*5二维列表
-    # 内部的每个列表内容： （id, document_id, global_offset, tokens, text）
-    #
-    t_cost_dict = {}
-    st = time.time()
-    if temporary_document_ids:
-        chunk_tuple_list = await TemporaryChunkManager.find_top_k_similar_chunks(
-            temporary_document_ids,
-            content,
-            max(topk // 2, 1))
-    elif kb_id:
-        chunk_tuple_list = await ChunkManager.find_top_k_similar_chunks(
-            kb_id,
-            content,
-            max(topk//2, 1))
-    else:
-        return []
-    t_cost_dict['keyword_searching'] = time.time()-st
-    logging.info(f"关键字检索耗时: {time.time()-st}")
-    try:
-        st = time.time()
-        target_vector = await Vectorize.vectorize_embedding(content)
-        t_cost_dict['text_to_vector'] = time.time()-st
-        logging.info(f"向量化耗时: {time.time()-st}")
-        retry_times = 3
-        if target_vector is not None:
-            st = time.time()
-            if temporary_document_ids:
-                chunk_id_list = []
-                for i in range(retry_times):
-                    try:
-                        chunk_id_list = await asyncio.wait_for(TemporaryVectorItemsManager.find_top_k_similar_temporary_vectors(
-                            target_vector,
-                            temporary_document_ids,
-                            topk-len(chunk_tuple_list)
-                        ),
-                            timeout=1
-                        )
-                        break
-                    except Exception as e:
-                        logging.error(f"检索临时向量时出错: {e}")
-                        continue
-                chunk_entity_list = await TemporaryChunkManager.select_by_temporary_chunk_ids(chunk_id_list)
-            elif kb_id:
-                kb_entity = await KnowledgeBaseManager.select_by_id(kb_id)
-                if kb_entity is None:
-                    return []
-                embedding_model = kb_entity.embedding_model
-                vector_items_id = kb_entity.vector_items_id
-                dim = embedding_model_out_dimensions[embedding_model]
-                vector_items_table = await PostgresDB.get_dynamic_vector_items_table(vector_items_id, dim)
-                chunk_id_list = []
-                for i in range(retry_times):
-                    try:
-                        chunk_id_list = await asyncio.wait_for(VectorItemsManager.find_top_k_similar_vectors(vector_items_table, target_vector, kb_id, topk-len(chunk_tuple_list)), timeout=1)
-                        break
-                    except Exception as e:
-                        logging.error(f"检索向量时出错: {e}")
-                        continue
-                chunk_entity_list = await ChunkManager.select_by_chunk_ids(chunk_id_list)
-            t_cost_dict['vector_searching'] = time.time()-st
-            logging.info(f"向量化检索耗时: {time.time()-st}")
-            st = time.time()
-            for chunk_entity in chunk_entity_list:
-                chunk_tuple_list.append((chunk_entity.id, chunk_entity.document_id,
-                                        chunk_entity.global_offset, chunk_entity.tokens, chunk_entity.text))
-            t_cost_dict['vectors_related_texts'] = time.time()-st
-            logging.info(f"向量化结果关联片段耗时: {time.time()-st}")
-        if return_t_cost:
-            return t_cost_dict, chunk_tuple_list
-        return chunk_tuple_list
-    except Exception as e:
-        logging.error(f"片段关联失败: {e}")
-        return []
-
-
-async def get_similar_chunks(
-        content, kb_id=None, temporary_document_ids=None, max_tokens=4096, topk=3, devided_by_document_id=True,
-        return_t_cost=False):
-    try:
-        if return_t_cost:
-            t_cost_dict, chunk_tuple_list = await get_chunk_tuple(content=content, temporary_document_ids=temporary_document_ids, kb_id=kb_id, topk=topk, return_t_cost=return_t_cost)
+        chunk_ids = [chunk_entity.id for chunk_entity in chunk_entities]
+        if req.is_related_surrounding:
+            # 关联上下文
+            tokens_limit = req.tokens_limit
+            tokens_limit_every_chunk = tokens_limit // len(chunk_entities)
+            leave_tokens = 0
+            for chunk_entity in chunk_entities:
+                leave_tokens = tokens_limit_every_chunk+leave_tokens
+                try:
+                    related_chunk_entities = await BaseSearcher.related_surround_chunk(chunk_entity, tokens_limit-chunk_entity.tokens, chunk_ids)
+                except Exception as e:
+                    leave_tokens += tokens_limit_every_chunk
+                    err = f"[ChunkService] 关联上下文失败，error: {e}"
+                    logging.exception(err)
+                    continue
+                tokens_sum = 0
+                for related_chunk_entity in related_chunk_entities:
+                    tokens_sum += related_chunk_entity.tokens
+                leave_tokens -= tokens_sum
+                if leave_tokens < 0:
+                    leave_tokens = 0
+                chunk_ids += [chunk_entity.id for chunk_entity in related_chunk_entities]
+                chunk_entities += related_chunk_entities
+        search_chunk_msg = SearchChunkMsg(docChunks=[])
+        if req.is_classify_by_doc:
+            doc_chunks = await BaseSearcher.classify_by_doc_id(chunk_entities)
+            for doc_chunk in doc_chunks:
+                for chunk in doc_chunk.chunks:
+                    if req.is_compress:
+                        chunk.text = TokenTool.compress_tokens(chunk.text)
         else:
-            chunk_tuple_list = await get_chunk_tuple(content=content, temporary_document_ids=temporary_document_ids, kb_id=kb_id, topk=topk)
-        st = time.time()
-        document_para_dict = {}
-        exist_chunk_id_set = set()
-        for chunk_tuple in chunk_tuple_list:
-            document_id = chunk_tuple[1]
-            if document_id not in document_para_dict.keys():
-                document_para_dict[document_id] = []
-            if chunk_tuple[0] not in exist_chunk_id_set:
-                exist_chunk_id_set.add(chunk_tuple[0])
-                document_para_dict[document_id].append(chunk_tuple)
-        logging.info(f"片段整合耗时: {time.time()-st}")
-        if len(chunk_tuple_list) == 0:
-            return []
-        new_document_para_dict = {}
-        ex_tokens = max_tokens//len(exist_chunk_id_set)
-        st = time.time()
-        leave_ex_tokens = 0
-        for document_id in document_para_dict.keys():
-            global_offset_set = set()
-            new_document_para_dict[document_id] = []
-            for chunk_tuple in document_para_dict[document_id]:
-                document_id = chunk_tuple[1]
-                global_offset = chunk_tuple[2]
-                tokens = chunk_tuple[3]
-                leave_ex_tokens += ex_tokens
-                if temporary_document_ids:
-                    ex_chunk_tuple_list = await expand_chunk(document_id, global_offset, expand_method='all', max_tokens=leave_ex_tokens-tokens, is_temporary_document=True)
-                elif kb_id:
-                    ex_chunk_tuple_list = await expand_chunk(document_id, global_offset, expand_method='all', max_tokens=leave_ex_tokens-tokens)
-                ex_chunk_tuple_list.append(chunk_tuple)
-                for ex_chunk_tuple in ex_chunk_tuple_list:
-                    global_offset = ex_chunk_tuple[2]
-                    if global_offset not in global_offset_set:
-                        new_document_para_dict[document_id].append(ex_chunk_tuple)
-                        global_offset_set.add(global_offset)
-                        leave_ex_tokens -= ex_chunk_tuple[3]
-                if leave_ex_tokens <= 0:
-                    leave_ex_tokens = 0
-            new_document_para_dict[document_id] = sorted(new_document_para_dict[document_id], key=lambda x: x[2])
-        if return_t_cost:
-            t_cost_dict['text_expanding'] = time.time()-st
-        logging.info(f"上下文关联耗时: {time.time()-st}")
-        # if config['MODEL_ENH']:
-        #     document_para_dict = await filter_or_expand_chunk_by_llm(kb_id, content, new_document_para_dict, ex_tokens)
-        # else:
-        #     document_para_dict = new_document_para_dict
-        document_para_dict = new_document_para_dict
-        if devided_by_document_id:
-            docuemnt_chunk_list = []
-            for document_id in document_para_dict:
-                document_entity = None
-                if temporary_document_ids:
-                    document_entity = await TemporaryDocumentManager.select_by_id(document_id)
-                elif kb_id:
-                    document_entity = await DocumentManager.select_by_id(document_id)
-                if document_entity is not None:
-                    document_name = document_entity.name
-                else:
-                    document_name = ''
-                chunk_list = []
-                st = 0
-                en = 0
-                while st < len(document_para_dict[document_id]):
-                    text = ''
-                    while en < len(
-                            document_para_dict[document_id]) and (
-                            en == st or document_para_dict[document_id][en][2]
-                            - document_para_dict[document_id][en - 1][2] ==
-                            1):
-                        text += document_para_dict[document_id][en][4]
-                        en += 1
-                    chunk_list.append(text)
-                    st = en
-                docuemnt_chunk_list.append({'document_name': document_name, 'chunk_list': chunk_list})
-            if return_t_cost:
-                return t_cost_dict, docuemnt_chunk_list
-            return docuemnt_chunk_list
-        else:
-            chunk_list = []
-            for document_id in document_para_dict:
-                st = 0
-                en = 0
-                while st < len(document_para_dict[document_id]):
-                    text = ''
-                    while en < len(
-                            document_para_dict[document_id]) and (
-                            en == st or document_para_dict[document_id][en][2]
-                            - document_para_dict[document_id][en - 1][2] ==
-                            1):
-                        text += document_para_dict[document_id][en][4]
-                        en += 1
-                    chunk_list.append(text)
-                    st = en
-            if return_t_cost:
-                return t_cost_dict, chunk_list
-            return chunk_list
-    except Exception as e:
-        logging.error(f"Get similar chun failed due to e: {e}")
-        logging.error(f"Get similar chun failed due to traceback: {traceback.format_exc()}")
-        return []
+            for chunk_entity in chunk_entities:
+                chunk = await Convertor.convert_chunk_entity_to_chunk(chunk_entity)
+                if req.is_compress:
+                    chunk.text = TokenTool.compress_tokens(chunk.text)
+                dc = DocChunk(docId=chunk_entity.doc_id, docName=chunk_entity.doc_name, chunks=[chunk])
+                search_chunk_msg.doc_chunks.append(dc)
+        return search_chunk_msg
 
+    async def update_chunk_by_id(chunk_id: uuid.UUID, req: UpdateChunkRequest) -> uuid.UUID:
+        try:
+            chunk_dict = await Convertor.convert_update_chunk_request_to_dict(req)
+            vector = await Embedding.get_embedding(req.text)
+            chunk_dict["text_vector"] = vector
+            chunk_entity = await ChunkManager.update_chunk_by_chunk_id(chunk_id, chunk_dict)
+            return chunk_entity.id
+        except Exception as e:
+            err = "更新分片失败"
+            logging.exception("[ChunkService] %s", err)
+            raise Exception(err)
 
-async def get_similar_full_text(
-        content, kb_id=None, temporary_document_ids=None, topk=3):
-    try:
-        chunk_tuple_list = await get_chunk_tuple(content=content, temporary_document_ids=temporary_document_ids, kb_id=kb_id, topk=topk)
-        full_text_list = []
-        document_id_set = set()
-        for chunk_tuple in chunk_tuple_list:
-            if chunk_tuple[1] not in document_id_set:
-                document_id_set.add(chunk_tuple[1])
-                if temporary_document_ids:
-                    document_entity = await TemporaryDocumentManager.select_by_id(chunk_tuple[1])
-                    full_text_list.append(document_entity.full_text)
-                elif kb_id:
-                    document_entity = await DocumentManager.select_by_id(chunk_tuple[1])
-                    full_text_list.append(document_entity.full_text)
-        logging.info(f"Get similar full text success, full_text_list: {full_text_list}")
-        return full_text_list
-    except Exception as e:
-        logging.error(f"Get similar full text failed due to e: {e}")
-        logging.error(f"Get similar full text failed due to traceback: {traceback.format_exc()}")
-        return []
-
-
-def split_chunk(chunk):
-    return list(jieba.cut(str(chunk)))
+    async def update_chunks_enabled_by_id(chunk_ids: list[uuid.UUID], enabled: bool) -> list[uuid.UUID]:
+        try:
+            chunk_dict = {"enabled": enabled}
+            chunk_entities = await ChunkManager.update_chunk_by_chunk_ids(chunk_ids, chunk_dict)
+            chunk_ids = [chunk_entity.id for chunk_entity in chunk_entities]
+            return chunk_ids
+        except Exception as e:
+            err = "更新分片失败"
+            logging.exception("[ChunkService] %s", err)
+            raise Exception(err)

@@ -6,6 +6,7 @@ import yaml
 from data_chain.apps.base.zip_handler import ZipHandler
 from data_chain.config.config import config
 from data_chain.logger.logger import logger as logging
+from data_chain.apps.service.task_queue_service import TaskQueueService
 from data_chain.apps.base.task.worker.base_worker import BaseWorker
 from data_chain.entities.enum import TaskType, TaskStatus, KnowledgeBaseStatus, DocumentStatus
 from data_chain.entities.common import DEFAULt_DOC_TYPE_ID, IMPORT_KB_PATH_IN_OS, DOC_PATH_IN_MINIO, IMPORT_KB_PATH_IN_MINIO
@@ -38,6 +39,7 @@ class ImportKnowledgeBaseWorker(BaseWorker):
             team_id=knowledge_base_entity.team_id,
             user_id=knowledge_base_entity.author_id,
             op_id=knowledge_base_entity.id,
+            op_name=knowledge_base_entity.name,
             type=TaskType.KB_IMPORT.value,
             retry=0,
             status=TaskStatus.PENDING.value)
@@ -47,11 +49,11 @@ class ImportKnowledgeBaseWorker(BaseWorker):
     @staticmethod
     async def reinit(task_id: uuid.UUID) -> bool:
         '''重新初始化任务'''
-        task_entity = await TaskManager.get_task_by_id(task_id)
+        task_entity = await TaskManager.get_task_by_task_id(task_id)
         if task_entity is None:
             err = f"[ImportKnowledgeBaseWorker] 任务不存在，task_id: {task_id}"
             logging.exception(err)
-            return None
+            return False
         tmp_path = os.path.join(IMPORT_KB_PATH_IN_OS, str(task_id))
         if os.path.exists(tmp_path):
             shutil.rmtree(tmp_path)
@@ -59,19 +61,18 @@ class ImportKnowledgeBaseWorker(BaseWorker):
             await KnowledgeBaseManager.update_knowledge_base_by_kb_id(task_entity.op_id, {"status": KnowledgeBaseStatus.PENDING.value})
             return True
         else:
-            await MinIO.delete_object(IMPORT_KB_PATH_IN_OS, str(task_id))
-            await KnowledgeBaseManager.update_knowledge_base_by_kb_id(task_entity.op_id, {"status": KnowledgeBaseStatus.DELTED.value})
+            await MinIO.delete_object(IMPORT_KB_PATH_IN_MINIO, str(task_entity.op_id))
+            await KnowledgeBaseManager.update_knowledge_base_by_kb_id(task_entity.op_id, {"status": KnowledgeBaseStatus.DELETED.value})
             return False
 
     @staticmethod
     async def deinit(task_id: uuid.UUID) -> uuid.UUID:
         '''析构任务'''
-        task_entity = await TaskManager.get_task_by_id(task_id)
+        task_entity = await TaskManager.get_task_by_task_id(task_id)
         if task_entity is None:
             err = f"[ImportKnowledgeBaseWorker] 任务不存在，task_id: {task_id}"
             logging.exception(err)
             return None
-        await TaskManager.update_task_by_id(task_id, {"status": TaskStatus.SUCCESS.value})
         await KnowledgeBaseManager.update_knowledge_base_by_kb_id(task_entity.op_id, {"status": KnowledgeBaseStatus.IDLE.value})
         tmp_path = os.path.join(IMPORT_KB_PATH_IN_OS, str(task_id))
         if os.path.exists(tmp_path):
@@ -82,17 +83,14 @@ class ImportKnowledgeBaseWorker(BaseWorker):
     async def init_path(task_id: uuid.UUID) -> tuple:
         '''初始化存放配置文件和文档的路径'''
         tmp_path = os.path.join(IMPORT_KB_PATH_IN_OS, str(task_id))
-        if not os.path.exists(tmp_path):
+        if os.path.exists(tmp_path):
             shutil.rmtree(tmp_path)
         os.mkdir(tmp_path)
         source_path = os.path.join(tmp_path, f"{task_id}.zip")
-        target_path = os.path.join(tmp_path, "source")
-        os.mkdir(source_path)
+        target_path = os.path.join(tmp_path, "target")
         os.mkdir(target_path)
         doc_config_path = os.path.join(target_path, "doc_config")
         doc_download_path = os.path.join(target_path, "doc_download")
-        os.mkdir(doc_config_path)
-        os.mkdir(doc_download_path)
         return (source_path, target_path, doc_config_path, doc_download_path)
 
     @staticmethod
@@ -121,6 +119,7 @@ class ImportKnowledgeBaseWorker(BaseWorker):
             doc_type_entity = await DocumentTypeManager.add_document_type(doc_type_entity)
             if doc_type_entity:
                 doc_types_old_id_map_to_new_id[doc_type_dict['id']] = doc_type_entity.id
+        return doc_types_old_id_map_to_new_id
 
     @staticmethod
     async def add_docs_to_kb(kb_id: uuid.UUID, doc_config_path: str, doc_download_path: str,
@@ -131,12 +130,15 @@ class ImportKnowledgeBaseWorker(BaseWorker):
         doc_config_names = os.listdir(doc_config_path)
         for doc_config_name in doc_config_names:
             try:
-                doc_config_path = os.path.join(doc_config_path, doc_config_name)
-                doc_path = os.path.join(doc_download_path, doc_config_name)
+                yaml_path = os.path.join(doc_config_path, doc_config_name)
+                with open(yaml_path, "r", encoding="utf-8") as f:
+                    doc_config = yaml.load(f, Loader=yaml.SafeLoader)
+                old_doc_id = doc_config["id"]
+                extension = doc_config["extension"]
+                doc_name = f"{old_doc_id}.{extension}"
+                doc_path = os.path.join(doc_download_path, doc_name)
                 if not os.path.exists(doc_path):
                     continue
-                with open(doc_config_path, "r", encoding="utf-8") as f:
-                    doc_config = yaml.load(f, Loader=yaml.SafeLoader)
                 doc_type_id = doc_types_old_id_map_to_new_id.get(doc_config.get("type_id"), DEFAULt_DOC_TYPE_ID)
                 document_entity = DocumentEntity(
                     team_id=kb_entity.team_id,
@@ -160,6 +162,7 @@ class ImportKnowledgeBaseWorker(BaseWorker):
                 logging.exception(err)
                 continue
         await KnowledgeBaseManager.update_doc_cnt_and_doc_size(kb_id)
+        return doc_old_id_map_to_new_id
 
     @staticmethod
     async def upload_document_to_minio(
@@ -171,8 +174,9 @@ class ImportKnowledgeBaseWorker(BaseWorker):
                 doc_path = os.path.join(doc_download_path, doc_name)
                 if not os.path.exists(doc_path):
                     continue
-                if doc_name in doc_old_id_map_to_new_id.keys():
-                    await MinIO.upload_object(DOC_PATH_IN_MINIO, doc_old_id_map_to_new_id.get(doc_name), doc_path)
+                old_id = doc_name.split('.')[0]
+                if old_id in doc_old_id_map_to_new_id.keys():
+                    await MinIO.put_object(DOC_PATH_IN_MINIO, str(doc_old_id_map_to_new_id.get(old_id)), doc_path)
             except Exception as e:
                 err = f"[ImportKnowledgeBaseWorker] 上传文档失败，文档路径: {doc_path}，错误信息: {e}"
                 logging.exception(err)
@@ -183,17 +187,17 @@ class ImportKnowledgeBaseWorker(BaseWorker):
         '''初始化文档解析任务'''
         document_entities = await DocumentManager.list_all_document_by_kb_id(kb_id)
         for document_entity in document_entities:
-            await BaseWorker.init(TaskType.DOC_PARSE.value, document_entity.id)
+            await TaskQueueService.init_task(TaskType.DOC_PARSE.value, document_entity.id)
 
     @staticmethod
     async def run(task_id: uuid.UUID) -> None:
         '''运行任务'''
         try:
-            task_entity = await TaskManager.get_task_by_id(task_id)
+            task_entity = await TaskManager.get_task_by_task_id(task_id)
             if task_entity is None:
                 err = f"[ImportKnowledgeBaseWorker] 任务不存在，task_id: {task_id}"
                 logging.exception(err)
-                return None
+                raise Exception(err)
             await KnowledgeBaseManager.update_knowledge_base_by_kb_id(task_entity.op_id, {"status": KnowledgeBaseStatus.IMPORTING.value})
             current_stage = 0
             stage_cnt = 7
@@ -207,7 +211,7 @@ class ImportKnowledgeBaseWorker(BaseWorker):
             await ImportKnowledgeBaseWorker.unzip_config_and_document(source_path, target_path)
             current_stage += 1
             await ImportKnowledgeBaseWorker.report(task_id, "解压zip文件", current_stage, stage_cnt)
-            doc_types_old_id_map_to_new_id = await ImportKnowledgeBaseWorker.add_doc_types_to_kb(kb_id, doc_config_path)
+            doc_types_old_id_map_to_new_id = await ImportKnowledgeBaseWorker.add_doc_types_to_kb(kb_id, target_path)
             current_stage += 1
             await ImportKnowledgeBaseWorker.report(task_id, "添加文档类型到知识库", current_stage, stage_cnt)
             doc_old_id_map_to_new_id = await ImportKnowledgeBaseWorker.add_docs_to_kb(kb_id, doc_config_path, doc_download_path, doc_types_old_id_map_to_new_id)
@@ -224,12 +228,12 @@ class ImportKnowledgeBaseWorker(BaseWorker):
             err = f"[ImportKnowledgeBaseWorker] 任务失败，task_id: {task_id}，错误信息: {e}"
             logging.exception(err)
             await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.FAILED.value))
-            return None
+            await ImportKnowledgeBaseWorker.report(task_id, err, 0, 1)
 
     @staticmethod
     async def stop(task_id: uuid.UUID) -> uuid.UUID:
         '''停止任务'''
-        task_entity = await TaskManager.get_task_by_id(task_id)
+        task_entity = await TaskManager.get_task_by_task_id(task_id)
         if task_entity is None:
             err = f"[ExportKnowledgeBaseWorker] 任务不存在，task_id: {task_id}"
             logging.exception(err)
@@ -243,12 +247,12 @@ class ImportKnowledgeBaseWorker(BaseWorker):
     @staticmethod
     async def delete(task_id) -> uuid.UUID:
         '''删除任务'''
-        task_entity = await TaskManager.get_task_by_id(task_id)
+        task_entity = await TaskManager.get_task_by_task_id(task_id)
         if task_entity is None:
             err = f"[ExportKnowledgeBaseWorker] 任务不存在，task_id: {task_id}"
             logging.exception(err)
             return None
         if task_entity.status == TaskStatus.CANCLED or TaskStatus.FAILED.value:
-            await KnowledgeBaseManager.update_knowledge_base_by_kb_id(task_entity.op_id, {"status": KnowledgeBaseStatus.DELTED.value})
-            await MinIO.delete_object(IMPORT_KB_PATH_IN_OS, str(task_entity.op_id))
+            await KnowledgeBaseManager.update_knowledge_base_by_kb_id(task_entity.op_id, {"status": KnowledgeBaseStatus.DELETED.value})
+            await MinIO.delete_object(IMPORT_KB_PATH_IN_MINIO, str(task_entity.op_id))
         return task_id

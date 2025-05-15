@@ -1,301 +1,348 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
+import aiofiles
 import uuid
-import secrets
-from data_chain.logger.logger import logger as logging
-import traceback
-from typing import List, Tuple
+from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
 import os
 import shutil
-import aiofiles
 import yaml
-from fastapi import UploadFile
-from data_chain.apps.base.convertor.task_convertor import TaskConvertor
-from data_chain.apps.base.convertor.knowledge_convertor import KnowledgeConvertor
-from data_chain.apps.base.task.task_handler import TaskRedisHandler, TaskHandler
-from data_chain.manager.document_manager import DocumentManager
+from data_chain.logger.logger import logger as logging
+from data_chain.entities.request_data import (
+    ListTeamRequest,
+    CreateKnowledgeBaseRequest,
+    DocumentType as DocumentTypeRequest,
+    ListKnowledgeBaseRequest,
+    UpdateKnowledgeBaseRequest
+)
+from data_chain.entities.response_data import (
+    TeamKnowledgebase,
+    ListAllKnowledgeBaseMsg,
+    Team,
+    DocumentType as DocumentTypeResponse,
+    ListKnowledgeBaseMsg,
+    ListDocumentTypesResponse)
+from data_chain.apps.base.zip_handler import ZipHandler
+from data_chain.apps.service.task_queue_service import TaskQueueService
+from data_chain.entities.enum import Tokenizer, ParseMethod, TeamType, TeamStatus, KnowledgeBaseStatus, TaskType
+from data_chain.entities.common import DEFAULt_DOC_TYPE_ID, default_roles, IMPORT_KB_PATH_IN_OS, EXPORT_KB_PATH_IN_MINIO, IMPORT_KB_PATH_IN_MINIO
+from data_chain.stores.database.database import TeamEntity, KnowledgeBaseEntity, DocumentTypeEntity
+from data_chain.stores.minio.minio import MinIO
+from data_chain.apps.base.convertor import Convertor
+from data_chain.manager.team_manager import TeamManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
-from data_chain.manager.task_manager import TaskManager, TaskStatusReportManager
-from data_chain.models.service import KnowledgeBaseDTO, TaskDTO
-from data_chain.models.constant import OssConstant, TaskConstant
-from data_chain.stores.minio.minio import MinIO
-from data_chain.stores.postgres.postgres import TaskEntity
-from data_chain.exceptions.exception import KnowledgeBaseException
-from data_chain.apps.service.document_service import run_document
-from data_chain.models.constant import DocumentEmbeddingConstant, OssConstant, TaskConstant, KnowledgeStatusEnum, TaskActionEnum, EmbeddingModelEnum, ParseMethodEnum, embedding_model_out_dimensions
-from data_chain.apps.base.document.zip_handler import ZipHandler
-from data_chain.stores.postgres.postgres import KnowledgeBaseEntity
-from data_chain.config.config import config
+from data_chain.manager.document_manager import DocumentManager
+from data_chain.manager.role_manager import RoleManager
+from data_chain.manager.task_manager import TaskManager
 
 
-async def _validate_knowledge_base_belong_to_user(user_id: uuid.UUID, kb_id: str) -> bool:
-    kb_entity = await KnowledgeBaseManager.select_by_id(kb_id)
-    if kb_entity is None:
-        raise KnowledgeBaseException("Knowledge base not exist")
-    if kb_entity.user_id != user_id:
-        raise KnowledgeBaseException("Knowledge base not belong to user")
-
-
-async def list_knowledge_base_task(page_number, page_size, params) -> List[TaskDTO]:
-    try:
-        # 直接查询task记录表
-        total, all_task_list = await TaskManager.select_by_page(page_number, page_size, params)
-
-        knowledge_dto_list = []
-        for task_entity in all_task_list:
-            if not task_entity.op_id:
-                continue
-            knowledge_base_entity = await KnowledgeBaseManager.select_by_id(task_entity.op_id)
-            if knowledge_base_entity is None:
-                continue
-            document_type_entity_list = await DocumentTypeManager.select_by_knowledge_base_id(str(knowledge_base_entity.id))
-            knowledge_base_dto = KnowledgeConvertor.convert_entity_to_dto(
-                knowledge_base_entity, document_type_entity_list)
-            latest_task_status_report_entity_list = await TaskStatusReportManager.select_latest_report_by_task_ids([task_entity.id])
-            if len(latest_task_status_report_entity_list) >= 1:
-                task_dto = TaskConvertor.convert_entity_to_dto(task_entity, latest_task_status_report_entity_list)
-            else:
-                task_dto = TaskConvertor.convert_entity_to_dto(task_entity, [])
-            knowledge_base_dto.task = task_dto
-            knowledge_dto_list.append(knowledge_base_dto)
-        return total, knowledge_dto_list
-    except Exception:
-        logging.error("List user={} knowledge base task error: {}".format(params['user_id'], traceback.format_exc()))
-        raise KnowledgeBaseException(f"List user={str(params['user_id'])} knowledge base task error.")
-
-
-async def rm_all_knowledge_base_task(user_id: uuid.UUID, types: List[str]) -> TaskDTO:
-    try:
-        task_entity_list = await TaskManager.select_by_user_id_and_task_type_list(user_id, types)
-        for task_entity in task_entity_list:
-            task_id = task_entity.id
-            if task_entity.status == TaskConstant.TASK_STATUS_PENDING or task_entity.status == TaskConstant.TASK_STATUS_RUNNING:
-                await stop_knowledge_base_task(task_id)
-            await TaskManager.update(task_id, {'status': TaskConstant.TASK_STATUS_DELETED})
-        return True
-    except Exception as e:
-        logging.error("Stop knowledge base task={} error: {}".format(task_id, e))
-        raise KnowledgeBaseException(f"Stop knowledge base task={task_id} error.")
-
-
-async def rm_knowledge_base_task(task_id: uuid.UUID) -> TaskDTO:
-    try:
-        task_entity = await TaskManager.select_by_id(task_id)
-        if task_entity is None:
-            return
-        if task_entity.status == TaskConstant.TASK_STATUS_PENDING or task_entity.status == TaskConstant.TASK_STATUS_RUNNING:
-            await stop_knowledge_base_task(task_id)
-        await TaskManager.update(task_id, {'status': TaskConstant.TASK_STATUS_DELETED})
-        return True
-    except Exception as e:
-        logging.error("Stop knowledge base task={} error: {}".format(task_id, e))
-        raise KnowledgeBaseException(f"Stop knowledge base task={task_id} error.")
-
-
-async def stop_knowledge_base_task(task_id: uuid.UUID) -> TaskDTO:
-    try:
-        task_entity = await TaskManager.select_by_id(task_id)
-        task_id = task_entity.id
-        await TaskHandler.restart_or_clear_task(task_id, TaskActionEnum.CANCEL)
-    except Exception as e:
-        logging.error("Stop knowledge base task={} error={}".format(task_id, e))
-        raise KnowledgeBaseException(f"Stop knowledge base task={task_id} error.")
-
-
-async def create_knowledge_base(tmp_dict) -> KnowledgeBaseDTO:
-    try:
-        if await KnowledgeBaseManager.select_by_user_id_and_kb_name(tmp_dict['user_id'], tmp_dict['name']):
-            tmp_dict['name'] = '资产'+'_'+secrets.token_hex(16)
-    except Exception:
-        logging.error("Create knowledge base error: {}".format(traceback.format_exc()))
-        raise KnowledgeBaseException("Create knowledge base error.")
-    knowledge_base_entity = KnowledgeConvertor.convert_dict_to_entity(tmp_dict)
-    try:
-        knowledge_base_entity = await KnowledgeBaseManager.insert(knowledge_base_entity)
-        document_type_entity_list = await DocumentTypeManager.insert_bulk(
-            knowledge_base_entity.id, tmp_dict['document_type_list'])
-        return KnowledgeConvertor.convert_entity_to_dto(knowledge_base_entity, document_type_entity_list)
-    except Exception as e:
-        logging.error("Create knowledge base error: {}".format(e))
-        raise KnowledgeBaseException("Create knowledge base error.")
-
-
-async def update_knowledge_base(update_dict: dict) -> KnowledgeBaseDTO:
-    kb_id = update_dict['id']
-    document_type_list = update_dict.get('document_type_list', None)
-    if document_type_list is not None:
-        del update_dict['document_type_list']
-    else:
-        document_type_list = []
-    knowledge_base_entity = await KnowledgeBaseManager.select_by_user_id_and_kb_name(
-        update_dict['user_id'], update_dict['name'])
-    if knowledge_base_entity and knowledge_base_entity.id != kb_id:
-        raise KnowledgeBaseException("knowbaseledge asset with duplicate names!")
-    knowledge_base_entity = await KnowledgeBaseManager.select_by_id(kb_id)
-    document_type_entity_list = await DocumentTypeManager.update_knowledge_base_document_type(
-        kb_id, document_type_list)
-    await KnowledgeBaseManager.update(kb_id, update_dict)
-    updated_knowledge_base_entity = await KnowledgeBaseManager.select_by_id(kb_id)
-    return KnowledgeConvertor.convert_entity_to_dto(updated_knowledge_base_entity, document_type_entity_list)
-
-
-async def list_knowledge_base(params, page_number=1, page_size=1) -> Tuple[List[KnowledgeBaseDTO], int]:
-    try:
-        total, knowledge_base_entity_list = await KnowledgeBaseManager.select_by_page(
-            params, page_number, page_size)
-        knowledge_base_dto_list = []
-        for knowledge_base_entity in knowledge_base_entity_list:
-            document_type_entity_list = await DocumentTypeManager.select_by_knowledge_base_id(knowledge_base_entity.id)
-            knowledge_base_dto_list.append(
-                KnowledgeConvertor.convert_entity_to_dto(
-                    knowledge_base_entity,
-                    document_type_entity_list
-                )
-            )
-        return (knowledge_base_dto_list, total)
-    except Exception as e:
-        logging.error("List knowledge base error: {}".format(e))
-        raise KnowledgeBaseException("List knowledge base error.")
-
-
-async def rm_knowledge_base(kb_id: str) -> bool:
-    try:
-        task_entity = await TaskManager.select_by_op_id(kb_id)
-        if task_entity:
-            await stop_knowledge_base_task(task_entity.id)
-        knowledge_base_entity = await KnowledgeBaseManager.select_by_id(kb_id)
-        await TaskManager.update_task_by_op_id(kb_id, {'status': TaskConstant.TASK_STATUS_DELETED})
-        # 删除document/knowledge_base之前先查出来得到文件名
-        document_entity_list = await DocumentManager.select_by_knowledge_base_id(kb_id)
-        if len(document_entity_list) > 0:
-            for document_entity in document_entity_list:
-                await run_document({'id': document_entity.id, 'run': DocumentEmbeddingConstant.DOCUMENT_EMBEDDING_CANCEL})
-                task_entity_list = await TaskManager.select_by_op_id(document_entity.id, 'all')
-                for task_entity in task_entity_list:
-                    await TaskManager.update_task_by_op_id(task_entity.id, {'status': TaskConstant.TASK_STATUS_DELETED})
-                await MinIO.delete_object(OssConstant.MINIO_BUCKET_DOCUMENT, str(document_entity.id))
-        if knowledge_base_entity.id:
-            await MinIO.delete_object(OssConstant.MINIO_BUCKET_KNOWLEDGEBASE, str(knowledge_base_entity.id))
-        await KnowledgeBaseManager.delete(kb_id)
-        return True
-    except Exception as e:
-        logging.error(f"Delete knowledge base error: {e}")
-        raise KnowledgeBaseException("Delete knowledge base error.")
-
-
-async def parse_knowledge_yaml_file(user_id: uuid.UUID, unzip_folder_path: str):
-    knowledge_yaml_path = os.path.join(unzip_folder_path, "knowledge_base.yaml")
-    if not os.path.exists(knowledge_yaml_path):
-        return None
-    # 解析knowledge.yaml
-    parse_methods = set(ParseMethodEnum.get_all_values())
-    with open(knowledge_yaml_path, 'r')as kb_file:
-        data = yaml.safe_load(kb_file)
-        # 写入knoweldge_base表
-        if 'name' not in data.keys() or await KnowledgeBaseManager.select_by_user_id_and_kb_name(
-                user_id, data['name']) is not None:
-            data['name'] = '资产'+'_'+secrets.token_hex(16)
-        if 'embedding_model' not in data.keys() or data['embedding_model'] not in embedding_model_out_dimensions.keys():
-            data['embedding_model'] = list(embedding_model_out_dimensions.keys())[0]
-        if 'default_chunk_size' not in data.keys() or not isinstance(data['default_chunk_size'], int):
-            data['default_chunk_size'] = 1024
-        parse_mathod = data.get('default_parser_method', ParseMethodEnum.GENERAL)
-        if parse_mathod not in parse_methods:
-            parse_mathod = ParseMethodEnum.GENERAL
-        knowledge_base_entity = KnowledgeBaseEntity(
-            name=data['name'],
-            user_id=user_id,
-            language=data.get('language', 'zh'),
-            description=data.get('description', ''),
-            embedding_model=data.get('embedding_model', EmbeddingModelEnum.BGE_LARGE_ZH),
-            document_number=0,
-            document_size=0,
-            vector_items_id=uuid.uuid4(),
-            default_parser_method=parse_mathod,
-            default_chunk_size=data.get('default_chunk_size', 1024),
-            status=KnowledgeStatusEnum.EXPROTING
-        )
-        knowledge_base_entity = await KnowledgeBaseManager.insert(knowledge_base_entity)
-        # 写入document_type表
-        await DocumentTypeManager.insert_bulk(knowledge_base_entity.id, data.get('document_type_list', []))
-        return knowledge_base_entity
-
-
-async def submit_import_knowledge_base_task(user_id: uuid.UUID, zip_file_list: List[UploadFile]) -> List[str]:
-    target_dir = os.path.join(OssConstant.IMPORT_FILE_SAVE_FOLDER, str(user_id), secrets.token_hex(16))
-    if os.path.exists(target_dir):
-        shutil.rmtree(target_dir)
-    os.makedirs(target_dir)
-    for zip_file in zip_file_list:
-        # 1. 将zip文件写入本地stash目录
-        zip_file_name = zip_file.filename
-        zip_file_path = os.path.join(target_dir, zip_file_name)
+class KnowledgeBaseService:
+    """知识库服务"""
+    @staticmethod
+    async def validate_user_action_to_knowledge_base(
+            user_sub: str, kb_id: uuid.UUID, action: str) -> bool:
+        """验证用户在知识库中的操作权限"""
         try:
-            async with aiofiles.open(zip_file_path, "wb") as f:
-                content = await zip_file.read()
-                await f.write(content)
+            kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
+            if kb_entity is None:
+                logging.exception("[KnowledgeBaseService] 知识库不存在")
+                raise Exception("Knowledge base not exist")
+            action_entity = await RoleManager.get_action_by_team_id_user_sub_and_action(
+                user_sub, kb_entity.team_id, action)
+            if action_entity is None:
+                return False
+            return True
         except Exception as e:
-            logging.error(f"{zip_file_name}写入失败: {e}")
-            continue
-        if not ZipHandler.check_zip_file(zip_file_path):
-            logging.error(f"{zip_file_name}文件过大或者已损坏")
-            if os.path.exists(zip_file_path):
-                os.remove(zip_file_path)
-    zip_file_save_successfully_list = []
-    zip_file_name_list = os.listdir(target_dir)
-    for zip_file_name in zip_file_name_list:
-        zip_file_path = os.path.join(target_dir, zip_file_name)
-        # 2. 将zip文件上传到minIO
-        if not await ZipHandler.unzip_file(zip_file_path, target_dir, ['knowledge_base.yaml']):
-            logging.error(f"{zip_file_name}解压失败")
-            continue
-        knowledge_base_entity = await parse_knowledge_yaml_file(user_id, target_dir)
-        if not await MinIO.put_object(OssConstant.MINIO_BUCKET_KNOWLEDGEBASE, str(knowledge_base_entity.id), zip_file_path):
-            logging.error(f"{zip_file_name}存入minio失败")
-            if os.path.exists(zip_file_path):
-                os.remove(zip_file_path)
-            continue
-        if os.path.exists(zip_file_path):
-            os.remove(zip_file_path)
-        # 3. 创建task表记录
-        zip_file_save_successfully_list.append(zip_file_name)
-        task_entity = await TaskManager.insert(TaskEntity(user_id=user_id,
-                                                          op_id=knowledge_base_entity.id,
-                                                          type=TaskConstant.IMPORT_KNOWLEDGE_BASE,
-                                                          retry=0,
-                                                          status=TaskConstant.TASK_STATUS_PENDING))
-        # 4. 最后提交redis任务
-        TaskRedisHandler.put_task_by_tail(config['REDIS_PENDING_TASK_QUEUE_NAME'], str(task_entity.id))
-    if os.path.exists(target_dir):
-        shutil.rmtree(target_dir)
-    return zip_file_save_successfully_list
+            err = "验证用户在知识库中的操作权限失败"
+            logging.exception("[KnowledgeBaseService] %s", err)
+            raise e
 
+    @staticmethod
+    async def list_kb_by_user_sub(user_sub: str, kb_name: str = None) -> ListAllKnowledgeBaseMsg:
+        """列出知识库"""
+        try:
+            # 获取用户所在团队
+            team_entities = await TeamManager.list_all_team_user_created_or_joined(user_sub)
+            team_ids = [team_entity.id for team_entity in team_entities]
+            # 获取知识库
+            knowledge_base_entities = await KnowledgeBaseManager.list_knowledge_base_by_team_ids(team_ids, kb_name)
+            team_knowledge_bases_dict = {}
+            for knowledge_base_entity in knowledge_base_entities:
+                team_id = knowledge_base_entity.team_id
+                if team_id not in team_knowledge_bases_dict:
+                    team_knowledge_bases_dict[team_id] = []
+                team_knowledge_bases_dict[team_id].append(knowledge_base_entity)
+            team_knowledge_bases = []
+            for team_entity in team_entities:
+                knowledge_base_entities = team_knowledge_bases_dict.get(team_entity.id, [])
+                team_knowledge_base = TeamKnowledgebase(
+                    teamId=team_entity.id,
+                    teamName=team_entity.name,
+                    kbList=[]
+                )
+                for knowledge_base_entity in knowledge_base_entities:
+                    doc_type_entities = await KnowledgeBaseManager.list_doc_types_by_kb_id(knowledge_base_entity.id)
+                    doc_types = []
+                    for doc_type_entity in doc_type_entities:
+                        doc_types.append(
+                            (await Convertor.convert_document_type_entity_to_document_type_response(doc_type_entity))
+                        )
+                    knowledge_base = await Convertor.convert_knowledge_base_entity_to_knowledge_base(knowledge_base_entity)
+                    knowledge_base.doc_types = doc_types
+                    team_knowledge_base.kb_list.append(
+                        knowledge_base
+                    )
+                team_knowledge_bases.append(team_knowledge_base)
+            return ListAllKnowledgeBaseMsg(teamKnowledgebases=team_knowledge_bases)
+        except Exception as e:
+            err = "列出知识库失败"
+            logging.exception("[KnowledgeBaseService] %s", err)
+            raise e
 
-async def submit_export_knowledge_base_task(user_id, kb_id) -> bool:
-    try:
-        result = await KnowledgeBaseManager.update(kb_id, {'status': KnowledgeStatusEnum.EXPROTING})
-        if result is None:
-            return ""
-        # 写入task记录
-        task_entity = await TaskManager.insert(TaskEntity(user_id=user_id,
-                                                          op_id=kb_id,
-                                                          type=TaskConstant.EXPORT_KNOWLEDGE_BASE,
-                                                          retry=0,
-                                                          status=TaskConstant.TASK_STATUS_PENDING))
-        # 提交redis任务队列
-        TaskRedisHandler.put_task_by_tail(config['REDIS_PENDING_TASK_QUEUE_NAME'], str(task_entity.id))
-        return str(task_entity.id)
-    except Exception as e:
-        logging.error("Submit save knowledge base task error: {}".format(e))
-    return ""
+    @staticmethod
+    async def list_kb_by_team_id(req: ListKnowledgeBaseRequest) -> ListKnowledgeBaseMsg:
+        """列出知识库"""
+        try:
+            # 获取知识库
+            total, knowledge_base_entities = await KnowledgeBaseManager.list_knowledge_base(req)
+            knowledge_bases = []
+            for knowledge_base_entity in knowledge_base_entities:
+                doc_type_entities = await KnowledgeBaseManager.list_doc_types_by_kb_id(knowledge_base_entity.id)
+                doc_types = []
+                for doc_type_entity in doc_type_entities:
+                    doc_types.append(
+                        (await Convertor.convert_document_type_entity_to_document_type_response(doc_type_entity))
+                    )
+                knowledge_base = await Convertor.convert_knowledge_base_entity_to_knowledge_base(knowledge_base_entity)
+                knowledge_base.doc_types = doc_types
+                knowledge_bases.append(
+                    knowledge_base
+                )
+            return ListKnowledgeBaseMsg(total=total, kbList=knowledge_bases)
+        except Exception as e:
+            err = "列出知识库失败"
+            logging.exception("[KnowledgeBaseService] %s", err)
+            raise e
 
+    @staticmethod
+    async def list_doc_types_by_kb_id(kb_id: uuid.UUID) -> list[DocumentTypeResponse]:
+        """列出知识库文档类型"""
+        try:
+            # 获取文档类型
+            document_type_entities = await KnowledgeBaseManager.list_doc_types_by_kb_id(kb_id)
+            document_types = []
+            for document_type_entity in document_type_entities:
+                document_types.append(
+                    (await Convertor.convert_document_type_entity_to_document_type_response(document_type_entity))
+                )
+            return document_types
+        except Exception as e:
+            err = "列出知识库文档类型失败"
+            logging.exception("[KnowledgeBaseService] %s", err)
+            raise e
 
-async def generate_knowledge_base_download_link(task_id) -> str:
-    try:
-        task_entity = await TaskManager.select_by_id(task_id)
-        if task_entity.status != TaskConstant.TASK_STATUS_SUCCESS:
-            return ""
-        return await MinIO.generate_download_link(OssConstant.MINIO_BUCKET_KNOWLEDGEBASE, str(task_id))
-    except Exception as e:
-        logging.error("Export knowledge base zip files error: {}".format(e))
-        raise KnowledgeBaseException("Export knowledge base zip files error.")
+    @staticmethod
+    async def generate_knowledge_base_download_link(task_id: uuid.UUID) -> str:
+        """生成知识库下载链接"""
+        try:
+            # 获取知识库
+            download_link = await MinIO.generate_download_link(
+                EXPORT_KB_PATH_IN_MINIO,
+                str(task_id),
+            )
+            return download_link
+        except Exception as e:
+            err = "生成知识库下载链接失败"
+            logging.exception("[KnowledgeBaseService] %s", err)
+            raise e
+
+    @staticmethod
+    async def create_kb(
+            user_sub: str, team_id: uuid.UUID, req: CreateKnowledgeBaseRequest) -> uuid.UUID:
+        """创建知识库"""
+        try:
+            knowledge_base_entity = await Convertor.convert_create_knowledge_base_request_to_knowledge_base_entity(
+                user_sub, team_id, req)
+            knowledge_base_entity = await KnowledgeBaseManager.add_knowledge_base(knowledge_base_entity)
+            if knowledge_base_entity is None:
+                err = "创建知识库失败"
+                logging.exception("[KnowledgeBaseService] %s", err)
+                raise e
+            doc_types = req.doc_types
+            doc_type_entities = []
+            for doc_type in doc_types:
+                doc_type_entity = await Convertor.convert_kb_id_and_requeset_document_type_to_document_type_entity(knowledge_base_entity.id, doc_type)
+                doc_type_entities.append(doc_type_entity)
+            await DocumentTypeManager.add_document_types(doc_type_entities)
+            return knowledge_base_entity.id
+        except Exception as e:
+            err = "创建知识库失败"
+            logging.exception("[KnowledgeBaseService] %s", err)
+            raise e
+
+    @staticmethod
+    async def get_kb_entity_from_yaml(user_sub: str, team_id: uuid.UUID, yaml_path: str) -> KnowledgeBaseEntity:
+        """获取知识库配置并转换为数据库实体"""
+        try:
+            with open(yaml_path, "r", encoding="utf-8") as f:
+                kb_config = yaml.load(f, Loader=yaml.SafeLoader)
+            kb_entity = KnowledgeBaseEntity(
+                team_id=team_id,
+                author_id=user_sub,
+                author_name=user_sub,
+                name=kb_config.get("name", ""),
+                tokenizer=kb_config.get("tokenizer", Tokenizer.ZH.value),
+                description=kb_config.get("description", ""),
+                embedding_model=kb_config.get("embedding_model", ""),
+                doc_cnt=0,
+                doc_size=0,
+                upload_count_limit=kb_config.get("upload_count_limit", 128),
+                upload_size_limit=kb_config.get("upload_size_limit", 512),
+                default_parse_method=kb_config.get("default_parse_method", ParseMethod.GENERAL.value),
+                default_chunk_size=kb_config.get("default_chunk_size", 1024),
+                status=kb_config.get("status", KnowledgeBaseStatus.IDLE.value),
+            )
+            return kb_entity
+        except Exception as e:
+            err = "获取知识库配置失败"
+            logging.exception("[KnowledgeBaseService] %s", err)
+
+    @staticmethod
+    async def import_kbs(user_sub: str, team_id: uuid.UUID, kb_packages: list[UploadFile] = File(...)) -> str:
+        """导入知识库"""
+        if len(kb_packages) > 5:
+            err = "导入知识库失败，知识库数量超过5个"
+            logging.exception("[KnowledgeBaseService] %s", err)
+            raise Exception(err)
+        kb_packages_sz = 0
+        for kb_package in kb_packages:
+            kb_packages_sz += kb_package.size
+        if kb_packages_sz > 5 * 1024 * 1024 * 1024:
+            err = "导入知识库失败，知识库大小超过5G"
+            logging.exception("[KnowledgeBaseService] %s", err)
+            raise Exception(err)
+        kb_import_task_ids = []
+        for kb_package in kb_packages:
+            tmp_path = os.path.join(IMPORT_KB_PATH_IN_OS, str(uuid.uuid4()))
+            zip_file_name = kb_package.filename
+            zip_file_path = os.path.join(tmp_path, zip_file_name)
+            if os.path.exists(tmp_path):
+                shutil.rmtree(tmp_path)
+            os.makedirs(tmp_path)
+            try:
+                async with aiofiles.open(zip_file_path, "wb") as f:
+                    content = await kb_package.read()
+                    await f.write(content)
+            except Exception as e:
+                err = "导入知识库失败"
+                logging.exception("[KnowledgeBaseService] %s", err)
+                continue
+            if not ZipHandler.check_zip_file(zip_file_path):
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
+                err = "导入知识库失败，包含文件数量过多或者解压缩之后体积过大"
+                logging.exception("[KnowledgeBaseService] %s", err)
+                continue
+            try:
+                await ZipHandler.unzip_file(zip_file_path, tmp_path, ['kb_config.yaml'])
+            except Exception as e:
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
+                err = "导入知识库失败，解压缩失败"
+                logging.exception("[KnowledgeBaseService] %s", err)
+                continue
+            kb_entity = await KnowledgeBaseService.get_kb_entity_from_yaml(
+                user_sub, team_id, os.path.join(tmp_path, 'kb_config.yaml'))
+            kb_entity = await KnowledgeBaseManager.add_knowledge_base(kb_entity)
+            if kb_entity is None:
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
+                err = "导入知识库失败，获取知识库配置失败"
+                logging.exception("[KnowledgeBaseService] %s", err)
+                continue
+            await MinIO.put_object(IMPORT_KB_PATH_IN_MINIO, str(kb_entity.id), zip_file_path)
+            try:
+                task_id = await TaskQueueService.init_task(TaskType.KB_IMPORT.value, kb_entity.id)
+                if task_id:
+                    kb_import_task_ids.append(task_id)
+            except Exception as e:
+                err = "导入知识库失败"
+                logging.exception("[KnowledgeBaseService] %s", err)
+            if os.path.exists(tmp_path):
+                shutil.rmtree(tmp_path)
+        return kb_import_task_ids
+
+    @staticmethod
+    async def export_kb_by_kb_ids(kb_ids: list[uuid.UUID]) -> str:
+        """导出知识库"""
+        kb_export_task_ids = []
+        for kb_id in kb_ids:
+            try:
+                task_id = await TaskQueueService.init_task(TaskType.KB_EXPORT.value, kb_id)
+                if task_id:
+                    kb_export_task_ids.append(task_id)
+            except Exception as e:
+                err = "导出知识库失败"
+                logging.exception("[KnowledgeBaseService] %s", err)
+        return kb_export_task_ids
+
+    @staticmethod
+    async def update_doc_types(kb_id: uuid.UUID, doc_types: list[DocumentTypeRequest]) -> None:
+        new_doc_type_map = {doc_type.doc_type_id: doc_type.doc_type_name for doc_type in doc_types}
+        new_doc_type_ids = {doc_type.doc_type_id for doc_type in doc_types}
+        old_doc_type_entities = await KnowledgeBaseManager.list_doc_types_by_kb_id(kb_id)
+        old_doc_type_ids = {doc_type_entity.id for doc_type_entity in old_doc_type_entities}
+        delete_doc_type_ids = old_doc_type_ids - new_doc_type_ids
+        add_doc_type_ids = new_doc_type_ids - old_doc_type_ids
+        update_doc_type_ids = old_doc_type_ids & new_doc_type_ids
+        await DocumentManager.update_doc_type_by_kb_id(kb_id, delete_doc_type_ids, DEFAULt_DOC_TYPE_ID)
+        doc_type_entities = []
+        for doc_type_id in add_doc_type_ids:
+            doc_type_entity = DocumentTypeEntity(
+                id=doc_type_id,
+                kb_id=kb_id,
+                name=new_doc_type_map[doc_type_id],
+            )
+            doc_type_entities.append(doc_type_entity)
+        await DocumentTypeManager.add_document_types(doc_type_entities)
+        for update_doc_type_id in update_doc_type_ids:
+            try:
+                await DocumentTypeManager.update_doc_type_by_doc_type_id(update_doc_type_id, new_doc_type_map[update_doc_type_id])
+            except Exception as e:
+                err = "更新文档类型失败"
+                logging.exception("[KnowledgeBaseService] %s", err)
+                continue
+
+    @staticmethod
+    async def update_kb_by_kb_id(kb_id: uuid.UUID, req: UpdateKnowledgeBaseRequest) -> uuid.UUID:
+        """更新知识库"""
+        try:
+            knowledge_base_dict = await Convertor.convert_update_knowledge_base_request_to_dict(req)
+            knowledge_base_entity = await KnowledgeBaseManager.update_knowledge_base_by_kb_id(kb_id, knowledge_base_dict)
+            if knowledge_base_entity is None:
+                err = "更新知识库失败"
+                logging.exception("[KnowledgeBaseService] %s", err)
+                raise e
+            await KnowledgeBaseService.update_doc_types(kb_id, req.doc_types)
+            return knowledge_base_entity.id
+        except Exception as e:
+            err = "更新知识库失败"
+            logging.exception("[KnowledgeBaseService] %s", err)
+            raise e
+
+    @staticmethod
+    async def delete_kb_by_kb_ids(kb_ids: list[uuid.UUID]) -> list[uuid.UUID]:
+        """删除知识库"""
+        kb_ids_deleted = []
+        for kb_id in kb_ids:
+            try:
+                task_entity = await TaskManager.get_current_task_by_op_id(kb_id)
+                if task_entity is not None:
+                    await TaskQueueService.stop_task(task_entity.id)
+                await KnowledgeBaseManager.update_knowledge_base_by_kb_id(
+                    kb_id, {"status": KnowledgeBaseStatus.DELETED.value})
+                kb_ids_deleted.append(kb_id)
+            except Exception as e:
+                err = "删除知识库失败"
+                logging.exception("[KnowledgeBaseService] %s", err)
+                continue
+        return kb_ids_deleted

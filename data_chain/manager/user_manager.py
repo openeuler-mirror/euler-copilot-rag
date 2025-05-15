@@ -18,5 +18,5 @@ class UserManager:
                 return True
         except Exception as e:
             err = "用户添加失败"
-            logging.exception("[UserManger] %s", err)
+            logging.error("[UserManger] %s", err)
         return False

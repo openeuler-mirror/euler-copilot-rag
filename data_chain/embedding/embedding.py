@@ -8,37 +8,43 @@ from data_chain.logger.logger import logger as logging
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-class Vectorize():
+class Embedding():
     @staticmethod
     async def vectorize_embedding(text):
-        if config['EMBEDDING_TYPE']=='openai':
+        vector = None
+        if config['EMBEDDING_TYPE'] == 'openai':
             headers = {
-                    "Authorization": f"Bearer {config['EMBEDDING_API_KEY']}"
-                }
+                "Authorization": f"Bearer {config['EMBEDDING_API_KEY']}"
+            }
             data = {
                 "input": text,
                 "model": config["EMBEDDING_MODEL_NAME"],
                 "encoding_format": "float"
             }
             try:
-                res = requests.post(url=config["EMBEDDING_ENDPOINT"],headers=headers, json=data, verify=False)
+                res = requests.post(url=config["EMBEDDING_ENDPOINT"], headers=headers, json=data, verify=False)
                 if res.status_code != 200:
                     return None
-                return res.json()['data'][0]['embedding']
+                vector = res.json()['data'][0]['embedding']
             except Exception as e:
-                logging.error(f"Embedding error failed due to: {e}")
+                err = f"[Embedding] 向量化失败 ，error: {e}"
+                logging.exception(err)
                 return None
-        elif config['EMBEDDING_TYPE'] =='mindie':
+        elif config['EMBEDDING_TYPE'] == 'mindie':
             try:
                 data = {
-                "inputs": text,
+                    "inputs": text,
                 }
                 res = requests.post(url=config["EMBEDDING_ENDPOINT"], json=data, verify=False)
                 if res.status_code != 200:
                     return None
-                return json.loads(res.text)[0]
+                vector = json.loads(res.text)[0]
             except Exception as e:
-                logging.error(f"Embedding error failed due to: {e}")
-            return None
+                err = f"[Embedding] 向量化失败 ，error: {e}"
+                logging.exception(err)
+                return None
         else:
             return None
+        while len(vector) < 1024:
+            vector.append(0)
+        return vector[:1024]

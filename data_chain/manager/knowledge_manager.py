@@ -29,7 +29,7 @@ class KnowledgeBaseManager():
         try:
             async with await DataBase.get_session() as session:
                 stmt = select(KnowledgeBaseEntity).where(and_(KnowledgeBaseEntity.id == kb_id,
-                                                              KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELTED))
+                                                              KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELETED.value))
                 result = await session.execute(stmt)
                 knowledge_base_entity = result.scalars().first()
                 return knowledge_base_entity
@@ -43,7 +43,8 @@ class KnowledgeBaseManager():
         """列出知识库"""
         try:
             async with await DataBase.get_session() as session:
-                stmt = select(KnowledgeBaseEntity).where(KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELTED)
+                stmt = select(KnowledgeBaseEntity).where(
+                    KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELETED.value)
                 if req.team_id:
                     stmt = stmt.where(KnowledgeBaseEntity.team_id == req.team_id)
                 if req.kb_id:
@@ -55,7 +56,7 @@ class KnowledgeBaseManager():
                 count_stmt = select(func.count()).select_from(stmt.subquery())
                 total = (await session.execute(count_stmt)).scalar()
                 stmt = stmt.limit(req.page_size).offset((req.page - 1) * req.page_size)
-                stmt = stmt.order_by(KnowledgeBaseEntity.created_time.desc())
+                stmt = stmt.order_by(KnowledgeBaseEntity.created_time.desc(), KnowledgeBaseEntity.id.desc())
                 result = await session.execute(stmt)
                 knowledge_base_entities = result.scalars().all()
                 return (total, knowledge_base_entities)
@@ -65,13 +66,33 @@ class KnowledgeBaseManager():
             raise e
 
     @staticmethod
-    async def list_knowledge_base_by_team_ids(team_ids: List[uuid.UUID]) -> List[KnowledgeBaseEntity]:
+    async def list_knowledge_base_by_team_ids(
+            team_ids: List[uuid.UUID],
+            kb_name: str = None) -> List[KnowledgeBaseEntity]:
         """根据团队ID获取知识库"""
         try:
             async with await DataBase.get_session() as session:
                 stmt = select(KnowledgeBaseEntity).where(
                     and_(KnowledgeBaseEntity.team_id.in_(team_ids),
-                         KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELTED.value))
+                         KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELETED.value))
+                if kb_name:
+                    stmt = stmt.where(KnowledgeBaseEntity.name.like(f"%{kb_name}%"))
+                result = await session.execute(stmt)
+                knowledge_base_entities = result.scalars().all()
+                return knowledge_base_entities
+        except Exception as e:
+            err = "获取知识库失败"
+            logging.exception("[KnowledgeBaseManager] %s", err)
+            raise e
+
+    @staticmethod
+    async def list_kb_entity_by_doc_ids(doc_ids: List[uuid.UUID]) -> List[KnowledgeBaseEntity]:
+        """根据文档ID获取知识库"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = select(KnowledgeBaseEntity).join(DocumentEntity).where(
+                    and_(DocumentEntity.id.in_(doc_ids),
+                         DocumentEntity.status != DocumentStatus.DELETED.value))
                 result = await session.execute(stmt)
                 knowledge_base_entities = result.scalars().all()
                 return knowledge_base_entities
@@ -117,11 +138,15 @@ class KnowledgeBaseManager():
         try:
             async with await DataBase.get_session() as session:
                 stmt = select(func.count(DocumentEntity.id), func.sum(DocumentEntity.size)).where(
-                    and_(DocumentEntity.kb_id == kb_id, DocumentEntity.status != DocumentStatus.DELETED))
+                    and_(DocumentEntity.kb_id == kb_id, DocumentEntity.status != DocumentStatus.DELETED.value))
                 result = await session.execute(stmt)
                 doc_cnt, doc_size = result.first()
+                if doc_cnt is None:
+                    doc_cnt = 0
+                if doc_size is None:
+                    doc_size = 0
                 stmt = update(KnowledgeBaseEntity).where(KnowledgeBaseEntity.id == kb_id).values(
-                    document_count=doc_cnt, document_size=doc_size)
+                    doc_cnt=doc_cnt, doc_size=doc_size)
                 await session.execute(stmt)
                 await session.commit()
         except Exception as e:

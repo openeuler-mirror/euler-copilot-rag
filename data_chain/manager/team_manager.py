@@ -85,6 +85,25 @@ class TeamManager:
             raise e
 
     @staticmethod
+    async def list_all_team_user_created_or_joined(user_sub: str) -> list[TeamEntity]:
+        """列出我创建或加入的团队"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = select(TeamEntity).where(and_(
+                    TeamEntity.author_id == user_sub, TeamEntity.status != TeamStatus.DELETED.value))
+                result = await session.execute(stmt)
+                team_entities = result.scalars().all()
+                stmt = select(TeamEntity).join(TeamUserEntity, TeamEntity.id == TeamUserEntity.team_id).where(
+                    and_(TeamUserEntity.user_id == user_sub, TeamEntity.status != TeamStatus.DELETED.value))
+                result = await session.execute(stmt)
+                team_entities += result.scalars().all()
+                return team_entities
+        except Exception as e:
+            err = "列出我创建或加入的团队失败"
+            logging.exception("[TeamManager] %s", err)
+            raise e
+
+    @staticmethod
     async def list_pulic_team(req: ListTeamRequest) -> list[TeamEntity]:
         """列出公开的团队"""
         try:

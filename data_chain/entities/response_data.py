@@ -195,6 +195,7 @@ class Task(BaseModel):
     task_status: TaskStatus = Field(description="任务状态", alias="taskStatus")
     task_type: TaskType = Field(description="任务类型", alias="taskType")
     task_completed: float = Field(description="任务完成度", alias="taskCompleted")
+    finished_time: Optional[str] = Field(default=None, description="任务完成时间", alias="finishedTime")
     created_time: str = Field(description="任务创建时间", alias="createdTime")
 
 

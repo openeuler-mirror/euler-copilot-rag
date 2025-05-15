@@ -1,20 +1,30 @@
-
-from pptx import Presentation
 import os
-from io import BytesIO
-from PIL import Image
-import numpy as np
-from data_chain.parser.handler.base_parser import BaseService
-from data_chain.parser.tools.ocr import BaseOCR
+from pptx import Presentation
+from pptx.table import Table
+import uuid
+from data_chain.entities.enum import DocParseRelutTopology, ChunkParseTopology, ChunkType
+from data_chain.parser.parse_result import ParseNode, ParseResult
+from data_chain.parser.handler.base_parser import BaseParser
 from data_chain.logger.logger import logger as logging
 
 
-class PptxService(BaseService):
-    def __init__(self):
-        super().__init__()
+class PptxParser(BaseParser):
+    name = 'pptx'
 
-    async def extract_ppt_content(self, pptx):
-        lines = []
+    @staticmethod
+    async def extract_table_to_array(table: Table) -> list[list[str]]:
+        table_data = []
+        for row in table.rows:
+            row_data = []
+            for cell in row.cells:
+                cell_text = ''.join([p.text for p in cell.text_frame.paragraphs])
+                row_data.append(cell_text)
+            table_data.append(row_data)
+        return table_data
+
+    @staticmethod
+    async def ppt_to_parse_nodes(pptx) -> list[ParseNode]:
+        nodes = []
 
         for slide_num, slide in enumerate(pptx.slides, start=1):
             for shape in slide.shapes:
@@ -26,58 +36,69 @@ class PptxService(BaseService):
                             for run in paragraph.runs:
                                 text += run.text
                     except Exception as e:
-                        logging.error(f"Get text from slide failed due to: {e}")
+                        err = "文字提取失败"
+                        logging.exception("[PptxParser] %s", err)
                     if text.strip():
-                        lines.append({
-                            "text": text,
-                            "type": 'para'
-                        })
+                        nodes.append(
+                            ParseNode(
+                                id=uuid.uuid4(),
+
+                                lv=0,
+                                parse_topology_type=ChunkParseTopology.GERNERAL,
+                                content=text,
+                                type=ChunkType.TEXT,
+                                link_nodes=[]
+                            )
+                        )
                 # 提取表格
                 elif shape.has_table:
                     table = shape.table
-                    rows = self.split_table(table)
-                    for row in rows:
-                        lines.append({
-                            "text": text,
-                            "type": "table"
-                        })
+                    table_array = await PptxParser.extract_table_to_array(table)
+                    for row in table_array:
+                        node = ParseNode(
+                            id=uuid.uuid4(),
+
+                            lv=0,
+                            parse_topology_type=ChunkParseTopology.GERNERAL,
+                            content=row,
+                            type=ChunkType.TABLE,
+                            link_nodes=[]
+                        )
+                        nodes.append(node)
                 # 提取图片
                 elif shape.shape_type == 13:  # 13 表示图片类型
                     try:
                         image = shape.image
-                        image_ext = os.path.splitext(image.filename)[1]
+                        blob = image.blob
                     except Exception as e:
-                        logging.error(f"Extracting image from slide failed due to: {e}")
+                        err = "图片提取失败"
+                        logging.exception("[PptxParser] %s", err)
                         continue
-                    lines.append({
-                        "image": Image.open(BytesIO(image.blob)),
-                        "type": "image",
-                        "extension": image_ext
-                    })
+                    nodes.append(
+                        ParseNode(
+                            id=uuid.uuid4(),
 
-        return lines
+                            lv=0,
+                            parse_topology_type=ChunkParseTopology.GERNERAL,
+                            content=blob,
+                            type=ChunkType.IMAGE,
+                            link_nodes=[]
+                        )
+                    )
 
-    async def parser(self, file_path):
-        """
-        解析文件并提取其中的文本和图像信息。
+        return nodes
 
-        参数:
-        - file_path (str): 文件的路径。
-
-        返回:
-        - tuple: 包含分块的文本信息、分块间的链接信息和提取的图像信息的元组。
-               如果文件无法打开或解析失败，则返回 None。
-        """
+    @staticmethod
+    async def parser(file_path):
         try:
             pptx = Presentation(file_path)
         except Exception as e:
-            logging.error(f"Pptx open failed due to: {e}")
-            raise e
-        if self.parser_method != "general":
-            self.ocr_tool = BaseOCR(llm=self.llm, method=self.parser_method)
-        lines = await self.extract_ppt_content(pptx)
-        lines, images = await self.change_lines(lines)
-        lines = await self.ocr_from_images_in_lines(lines)
-        chunks = self.build_chunks_by_lines(lines)
-        chunk_links = self.build_chunk_links_by_line(chunks)
-        return chunks, chunk_links, images
+            err = "PPTX文件解析失败"
+            logging.exception("[PptxParser] %s", err)
+        nodes = await PptxParser.ppt_to_parse_nodes(pptx)
+        PptxParser.image_related_node_in_link_nodes(nodes)
+        parse_result = ParseResult(
+            parse_topology_type=DocParseRelutTopology.LIST,
+            nodes=nodes
+        )
+        return parse_result

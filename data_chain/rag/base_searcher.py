@@ -67,6 +67,8 @@ class BaseSearcher:
         """
         chunk_entities = await ChunkManager.fetch_surrounding_chunk_by_doc_id_and_global_offset(chunk_entity.doc_id, chunk_entity.global_offset, 50, banned_ids)
         chunk_entity_dict = {}
+        lower = chunk_entity.global_offset-1
+        upper = chunk_entity.global_offset+1
         min_offset = chunk_entity.global_offset
         max_offset = chunk_entity.global_offset
         for chunk_entity in chunk_entities:
@@ -75,8 +77,6 @@ class BaseSearcher:
             if chunk_entity.global_offset > max_offset:
                 max_offset = chunk_entity.global_offset
             chunk_entity_dict[chunk_entity.global_offset] = chunk_entity
-        lower = chunk_entity.global_offset-1
-        upper = chunk_entity.global_offset+1
         related_chunk_entities = []
         tokens_sub = 0
         tokens_sum = 0
@@ -116,7 +116,7 @@ class BaseSearcher:
                 lower -= 1
             else:
                 if chunk_entity_dict.get(upper) is not None:
-                    tokens_sub += chunk_entity_dict[upper].tokens
+                    tokens_sub -= chunk_entity_dict[upper].tokens
                     related_chunk_entities.append(chunk_entity_dict[upper])
                     tokens_sum += chunk_entity_dict[upper].tokens
                 upper += 1
@@ -149,10 +149,7 @@ class BaseSearcher:
         for chunk_entity in chunk_entities:
             if chunk_entity.doc_id not in doc_chunk_dict:
                 doc_chunk_dict[chunk_entity.doc_id] = DocChunk(
-                    doc_id=chunk_entity.doc_id, doc_name=chunk_entity.doc_name, chunks=[])
+                    docId=chunk_entity.doc_id, docName=chunk_entity.doc_name, chunks=[])
             chunk = await Convertor.convert_chunk_entity_to_chunk(chunk_entity)
-            if chunk_entity.doc_id not in doc_chunk_dict:
-                doc_chunk_dict[chunk_entity.doc_id] = DocChunk(
-                    doc_id=chunk_entity.doc_id, doc_name=chunk_entity.doc_name, chunks=[])
             doc_chunk_dict[chunk_entity.doc_id].chunks.append(chunk)
         return list(doc_chunk_dict.values())

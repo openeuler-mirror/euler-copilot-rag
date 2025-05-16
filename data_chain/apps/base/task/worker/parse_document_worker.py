@@ -523,7 +523,6 @@ class ParseDocumentWorker(BaseWorker):
             await ParseDocumentWorker.report(task_id, '下载文档', current_stage, stage_cnt)
             file_path = os.path.join(tmp_path, str(task_entity.op_id)+'.'+doc_entity.extension)
             parse_result = await ParseDocumentWorker.parse_doc(doc_entity, file_path)
-            print(parse_result)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '解析文档', current_stage, stage_cnt)
             await ParseDocumentWorker.handle_parse_result(parse_result, doc_entity, llm)

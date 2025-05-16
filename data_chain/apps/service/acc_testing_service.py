@@ -111,7 +111,7 @@ class TestingService:
             testing_entity = await TestingManager.get_testing_by_testing_id(req.testing_id)
             testing_testcase = TestingTestCase(
                 aveScore=round(testing_entity.ave_score, 2),
-                avePreround=round(testing_entity.ave_pre, 2),
+                avePre=round(testing_entity.ave_pre, 2),
                 aveRec=round(testing_entity.ave_rec, 2),
                 aveFai=round(testing_entity.ave_fai, 2),
                 aveRel=round(testing_entity.ave_rel, 2),

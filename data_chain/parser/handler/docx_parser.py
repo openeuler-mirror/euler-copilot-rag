@@ -186,7 +186,6 @@ class DocxParser(BaseParser):
             logging.exception("[DocxParser] %s", err)
             raise Exception(err)
         nodes = await DocxParser.docx_to_parse_nodes(doc)
-        print(f"nodes: {nodes}")
         DocxParser.image_related_node_in_link_nodes(nodes)
         parse_result = ParseResult(
             parse_topology_type=DocParseRelutTopology.LIST,

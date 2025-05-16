@@ -60,7 +60,7 @@ class UpdateTeamRequest(BaseModel):
 
 
 class DocumentType(BaseModel):
-    doc_type_id: uuid.UUID = Field(default=DEFAULt_DOC_TYPE_ID, description="文档类型的id", alias="docTypeId")
+    doc_type_id: uuid.UUID = Field(description="文档类型的id", alias="docTypeId")
     doc_type_name: str = Field(default='这是一个默认的文档类型名称', min_length=1, max_length=20, alias="docTypeName")
 
 

@@ -97,6 +97,7 @@ class TeamManager:
                     and_(TeamUserEntity.user_id == user_sub, TeamEntity.status != TeamStatus.DELETED.value))
                 result = await session.execute(stmt)
                 team_entities += result.scalars().all()
+                team_entities.sort(key=lambda x: x.created_time, reverse=True)
                 return team_entities
         except Exception as e:
             err = "列出我创建或加入的团队失败"

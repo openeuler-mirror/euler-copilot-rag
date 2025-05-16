@@ -60,7 +60,7 @@ class UpdateTeamRequest(BaseModel):
 
 
 class DocumentType(BaseModel):
-    doc_type_id: uuid.UUID = Field(default=DEFAULt_DOC_TYPE_ID, description="文档类型的id", alias="docTypeId")
+    doc_type_id: uuid.UUID = Field(description="文档类型的id", alias="docTypeId")
     doc_type_name: str = Field(default='这是一个默认的文档类型名称', min_length=1, max_length=20, alias="docTypeName")
 
 
@@ -204,6 +204,12 @@ class ListTestingRequest(BaseModel):
     run_status: Optional[List[TaskStatus]] = Field(default=None, description="测试运行状态", alias="runStatus")
     scores_order: Optional[OrderType] = Field(default=OrderType.DESC, description="测试评分", alias="scoresOrder")
     author_name: Optional[str] = Field(default=None, description="测试创建者", alias="authorName")
+    page: int = Field(default=1, description="页码")
+    page_size: int = Field(default=40, description="每页数量", alias="pageSize")
+
+
+class ListTestCaseRequest(BaseModel):
+    testing_id: uuid.UUID = Field(description="测试id", alias="testingId")
     page: int = Field(default=1, description="页码")
     page_size: int = Field(default=40, description="每页数量", alias="pageSize")
 

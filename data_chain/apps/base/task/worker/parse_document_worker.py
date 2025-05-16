@@ -305,7 +305,7 @@ class ParseDocumentWorker(BaseWorker):
                 new_sentences = []
                 for sentence in sentences:
                     if TokenTool.get_tokens(sentence) > doc_entity.chunk_size:
-                        tmp = sentence
+                        tmp = sentence[:]
                         while len(tmp) > 0:
                             sub_sentence = TokenTool.get_k_tokens_words_from_content(tmp, doc_entity.chunk_size)
                             new_sentences.append(sub_sentence)
@@ -314,23 +314,20 @@ class ParseDocumentWorker(BaseWorker):
                         new_sentences.append(sentence)
                 sentences = new_sentences
                 for sentence in sentences:
-                    if len(tmp) == 0:
+                    if TokenTool.get_tokens(tmp) + TokenTool.get_tokens(sentence) > doc_entity.chunk_size:
+                        tmp_node = ParseNode(
+                            id=uuid.uuid4(),
+                            lv=node.lv,
+                            parse_topology_type=ChunkParseTopology.GERNERAL,
+                            text_feature=tmp,
+                            content=tmp,
+                            type=ChunkType.TEXT,
+                            link_nodes=[]
+                        )
+                        nodes.append(tmp_node)
                         tmp = sentence
                     else:
-                        if TokenTool.get_tokens(tmp) + TokenTool.get_tokens(sentence) > doc_entity.chunk_size:
-                            tmp_node = ParseNode(
-                                id=uuid.uuid4(),
-                                lv=node.lv,
-                                parse_topology_type=ChunkParseTopology.GERNERAL,
-                                text_feature=tmp,
-                                content=tmp,
-                                type=ChunkType.TEXT,
-                                link_nodes=[]
-                            )
-                            nodes.append(tmp_node)
-                            tmp = ''
-                        else:
-                            tmp += sentence
+                        tmp += sentence
             else:
                 if len(tmp) > 0:
                     tmp_node = ParseNode(
@@ -356,7 +353,6 @@ class ParseDocumentWorker(BaseWorker):
                 link_nodes=[]
             )
             nodes.append(tmp_node)
-        parse_result.nodes = nodes
 
     @staticmethod
     async def push_up_words_feature(parse_result: ParseResult, llm: LLM = None) -> None:

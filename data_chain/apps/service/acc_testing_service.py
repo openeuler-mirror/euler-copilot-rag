@@ -6,6 +6,7 @@ import traceback
 import os
 from data_chain.entities.request_data import (
     ListTestingRequest,
+    ListTestCaseRequest,
     CreateTestingRequest,
     UpdateTestingRequest
 )
@@ -100,24 +101,25 @@ class TestingService:
             raise e
 
     @staticmethod
-    async def list_testcase_by_testing_id(testing_id: uuid.UUID) -> TestingTestCase:
+    async def list_testcase_by_testing_id(req: ListTestCaseRequest) -> TestingTestCase:
         """根据测试ID查询测试用例"""
         try:
-            testcase_entities = await TestCaseManager.list_test_case_by_testing_id(testing_id)
+            total, testcase_entities = await TestCaseManager.list_test_case(req)
             testcases = []
             for testcase_entity in testcase_entities:
-                testcases.append(Convertor.convert_test_case_entity_to_test_case(testcase_entity))
-            testing_entity = await TestingManager.get_testing_by_testing_id(testing_id)
+                testcases.append(await Convertor.convert_test_case_entity_to_test_case(testcase_entity))
+            testing_entity = await TestingManager.get_testing_by_testing_id(req.testing_id)
             testing_testcase = TestingTestCase(
-                ave_score=testing_entity.ave_score,
-                ave_pre=testing_entity.ave_pre,
-                ave_rec=testing_entity.ave_rec,
-                ave_fai=testing_entity.ave_fai,
-                ave_rel=testing_entity.ave_rel,
-                ave_lcs=testing_entity.ave_lcs,
-                ave_leve=testing_entity.ave_leve,
-                ave_jac=testing_entity.ave_jac,
-                test_cases=testcases
+                aveScore=round(testing_entity.ave_score, 2),
+                avePre=round(testing_entity.ave_pre, 2),
+                aveRec=round(testing_entity.ave_rec, 2),
+                aveFai=round(testing_entity.ave_fai, 2),
+                aveRel=round(testing_entity.ave_rel, 2),
+                aveLcs=round(testing_entity.ave_lcs, 2),
+                aveLeve=round(testing_entity.ave_leve, 2),
+                aveJac=round(testing_entity.ave_jac, 2),
+                total=total,
+                testCases=testcases
             )
             return testing_testcase
         except Exception as e:

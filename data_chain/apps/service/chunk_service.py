@@ -88,7 +88,6 @@ class ChunkService:
         if req.is_rerank:
             chunk_entities = await BaseSearcher.rerank(chunk_entities, req.query)
         chunk_entities = chunk_entities[:req.top_k]
-
         chunk_ids = [chunk_entity.id for chunk_entity in chunk_entities]
         if req.is_related_surrounding:
             # 关联上下文
@@ -119,6 +118,7 @@ class ChunkService:
                 for chunk in doc_chunk.chunks:
                     if req.is_compress:
                         chunk.text = TokenTool.compress_tokens(chunk.text)
+                search_chunk_msg.doc_chunks.append(doc_chunk)
         else:
             for chunk_entity in chunk_entities:
                 chunk = await Convertor.convert_chunk_entity_to_chunk(chunk_entity)

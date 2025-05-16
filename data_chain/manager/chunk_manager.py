@@ -185,7 +185,7 @@ class ChunkManager():
                     .order_by(ChunkEntity.text_vector.cosine_distance(vector).desc())
                     .limit(top_k)
                 )
-                if doc_ids:
+                if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
                 if chunk_to_type:
                     stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
@@ -233,7 +233,7 @@ class ChunkManager():
                     )
                     .limit(top_k)
                 )
-                if doc_ids:
+                if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
                 if chunk_to_type:
                     stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)

@@ -102,12 +102,32 @@ class BaseWorker:
         return (task_id is not None)
 
     @staticmethod
-    async def report(task_id: uuid.UUID, report: str, current_stage: int, stage_cnt: int) -> bool:
+    async def report(task_id: uuid.UUID, report: str, current_stage: int, stage_cnt: int) -> TaskReportEntity:
         '''报告任务'''
-        task_report_entity = TaskReportEntity(
-            task_id=task_id,
-            message=report,
-            current_stage=current_stage,
-            stage_cnt=stage_cnt
-        )
-        await TaskReportManager.add_task_report(task_report_entity)
+        try:
+            task_report_entity = TaskReportEntity(
+                task_id=task_id,
+                message=report,
+                current_stage=current_stage,
+                stage_cnt=stage_cnt
+            )
+            task_report_entity = await TaskReportManager.add_task_report(task_report_entity)
+            return task_report_entity
+        except Exception as e:
+            err = "报告任务失败"
+            logging.exception("[BaseWorker] %s", err)
+
+    @staticmethod
+    async def assemble_task_report(task_id: uuid.UUID) -> str:
+        '''组装任务报告'''
+        try:
+            task_report_entities = await TaskReportManager.list_all_task_report_by_task_id(task_id)
+            task_report = ''
+            for task_report_entity in task_report_entities:
+                task_report += f"任务报告ID: {task_report_entity.id}, " \
+                    f"任务报告内容: {task_report_entity.message}, " \
+                    f"任务报告创建时间: {task_report_entity.created_time}\n"
+            return task_report
+        except Exception as e:
+            err = "组装任务报告失败"
+            logging.exception("[BaseWorker] %s", err)

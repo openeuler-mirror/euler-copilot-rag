@@ -26,7 +26,7 @@ from data_chain.manager.task_report_manager import TaskReportManager
 from data_chain.stores.database.database import DocumentEntity
 from data_chain.stores.minio.minio import MinIO
 from data_chain.entities.enum import ParseMethod, DataSetStatus, DocumentStatus, TaskType
-from data_chain.entities.common import DOC_PATH_IN_OS, DOC_PATH_IN_MINIO, DEFAULt_DOC_TYPE_ID
+from data_chain.entities.common import DOC_PATH_IN_OS, DOC_PATH_IN_MINIO, REPORT_PATH_IN_MINIO, DEFAULt_DOC_TYPE_ID
 from data_chain.logger.logger import logger as logging
 
 
@@ -130,6 +130,19 @@ class DocumentService:
             return task_report
         except Exception as e:
             err = "获取文档报告失败"
+            logging.exception("[DocumentService] %s", err)
+            raise e
+
+    @staticmethod
+    async def generate_doc_report_download_url(doc_id: uuid.UUID) -> str:
+        """生成文档报告下载链接"""
+        try:
+            download_url = await MinIO.generate_download_link(
+                REPORT_PATH_IN_MINIO,
+                str(doc_id))
+            return download_url
+        except Exception as e:
+            err = "生成文档报告下载链接失败"
             logging.exception("[DocumentService] %s", err)
             raise e
 

@@ -6,6 +6,7 @@ import concurrent
 from minio import Minio
 
 from data_chain.entities.common import (
+    REPORT_PATH_IN_MINIO,
     DOC_PATH_IN_MINIO,
     EXPORT_KB_PATH_IN_MINIO,
     IMPORT_KB_PATH_IN_MINIO,
@@ -22,7 +23,9 @@ class MinIO():
         access_key=config['MINIO_ACCESS_KEY'],
         secret_key=config['MINIO_SECRET_KEY'],
         secure=config['MINIO_SECURE'])
-
+    found = client.bucket_exists(REPORT_PATH_IN_MINIO)
+    if not found:
+        client.make_bucket(REPORT_PATH_IN_MINIO)
     found = client.bucket_exists(DOC_PATH_IN_MINIO)
     if not found:
         client.make_bucket(DOC_PATH_IN_MINIO)

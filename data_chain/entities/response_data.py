@@ -279,6 +279,7 @@ class Chunk(BaseModel):
     chunk_id: uuid.UUID = Field(description="分片ID", alias="chunkId")
     chunk_type: ChunkType = Field(description="分片类型", alias="chunkType")
     text: str = Field(description="分片文本")
+    enabled: bool = Field(description="分片是否启用", alias="enabled")
 
 
 class ListChunkMsg(BaseModel):

@@ -402,9 +402,11 @@ class Convertor:
         """将更新分片请求转换为字典"""
         try:
             req_dict = {
-                'text': req.text,
-                'enabled': req.enabled
             }
+            if req.text is not None:
+                req_dict['text'] = req.text
+            if req.enabled is not None:
+                req_dict['enabled'] = req.enabled
             return req_dict
         except Exception as e:
             err = "更新分片请求转换为字典失败"
@@ -419,7 +421,8 @@ class Convertor:
             chunk = Chunk(
                 chunkId=chunk_entity.id,
                 chunkType=ChunkType(chunk_entity.type),
-                text=chunk_entity.text
+                text=chunk_entity.text,
+                enabled=chunk_entity.enabled,
             )
             return chunk
         except Exception as e:

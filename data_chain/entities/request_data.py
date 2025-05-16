@@ -131,8 +131,8 @@ class ListChunkRequest(BaseModel):
 
 
 class UpdateChunkRequest(BaseModel):
-    text: str = Field(default='这是一个默认的分块文本', description="分块文本内容", alias="text")
-    enabled: bool = Field(default=True, description="分块是否启用")
+    text: Optional[str] = Field(default=None, description="分块文本内容", alias="text")
+    enabled: Optional[bool] = Field(default=None, description="分块是否启用")
 
 
 class SearchChunkRequest(BaseModel):

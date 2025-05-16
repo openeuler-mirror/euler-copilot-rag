@@ -131,8 +131,9 @@ class ChunkService:
     async def update_chunk_by_id(chunk_id: uuid.UUID, req: UpdateChunkRequest) -> uuid.UUID:
         try:
             chunk_dict = await Convertor.convert_update_chunk_request_to_dict(req)
-            vector = await Embedding.get_embedding(req.text)
-            chunk_dict["text_vector"] = vector
+            if req.text:
+                vector = await Embedding.vectorize_embedding(req.text)
+                chunk_dict["text_vector"] = vector
             chunk_entity = await ChunkManager.update_chunk_by_chunk_id(chunk_id, chunk_dict)
             return chunk_entity.id
         except Exception as e:

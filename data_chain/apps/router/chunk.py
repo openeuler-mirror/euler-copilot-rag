@@ -44,10 +44,10 @@ async def search_chunks(
     return SearchChunkResponse(result=search_chunk_msg)
 
 
-@router.put('/', response_model=UpdateChunkResponse, dependencies=[Depends(verify_user)])
+@router.put('', response_model=UpdateChunkResponse, dependencies=[Depends(verify_user)])
 async def update_chunk_by_id(user_sub: Annotated[str, Depends(get_user_sub)],
                              action: Annotated[str, Depends(get_route_info)],
-                             chunk_id: Annotated[list[UUID], Query(alias="chunkId")],
+                             chunk_id: Annotated[UUID, Query(alias="chunkId")],
                              req: Annotated[UpdateChunkRequest, Body()]):
     if not (await ChunkService.validate_user_action_to_chunk(user_sub, chunk_id, action)):
         raise Exception("用户没有权限访问该文档的分片")

@@ -361,7 +361,7 @@ class Convertor:
             finished_time = None
             if task_report is not None:
                 task_completed = task_report.current_stage/task_report.stage_cnt*100
-                finished_time = task_report.finished_time.strftime('%Y-%m-%d %H:%M')
+                finished_time = task_report.created_time.strftime('%Y-%m-%d %H:%M')
             task = Task(
                 opId=task_entity.op_id,
                 opName=task_entity.op_name,

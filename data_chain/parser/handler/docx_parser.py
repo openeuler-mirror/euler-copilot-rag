@@ -86,8 +86,7 @@ class DocxParser(BaseParser):
                         image_parts = await DocxParser.get_imageparts_from_run(run, parent)
                         if image_parts:
                             if text_part:
-                                nodes.append
-                                (
+                                nodes.append(
                                     ParseNode(
                                         id=uuid.uuid4(),
                                         lv=0,
@@ -120,8 +119,7 @@ class DocxParser(BaseParser):
                         run_index += 1
 
                     if text_part:
-                        nodes.append
-                        (
+                        nodes.append(
                             ParseNode(
                                 id=uuid.uuid4(),
                                 lv=0,
@@ -132,8 +130,7 @@ class DocxParser(BaseParser):
                             )
                         )
                 else:
-                    nodes.append
-                    (
+                    nodes.append(
                         ParseNode(
                             id=uuid.uuid4(),
                             lv=0,
@@ -149,8 +146,7 @@ class DocxParser(BaseParser):
                 for row in table_array:
                     for cell in row:
                         if cell:
-                            nodes.append
-                            (
+                            nodes.append(
                                 ParseNode(
                                     id=uuid.uuid4(),
                                     lv=0,
@@ -170,8 +166,7 @@ class DocxParser(BaseParser):
                         err = "获取图片blob和content type失败"
                         logging.exception("[DocxParser] %s", err)
                         continue
-                    nodes.append
-                    (
+                    nodes.append(
                         ParseNode(
                             id=uuid.uuid4(),
                             lv=0,
@@ -191,6 +186,7 @@ class DocxParser(BaseParser):
             logging.exception("[DocxParser] %s", err)
             raise Exception(err)
         nodes = await DocxParser.docx_to_parse_nodes(doc)
+        print(f"nodes: {nodes}")
         DocxParser.image_related_node_in_link_nodes(nodes)
         parse_result = ParseResult(
             parse_topology_type=DocParseRelutTopology.LIST,

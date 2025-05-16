@@ -104,7 +104,7 @@ class TestingService:
     async def list_testcase_by_testing_id(req: ListTestCaseRequest) -> TestingTestCase:
         """根据测试ID查询测试用例"""
         try:
-            testcase_entities = await TestCaseManager.list_test_case_by_testing_id(req)
+            total, testcase_entities = await TestCaseManager.list_test_case(req)
             testcases = []
             for testcase_entity in testcase_entities:
                 testcases.append(await Convertor.convert_test_case_entity_to_test_case(testcase_entity))
@@ -118,6 +118,7 @@ class TestingService:
                 aveLcs=round(testing_entity.ave_lcs, 2),
                 aveLeve=round(testing_entity.ave_leve, 2),
                 aveJac=round(testing_entity.ave_jac, 2),
+                total=total,
                 testCases=testcases
             )
             return testing_testcase

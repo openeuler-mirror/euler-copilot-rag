@@ -4,6 +4,7 @@ from sqlalchemy import select, delete, update, desc, asc, func, exists, or_, and
 from sqlalchemy.orm import aliased
 import uuid
 from typing import Dict, List, Optional, Tuple
+from data_chain.entities.request_data import ListTestCaseRequest
 from data_chain.logger.logger import logger as logging
 from data_chain.stores.database.database import DataBase, TestingEntity, TestCaseEntity
 
@@ -39,16 +40,17 @@ class TestCaseManager():
             logging.exception("[TestCaseManager] %s", err)
 
     @staticmethod
-    async def list_test_case_by_testing_id(testing_id: uuid.UUID) -> List[TestCaseEntity]:
+    async def list_test_case(req: ListTestCaseRequest) -> List[TestCaseEntity]:
         """根据测试ID查询测试用例"""
         try:
             async with await DataBase.get_session() as session:
                 stmt = (
                     select(TestCaseEntity)
-                    .where(TestCaseEntity.testing_id == testing_id)
+                    .where(TestCaseEntity.testing_id == req.testing_id)
                 )
                 stmt = stmt.order_by(TestCaseEntity.created_at.desc())
                 stmt = stmt.order_by(TestCaseEntity.id.asc())
+                stmt = stmt.offset((req.page - 1) * req.size).limit(req.size)
                 result = await session.execute(stmt)
                 return result.scalars().all()
         except Exception as e:

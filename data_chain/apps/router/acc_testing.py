@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from typing import Annotated
 from data_chain.entities.request_data import (
     ListTestingRequest,
+    ListTestCaseRequest,
     CreateTestingRequest,
     UpdateTestingRequest
 )
@@ -44,10 +45,10 @@ async def list_testing_by_kb_id(
 async def list_testcase_by_testing_id(
         user_sub: Annotated[str, Depends(get_user_sub)],
         action: Annotated[str, Depends(get_route_info)],
-        testing_id: Annotated[UUID, Query(alias="testingId")]):
-    if not (await TestingService.validate_user_action_to_testing(user_sub, testing_id, action)):
+        req: Annotated[ListTestCaseRequest, Body()]):
+    if not (await TestingService.validate_user_action_to_testing(user_sub, req.testing_id, action)):
         raise Exception("用户没有权限访问该测试的测试用例")
-    testing_testcase = await TestingService.list_testcase_by_testing_id(testing_id)
+    testing_testcase = await TestingService.list_testcase_by_testing_id(req)
     return ListTestCaseResponse(result=testing_testcase)
 
 

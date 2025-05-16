@@ -466,9 +466,9 @@ class TestCase(BaseModel):
     test_case_id: uuid.UUID = Field(description="测试用例ID", alias="testCaseId")
     question: str = Field(description="问题")
     answer: str = Field(description="标准答案")
-    llm_answer: str = Field(description="大模型的回答")
-    related_chunk: str = Field(description="检索到的片段")
-    doc_name: str = Field(description="来源文档")
+    llm_answer: str = Field(description="大模型的回答", alias="llmAnswer")
+    related_chunk: str = Field(description="检索到的片段", alias="relatedChunk")
+    doc_name: str = Field(description="来源文档", alias="docName")
     score: float = Field(description="综合得分")
     pre: float = Field(description="精确率")   # 精确度
     rec: float = Field(description="召回率")  # 召回率

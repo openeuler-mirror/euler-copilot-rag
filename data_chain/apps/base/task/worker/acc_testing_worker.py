@@ -287,7 +287,7 @@ class TestingWorker(BaseWorker):
         '''生成报告并上传到minio'''
         xlsx_path = os.path.join(tmp_path, "report.xlsx")
         kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(testing_entity.kb_id)
-        doc_cnt = DocumentManager.get_doc_cnt_by_kb_id(testing_entity.kb_id)
+        doc_cnt = await DocumentManager.get_doc_cnt_by_kb_id(testing_entity.kb_id)
         chunk_cnt = await ChunkManager.get_chunk_cnt_by_kb_id(testing_entity.kb_id)
         chunk_tokens = await ChunkManager.get_chunk_tokens_by_kb_id(testing_entity.kb_id)
         ave_chunk_tokens = 0

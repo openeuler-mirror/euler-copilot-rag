@@ -208,6 +208,12 @@ class ListTestingRequest(BaseModel):
     page_size: int = Field(default=40, description="每页数量", alias="pageSize")
 
 
+class ListTestCaseRequest(BaseModel):
+    testing_id: uuid.UUID = Field(description="测试id", alias="testingId")
+    page: int = Field(default=1, description="页码")
+    page_size: int = Field(default=40, description="每页数量", alias="pageSize")
+
+
 class CreateTestingRequest(BaseModel):
     testing_name: str = Field(default='这是一个默认的测试名称', description="测试名称",
                               min_length=1, max_length=30, alias="testingName")

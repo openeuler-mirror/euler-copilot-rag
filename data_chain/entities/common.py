@@ -47,6 +47,8 @@ actions = [
     {'type': 'document',
      'name': '获取文档报告', 'action': 'GET /doc/report'},
     {'type': 'document',
+     'name': '下载文档报告', 'action': 'GET /doc/report/download'},
+    {'type': 'document',
      'name': '创建文档', 'action': 'POST /doc'},
     {'type': 'document',
      'name': '解析文档', 'action': 'POST /doc/parse'},
@@ -161,6 +163,8 @@ default_roles = [
             {'type': 'document',
              'name': '获取文档报告', 'action': 'GET /doc/report'},
             {'type': 'document',
+             'name': '下载文档报告', 'action': 'GET /doc/report/download'},
+            {'type': 'document',
              'name': '创建文档', 'action': 'POST /doc'},
             {'type': 'document',
              'name': '解析文档', 'action': 'POST /doc/parse'},
@@ -269,6 +273,8 @@ default_roles = [
             {'type': 'document',
              'name': '获取文档报告', 'action': 'GET /doc/report'},
             {'type': 'document',
+             'name': '下载文档报告', 'action': 'GET /doc/report/download'},
+            {'type': 'document',
              'name': '创建文档', 'action': 'POST /doc'},
             {'type': 'document',
              'name': '解析文档', 'action': 'POST /doc/parse'},
@@ -365,6 +371,7 @@ default_roles = [
 ]
 
 DOC_PATH_IN_MINIO = "witchaind-doc"
+REPORT_PATH_IN_MINIO = "witchaind-report"
 IMAGE_PATH_IN_MINIO = "witchaind-image"
 EXPORT_KB_PATH_IN_MINIO = "witchaind-kb-export"
 IMPORT_KB_PATH_IN_MINIO = "witchaind-kb-import"

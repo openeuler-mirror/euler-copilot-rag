@@ -20,13 +20,14 @@ from data_chain.config.config import config
 from data_chain.logger.logger import logger as logging
 from data_chain.apps.base.task.worker.base_worker import BaseWorker
 from data_chain.entities.enum import TaskType, TaskStatus, KnowledgeBaseStatus, ParseMethod, DocumentStatus, ChunkStatus, ImageStatus, DocParseRelutTopology, ChunkParseTopology, ChunkType
-from data_chain.entities.common import DEFAULt_DOC_TYPE_ID, DOC_PATH_IN_MINIO, DOC_PATH_IN_OS, IMAGE_PATH_IN_MINIO
+from data_chain.entities.common import DEFAULt_DOC_TYPE_ID, REPORT_PATH_IN_MINIO, DOC_PATH_IN_MINIO, DOC_PATH_IN_OS, IMAGE_PATH_IN_MINIO
 from data_chain.manager.task_manager import TaskManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
 from data_chain.manager.document_manager import DocumentManager
 from data_chain.manager.chunk_manager import ChunkManager
 from data_chain.manager.image_manager import ImageManager
+from data_chain.manager.task_report_manager import TaskReportManager
 from data_chain.manager.task_queue_mamanger import TaskQueueManager
 from data_chain.stores.database.database import TaskEntity, DocumentEntity, DocumentTypeEntity, ChunkEntity, ImageEntity
 from data_chain.stores.minio.minio import MinIO
@@ -546,11 +547,28 @@ class ParseDocumentWorker(BaseWorker):
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '添加解析结果到数据库', current_stage, stage_cnt)
             await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.SUCCESS.value))
+            task_report = await ParseDocumentWorker.assemble_task_report(task_id)
+            report_path = os.path.join(tmp_path, 'task_report.txt')
+            with open(report_path, 'w') as f:
+                f.write(task_report)
+            await MinIO.put_object(
+                REPORT_PATH_IN_MINIO,
+                str(task_entity.op_id),
+                report_path
+            )
         except Exception as e:
             err = f"[DocParseWorker] 任务失败，task_id: {task_id}，错误信息: {e}"
             logging.exception(err)
             await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.FAILED.value))
             await ParseDocumentWorker.report(task_id, err, 0, 1)
+            report_path = os.path.join(tmp_path, 'task_report.txt')
+            with open(report_path, 'w') as f:
+                f.write(task_report)
+            await MinIO.put_object(
+                REPORT_PATH_IN_MINIO,
+                str(task_entity.op_id),
+                report_path
+            )
             return None
 
     @staticmethod

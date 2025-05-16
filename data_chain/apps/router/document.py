@@ -78,6 +78,33 @@ async def get_doc_report(
     return GetDocumentReportResponse(result=task_report)
 
 
+@router.get('/report/download', dependencies=[Depends(verify_user)])
+async def download_doc_report(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        doc_id: Annotated[UUID, Query(alias="docId")]):
+    if not (await DocumentService.validate_user_action_to_document(user_sub, doc_id, action)):
+        raise Exception("用户没有权限访问该文档")
+    report_link_url = await DocumentService.generate_doc_report_download_url(doc_id)
+    report_name = 'report.txt'
+    extension = 'txt'
+    async with AsyncClient() as async_client:
+        response = await async_client.get(report_link_url)
+        if response.status_code == 200:
+            content_disposition = f"attachment; filename={urllib.parse.quote(report_name.encode('utf-8'))}"
+
+            async def stream_generator():
+                async for chunk in response.aiter_bytes(chunk_size=8192):
+                    yield chunk
+
+            return StreamingResponse(stream_generator(), headers={
+                "Content-Disposition": content_disposition,
+                "Content-Length": str(response.headers.get('content-length'))
+            }, media_type="application/" + extension)
+        else:
+            raise Exception(f"下载文档报告失败，状态码: {response.status_code}")
+
+
 @router.post('', response_model=UploadDocumentResponse, dependencies=[Depends(verify_user)])
 async def upload_docs(
         user_sub: Annotated[str, Depends(get_user_sub)],

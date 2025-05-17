@@ -48,7 +48,7 @@ class MongoDB:
     host = config['MONGODB_HOST']
     port = config['MONGODB_PORT']
     _client: AsyncMongoClient = AsyncMongoClient(
-        f"mongodb://{user}:{password}@{host}:{port}/?directConnection=true&replicaSet=rs0",
+        f"mongodb://{user}:{password}@{host}:{port}/?directConnection=true&replicaSet=mongo_rs",
         uuidRepresentation="standard"
     )
 

@@ -109,6 +109,7 @@ class ListDocumentRequest(BaseModel):
     created_time_start: Optional[str] = Field(default=None, description="文档创建时间开始", alias="createdTimeStart")
     created_time_end: Optional[str] = Field(default=None, description="文档创建时间结束", alias="createdTimeEnd")
     created_time_order: OrderType = Field(default=OrderType.DESC, description="文档创建时间排序", alias="createdTimeOrder")
+    enabled: Optional[bool] = Field(default=None, description="文档是否启用", alias="enabled")
     page: int = Field(default=1, description="页码")
     page_size: int = Field(default=40, description="每页数量", alias="pageSize")
 

@@ -154,6 +154,8 @@ class DocumentManager():
                         [parse_method.value for parse_method in req.parse_methods]))
                 if req.author_name:
                     stmt = stmt.where(DocumentEntity.author_name.ilike(f"%{req.author_name}%"))
+                if req.enabled is not None:
+                    stmt = stmt.where(DocumentEntity.enabled == req.enabled)
                 if req.created_time_start and req.created_time_end:
                     stmt = stmt.where(
                         between(DocumentEntity.created_time,

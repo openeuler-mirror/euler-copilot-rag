@@ -40,7 +40,7 @@ async def search_chunks(
         action: Annotated[str, Depends(get_route_info)],
         req: Annotated[SearchChunkRequest, Body()],
 ):
-    search_chunk_msg = await ChunkService.search_chunks(req)
+    search_chunk_msg = await ChunkService.search_chunks(user_sub, action, req)
     return SearchChunkResponse(result=search_chunk_msg)
 
 

@@ -19,6 +19,7 @@ from data_chain.entities.response_data import (
 )
 from data_chain.apps.base.convertor import Convertor
 from data_chain.apps.service.task_queue_service import TaskQueueService
+from data_chain.apps.service.knwoledge_base_service import KnowledgeBaseService
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
 from data_chain.manager.document_manager import DocumentManager
@@ -73,10 +74,20 @@ class ChunkService:
             logging.exception("[ChunkService] %s", err)
             raise e
 
-    async def search_chunks(req: SearchChunkRequest) -> SearchChunkMsg:
+    async def search_chunks(user_sub: str, action: str, req: SearchChunkRequest) -> SearchChunkMsg:
         """根据查询条件搜索分片"""
         chunk_entities = []
         for kb_id in req.kb_ids:
+            try:
+                if not (await KnowledgeBaseService.validate_user_action_to_knowledge_base(
+                        user_sub, kb_id, action)):
+                    err = f"用户没有权限访问知识库中的块，知识库ID: {kb_id}"
+                    logging.error("[ChunkService] %s", err)
+                    continue
+            except Exception as e:
+                err = f"验证用户对知识库的操作权限失败，error: {e}"
+                logging.exception(err)
+                continue
             try:
                 chunk_entities += await BaseSearcher.search(req.search_method.value, kb_id, req.query, 2*req.top_k, req.doc_ids, req.banned_ids)
             except Exception as e:

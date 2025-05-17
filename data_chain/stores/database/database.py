@@ -1,5 +1,4 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import Index
 from uuid import uuid4
@@ -547,6 +546,7 @@ class DataBase:
     @classmethod
     async def init_all_table(cls):
         if 'opengauss' in config['DATABASE_URL']:
+            from sqlalchemy import event
             from opengauss_sqlalchemy.register_async import register_vector
 
             @event.listens_for(DataBase.engine.sync_engine, "connect")

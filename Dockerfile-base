@@ -1,4 +1,4 @@
-FROM hub.oepkgs.net/openeuler/openeuler:24.03-lts-sp1
+FROM openeuler/openeuler:22.03-lts-sp1
 
 # 设置环境变量
 ENV PATH /rag-service/.local/bin:$PATH
@@ -11,14 +11,12 @@ RUN sed -i 's|http://repo.openeuler.org/|https://mirrors.huaweicloud.com/openeul
     yum clean all && \
     groupadd -g 1001 eulercopilot && useradd -u 1001 -g eulercopilot eulercopilot
 
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-
 # 创建 /rag-service 目录并设置权限
 RUN mkdir -p /rag-service && chown -R 1001:1001 /rag-service
 COPY --chown=1001:1001 openGauss-sqlalchemy.tar.gz .
 RUN  tar -xvf openGauss-sqlalchemy.tar.gz && \
     cd openGauss-sqlalchemy && \
-    python3 setup.py install
+    pip3 install . --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 切换到 eulercopilot 用户
 USER eulercopilot
@@ -29,6 +27,6 @@ COPY --chown=1001:1001 tika-server-standard-2.9.2.jar /rag-service/
 COPY --chown=1001:1001 install_titkon_packge.py /rag-service/
 
 # 安装 Python 依赖
-RUN pip3 install --no-cache-dir -r /rag-service/requirements.txt && \
+RUN pip3 install --no-cache-dir -r /rag-service/requirements.txt --index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
     chmod -R 750 /rag-service
 RUN python3 /rag-service/install_titkon_packge.py

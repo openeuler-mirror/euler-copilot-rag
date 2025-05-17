@@ -139,7 +139,7 @@ async def generate_dataset_by_id(
     if not (await DataSetService.validate_user_action_to_dataset(user_sub, dataset_id, action)):
         raise Exception("用户没有权限访问该数据集")
     dataset_id = await DataSetService.generate_dataset_by_id(dataset_id, generate)
-    return GenerateDatasetResponse()
+    return GenerateDatasetResponse(result=dataset_id)
 
 
 @router.put('', response_model=UpdateDatasetResponse, dependencies=[Depends(verify_user)])
@@ -150,8 +150,8 @@ async def update_dataset_by_dataset_id(
         req: Annotated[UpdateDatasetRequest, Body(...)]):
     if not (await DataSetService.validate_user_action_to_dataset(user_sub, database_id, action)):
         raise Exception("用户没有权限访问该数据集")
-    await DataSetService.update_dataset_by_dataset_id(database_id, req)
-    return UpdateDatasetResponse()
+    database_id = await DataSetService.update_dataset_by_dataset_id(database_id, req)
+    return UpdateDatasetResponse(result=database_id)
 
 
 @router.put('/data', response_model=UpdateDataResponse, dependencies=[Depends(verify_user)])

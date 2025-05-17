@@ -6,6 +6,8 @@ import uvicorn
 import fastapi
 import os
 import shutil
+from data_chain.config.config import config
+from data_chain.logger.logger import logger as logging
 from data_chain.entities.common import actions, DEFAULt_DOC_TYPE_ID
 from data_chain.apps.router import (
     team,
@@ -144,7 +146,22 @@ def get_all_routes(action: Annotated[str, Depends(get_route_info)]):
 
 
 def main():
-    uvicorn.run(app, host='0.0.0.0', port=3002)
+    try:
+        ssl_enable = config["SSL_ENABLE"]
+        if ssl_enable:
+            uvicorn.run(app, host=config["UVICORN_IP"], port=int(config["UVICORN_PORT"]),
+                        proxy_headers=True, forwarded_allow_ips='*',
+                        ssl_certfile=config["SSL_CERTFILE"],
+                        ssl_keyfile=config["SSL_KEYFILE"],
+                        )
+        else:
+            uvicorn.run(app, host=config["UVICORN_IP"], port=int(config["UVICORN_PORT"]),
+                        proxy_headers=True, forwarded_allow_ips='*'
+                        )
+    except Exception as e:
+        err = f"启动服务失败: {e}"
+        logging.error(err)
+        exit(1)
 
 
 if __name__ == '__main__':

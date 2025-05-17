@@ -142,7 +142,6 @@ async def update_doc_by_doc_id(
     return UpdateDocumentResponse(result=doc_id)
 
 
-@router.put('/switch', response_model=UpdateDocumentResponse, dependencies=[Depends(verify_user)])
 @router.delete('', response_model=DeleteDocumentResponse, dependencies=[Depends(verify_user)])
 async def delete_docs_by_ids(
         user_sub: Annotated[str, Depends(get_user_sub)],

@@ -160,7 +160,7 @@ async def update_data_by_dataset_id(
         action: Annotated[str, Depends(get_route_info)],
         data_id: Annotated[UUID, Query(alias="dataId")],
         req: Annotated[UpdateDataRequest, Body(...)]):
-    if not (await DataSetService.validate_user_action_to_dataset(user_sub, data_id, action)):
+    if not (await DataSetService.validate_user_action_to_data(user_sub, data_id, action)):
         raise Exception("用户没有权限访问该数据集的数据")
     data_id = await DataSetService.update_data(data_id, req)
     return UpdateDataResponse()

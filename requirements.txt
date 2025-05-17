@@ -15,6 +15,7 @@ langchain==0.3.7
 langchain-openai==0.2.5
 minio==7.2.4
 markdown2==2.4.13
+markdown==3.3.4
 more-itertools==10.1.0
 numpy==1.26.4
 openai==1.53.0

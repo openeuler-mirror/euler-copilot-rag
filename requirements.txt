@@ -14,6 +14,7 @@ jieba==0.42.1
 langchain==0.3.7
 langchain-openai==0.2.5
 minio==7.2.4
+markdown2==2.4.13
 more-itertools==10.1.0
 numpy==1.26.4
 openai==1.53.0

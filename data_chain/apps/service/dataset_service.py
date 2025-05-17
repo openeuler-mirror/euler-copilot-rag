@@ -91,6 +91,7 @@ class DataSetService:
             datasets = []
             for dataset_entity in dataset_entities:
                 dataset = await Convertor.convert_dataset_entity_to_dataset(dataset_entity)
+                dataset.data_cnt_existed = await QAManager.get_data_cnt_existed_by_dataset_id(dataset_entity.id)
                 dataset.llm = llm
                 task_entity = task_dict.get(dataset_entity.id, None)
                 if task_entity:

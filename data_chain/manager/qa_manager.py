@@ -1,5 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, and_
 from typing import List, Dict
 import uuid
 from data_chain.entities.enum import QAStatus
@@ -58,6 +58,22 @@ class QAManager:
             raise e
 
     @staticmethod
+    async def get_data_cnt_existed_by_dataset_id(dataset_id: uuid.UUID) -> int:
+        """根据数据集ID查询问答数量"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = (
+                    select(func.count(QAEntity.id))
+                    .where(and_(QAEntity.dataset_id == dataset_id, QAEntity.status != QAStatus.DELETED.value))
+                )
+                result = await session.execute(stmt)
+                return result.scalar()
+        except Exception as e:
+            err = "查询问答数量失败"
+            logging.exception("[QAManager] %s", err)
+            raise e
+
+    @staticmethod
     async def list_all_qa_by_dataset_id(dataset_id: uuid.UUID) -> List[QAEntity]:
         """根据数据集ID查询问答"""
         try:
@@ -106,9 +122,14 @@ class QAManager:
                     update(QAEntity)
                     .where(QAEntity.id == qa_id)
                     .values(**qa_dict)
-                ).returning(QAEntity)
+                )
                 result = await session.execute(stmt)
                 await session.commit()
+                stmt = (
+                    select(QAEntity)
+                    .where(QAEntity.id == qa_id)
+                )
+                result = await session.execute(stmt)
                 qa_entity = result.scalars().first()
                 return qa_entity
         except Exception as e:

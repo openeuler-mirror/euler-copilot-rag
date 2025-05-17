@@ -443,7 +443,7 @@ class Convertor:
                 isDataCleared=dataset_entity.is_data_cleared,
                 isChunkRelated=dataset_entity.is_chunk_related,
                 isImported=dataset_entity.is_imported,
-                score=dataset_entity.score,
+                score=round(dataset_entity.score, 2),
                 authorName=dataset_entity.author_name,
                 status=dataset_entity.status,
             )

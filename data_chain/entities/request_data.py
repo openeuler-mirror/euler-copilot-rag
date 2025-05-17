@@ -193,7 +193,7 @@ class UpdateDataRequest(BaseModel):
     question: str = Field(default='这是一个默认的问题', description="问题",
                           min_length=1, max_length=200, alias="question")
     answer: str = Field(default='这是一个默认的答案', description="答案",
-                        min_length=1, max_length=1000, alias="answer")
+                        min_length=1, max_length=1024, alias="answer")
 
 
 class ListTestingRequest(BaseModel):

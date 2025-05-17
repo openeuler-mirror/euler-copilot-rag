@@ -145,12 +145,13 @@ class DocumentManager():
                     stmt = stmt.where(DocumentEntity.id == req.doc_id)
                 if req.doc_name:
                     stmt = stmt.where(DocumentEntity.name.ilike(f"%{req.doc_name}%"))
-                if req.doc_type_id:
-                    stmt = stmt.where(DocumentEntity.type_id == req.doc_type_id)
+                if req.doc_type_ids:
+                    stmt = stmt.where(DocumentEntity.type_id.in_(req.doc_type_ids))
                 if req.parse_status:
                     stmt = stmt.where(subq.c.status.in_([status.value for status in req.parse_status]))
-                if req.parse_method:
-                    stmt = stmt.where(DocumentEntity.parse_method == req.parse_method)
+                if req.parse_methods:
+                    stmt = stmt.where(DocumentEntity.parse_method.in_(
+                        [parse_method.value for parse_method in req.parse_methods]))
                 if req.author_name:
                     stmt = stmt.where(DocumentEntity.author_name.ilike(f"%{req.author_name}%"))
                 if req.created_time_start and req.created_time_end:

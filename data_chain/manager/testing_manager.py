@@ -88,8 +88,11 @@ class TestingManager():
                     inner_stmt = inner_stmt.where(TestingEntity.id == req.testing_id)
                 if req.testing_name:
                     inner_stmt = inner_stmt.where(TestingEntity.name.ilike(f"%{req.testing_name}%"))
-                if req.llm_id:
-                    inner_stmt = inner_stmt.where(TestingEntity.llm_id == req.llm_id)
+                if req.llm_ids:
+                    inner_stmt = inner_stmt.where(TestingEntity.llm_id.in_(req.llm_ids))
+                if req.search_methods:
+                    inner_stmt = inner_stmt.where(TestingEntity.search_method.in_(
+                        [search_method.value for search_method in req.search_methods]))
                 if req.run_status:
                     inner_stmt = inner_stmt.where(subq.c.status.in_([status.value for status in req.run_status]))
                 if req.author_name:

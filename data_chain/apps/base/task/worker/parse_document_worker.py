@@ -561,6 +561,7 @@ class ParseDocumentWorker(BaseWorker):
             logging.exception(err)
             await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.FAILED.value))
             await ParseDocumentWorker.report(task_id, err, 0, 1)
+            task_report = await ParseDocumentWorker.assemble_task_report(task_id)
             report_path = os.path.join(tmp_path, 'task_report.txt')
             with open(report_path, 'w') as f:
                 f.write(task_report)

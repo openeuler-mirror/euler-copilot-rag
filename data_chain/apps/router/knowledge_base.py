@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
 from fastapi.responses import StreamingResponse, HTMLResponse, Response
-from typing import Annotated
+from typing import Annotated, Optional
 import urllib
 from uuid import UUID
 from httpx import AsyncClient
@@ -35,7 +35,7 @@ router = APIRouter(prefix='/kb', tags=['Knowledge Base'])
 async def list_kb_by_user_sub(
     user_sub: Annotated[str, Depends(get_user_sub)],
     action: Annotated[str, Depends(get_route_info)],
-    kb_name: str | None = Query(default=None, alias="kbName")
+    kb_name:  Optional[str] = Query(default=None, alias="kbName")
 ):
     list_all_kb_msg = await KnowledgeBaseService.list_kb_by_user_sub(user_sub, kb_name=kb_name)
     return ListAllKnowledgeBaseResponse(result=list_all_kb_msg)

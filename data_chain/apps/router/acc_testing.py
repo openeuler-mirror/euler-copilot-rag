@@ -113,7 +113,7 @@ async def update_testing_by_testing_id(
     if not (await TestingService.validate_user_action_to_testing(user_sub, testing_id, action)):
         raise Exception("用户没有权限访问该测试的测试用例")
     testing_id = await TestingService.update_testing_by_testing_id(testing_id, req)
-    return UpdateTestingResponse()
+    return UpdateTestingResponse(result=testing_id)
 
 
 @router.delete('', response_model=DeleteTestingResponse,

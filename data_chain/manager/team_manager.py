@@ -44,7 +44,9 @@ class TeamManager:
         try:
             async with await DataBase.get_session() as session:
                 stmt = select(TeamEntity).join(TeamUserEntity, TeamEntity.id == TeamUserEntity.team_id).where(
-                    and_(TeamUserEntity.user_id == user_sub, TeamEntity.status != TeamStatus.DELETED.value))
+                    and_(TeamUserEntity.user_id == user_sub,
+                         TeamEntity.author_id != user_sub,
+                         TeamEntity.status != TeamStatus.DELETED.value))
                 if req.team_id:
                     stmt = stmt.where(TeamEntity.id == req.team_id)
                 if req.team_name:

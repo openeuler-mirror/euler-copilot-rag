@@ -250,6 +250,11 @@ class DocumentService:
     async def update_doc(doc_id: uuid.UUID, req: UpdateDocumentRequest) -> uuid.UUID:
         """更新文档"""
         doc_dict = await Convertor.convert_update_document_request_to_dict(req)
+        doc_type_entity = await DocumentTypeManager.get_document_type_by_id(req.doc_type_id)
+        if doc_type_entity is None:
+            err = f"文档类型不存在, 文档类型ID: {req.doc_type_id}"
+            logging.error("[DocumentService] %s", err)
+            raise Exception(err)
         await DocumentManager.update_document_by_doc_id(doc_id, doc_dict)
         return doc_id
 

@@ -56,7 +56,7 @@ class CreateTeamRequest(BaseModel):
 class UpdateTeamRequest(BaseModel):
     team_name: str = Field(default='这是一个默认的团队名称', min_length=1, max_length=30, alias="teamName")
     description: str = Field(default='', max_length=150)
-    is_public: bool = Field(default=False)
+    is_public: bool = Field(default=False, alias="isPublic")
 
 
 class DocumentType(BaseModel):
@@ -102,13 +102,14 @@ class ListDocumentRequest(BaseModel):
     kb_id: uuid.UUID = Field(description="资产id", alias="kbId")
     doc_id: Optional[uuid.UUID] = Field(default=None, description="文档id", alias="docId")
     doc_name: Optional[str] = Field(default=None, description="文档名称", alias="docName")
-    doc_type_id: Optional[uuid.UUID] = Field(default=None, description="文档类型id", alias="docTypeId")
+    doc_type_ids: Optional[list[uuid.UUID]] = Field(default=None, description="文档类型id", alias="docTypeIds")
     parse_status: Optional[list[TaskStatus]] = Field(default=None, description="文档解析状态", alias="parseStatus")
-    parse_method: Optional[ParseMethod] = Field(default=None, description="文档解析方法", alias="parseMethod")
+    parse_methods: Optional[List[ParseMethod]] = Field(default=None, description="文档解析方法", alias="parseMethods")
     author_name: Optional[str] = Field(default=None, description="文档创建者", alias="authorName")
     created_time_start: Optional[str] = Field(default=None, description="文档创建时间开始", alias="createdTimeStart")
     created_time_end: Optional[str] = Field(default=None, description="文档创建时间结束", alias="createdTimeEnd")
     created_time_order: OrderType = Field(default=OrderType.DESC, description="文档创建时间排序", alias="createdTimeOrder")
+    enabled: Optional[bool] = Field(default=None, description="文档是否启用", alias="enabled")
     page: int = Field(default=1, description="页码")
     page_size: int = Field(default=40, description="每页数量", alias="pageSize")
 
@@ -200,7 +201,8 @@ class ListTestingRequest(BaseModel):
     kb_id: uuid.UUID = Field(description="资产id", alias="kbId")
     testing_id: Optional[uuid.UUID] = Field(default=None, description="测试id", alias="testingId")
     testing_name: Optional[str] = Field(default=None, description="测试名称", alias="testingName")
-    llm_id: Optional[str] = Field(default=None, description="测试使用的大模型id", alias="llmId")
+    llm_ids: Optional[list[str]] = Field(default=None, description="测试使用的大模型id", alias="llmIds")
+    search_methods: Optional[List[SearchMethod]] = Field(default=None, description="测试使用的检索方法", alias="searchMethods")
     run_status: Optional[List[TaskStatus]] = Field(default=None, description="测试运行状态", alias="runStatus")
     scores_order: Optional[OrderType] = Field(default=OrderType.DESC, description="测试评分", alias="scoresOrder")
     author_name: Optional[str] = Field(default=None, description="测试创建者", alias="authorName")

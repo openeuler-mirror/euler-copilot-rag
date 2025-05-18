@@ -58,7 +58,7 @@ async def get_user_sub(request: HTTPConnection) -> uuid:
         except:
             raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                     retcode=401, rtmsg="Authentication Error.", data="")
-        user_sub = SessionManager.get_user_sub(session_id)
+        user_sub = await SessionManager.get_user_sub(session_id)
         if not user_sub:
             raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                     retcode=401, rtmsg="Authentication Error.", data="")

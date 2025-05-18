@@ -21,7 +21,7 @@ class SessionManager:
             raise e
 
     @staticmethod
-    async def get_user_sub(session_id: str) -> str | None:
+    async def get_user_sub(session_id: str) -> str:
         """从Session中获取用户"""
         try:
             collection = MongoDB().get_collection("session")

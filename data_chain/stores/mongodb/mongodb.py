@@ -4,7 +4,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 from datetime import datetime
 from pymongo import AsyncMongoClient
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 import uuid
 
 from data_chain.config.config import config
@@ -20,8 +20,8 @@ class Session(BaseModel):
 
     id: str = Field(alias="_id")
     ip: str
-    user_sub: str | None = None
-    nonce: str | None = None
+    user_sub: Optional[str] = Field(default=None)
+    nonce: Optional[str] = Field(default=None)
     expired_at: datetime
 
 
@@ -48,7 +48,7 @@ class MongoDB:
     host = config['MONGODB_HOST']
     port = config['MONGODB_PORT']
     _client: AsyncMongoClient = AsyncMongoClient(
-        f"mongodb://{user}:{password}@{host}:{port}/?directConnection=true&replicaSet=mongo_rs",
+        f"mongodb://{user}:{password}@{host}:{port}/?directConnection=true&replicaSet=rs0",
         uuidRepresentation="standard"
     )
 

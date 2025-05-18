@@ -135,7 +135,7 @@ class PdfParser(BaseParser):
                         y1=table_bbox.y1
                     )
                 )
-            nodes_with_bbox.append(node_with_bbox)
+                nodes_with_bbox.append(node_with_bbox)
 
         return nodes_with_bbox, table_regions
 
@@ -207,35 +207,30 @@ class PdfParser(BaseParser):
     async def merge_nodes_with_bbox(
             nodes_1: list[ParseNodeWithBbox],
             nodes_2: list[ParseNodeWithBbox]) -> list[ParseNodeWithBbox]:
-        """改进的节点合并算法，按照y坐标和x坐标排序"""
-        merged = []
-        i, j = 0, 0
+        if not nodes_1:
+            return nodes_2
+        if not nodes_2:
+            return nodes_1
 
-        while i < len(nodes_1) and j < len(nodes_2):
-            node1 = nodes_1[i]
-            node2 = nodes_2[j]
+        max_x = 0
+        index = 0
+        nodes_3 = []
 
-            # 比较y坐标，y坐标小的优先
-            if node1.bbox.y0 < node2.bbox.y0:
-                merged.append(node1)
-                i += 1
-            elif node1.bbox.y0 > node2.bbox.y0:
-                merged.append(node2)
-                j += 1
-            else:
-                # y坐标相同，比较x坐标
-                if node1.bbox.x0 < node2.bbox.x0:
-                    merged.append(node1)
-                    i += 1
-                else:
-                    merged.append(node2)
-                    j += 1
-
-        # 添加剩余的节点
-        merged.extend(nodes_1[i:])
-        merged.extend(nodes_2[j:])
-
-        return merged
+        for node in nodes_1:
+            max_x = max(max_x, node.bbox.x1)
+            if index < len(nodes_2):
+                node_2 = nodes_2[index]
+                while index < len(nodes_2) and node_2.bbox.x0 < max_x and node_2.bbox.y0 < node.bbox.y0:
+                    nodes_3.append(node_2)
+                    index += 1
+                    if index < len(nodes_2):
+                        node_2 = nodes_2[index]
+            nodes_3.append(node)
+        while index < len(nodes_2):
+            node_2 = nodes_2[index]
+            nodes_3.append(node_2)
+            index += 1
+        return nodes_3
 
     @staticmethod
     async def parser(file_path: str) -> ParseResult:
@@ -279,4 +274,3 @@ class PdfParser(BaseParser):
                 # 处理图片节点
                 continue
         return parse_result
-

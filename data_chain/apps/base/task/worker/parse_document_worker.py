@@ -235,14 +235,13 @@ class ParseDocumentWorker(BaseWorker):
                     )
                     image_entities.append(image_entity)
                     image_blob = node.content
-                    image = Image.open(io.BytesIO(image_blob))
                     image_file_path = os.path.join(image_path, str(node.id) + '.' + extension)
                     with open(image_file_path, 'wb') as f:
-                        f.write(image)
-                    await MinIO.upload_object(
-                        bucket_name=IMAGE_PATH_IN_MINIO,
-                        object_name=str(node.id),
-                        file_path=image_file_path
+                        f.write(image_blob)
+                    await MinIO.put_object(
+                        IMAGE_PATH_IN_MINIO,
+                        str(node.id),
+                        image_file_path
                     )
                 except Exception as e:
                     err = f"[ParseDocumentWorker] 上传解析图片到minio失败，doc_id: {doc_entity.id}, image_path: {image_path}, error: {e}"
@@ -271,7 +270,7 @@ class ParseDocumentWorker(BaseWorker):
                     for related_node in node.link_nodes:
                         if related_node.type != ChunkType.IMAGE:
                             image_related_text += related_node.content
-                    node.content = OcrTool.image_to_text(img_np, image_related_text, llm)
+                    node.content = await OcrTool.image_to_text(img_np, image_related_text, llm)
                     node.text_feature = node.content
                 except Exception as e:
                     err = f"[ParseDocumentWorker] OCR失败，doc_id: {node.doc_id}, error: {e}"

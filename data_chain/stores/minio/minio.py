@@ -8,6 +8,7 @@ from minio import Minio
 from data_chain.entities.common import (
     REPORT_PATH_IN_MINIO,
     DOC_PATH_IN_MINIO,
+    IMAGE_PATH_IN_MINIO,
     EXPORT_KB_PATH_IN_MINIO,
     IMPORT_KB_PATH_IN_MINIO,
     EXPORT_DATASET_PATH_IN_MINIO,
@@ -29,6 +30,9 @@ class MinIO():
     found = client.bucket_exists(DOC_PATH_IN_MINIO)
     if not found:
         client.make_bucket(DOC_PATH_IN_MINIO)
+    found = client.bucket_exists(IMAGE_PATH_IN_MINIO)
+    if not found:
+        client.make_bucket(IMAGE_PATH_IN_MINIO)
     found = client.bucket_exists(EXPORT_KB_PATH_IN_MINIO)
     if not found:
         client.make_bucket(EXPORT_KB_PATH_IN_MINIO)

@@ -30,27 +30,33 @@ class TaskReportManager():
                 # 创建一个别名用于子查询
                 report_alias = aliased(TaskReportEntity)
 
-                # 构建子查询，为每个task_id分配一个行号
+                # 构建子查询，为每个task_id分配行号，并过滤无效状态
                 subquery = (
                     select(
-                        report_alias,
+                        report_alias.id,  # 只选择ID列，用于后续连接
                         func.row_number().over(
                             partition_by=report_alias.task_id,
                             order_by=desc(report_alias.created_time)
                         ).label('rn')
                     )
-                    .where(report_alias.task_id.in_(task_ids))
+                    .where(
+                        report_alias.task_id.in_(task_ids)
+                    )
                     .subquery()
                 )
+
+                # 主查询通过ID连接子查询，获取完整的TaskReportEntity对象
                 stmt = (
                     select(TaskReportEntity)
-                    .join(subquery, and_(
-                        TaskReportEntity.task_id == subquery.c.task_id,
-                        subquery.c.rn == 1
-                    ))
+                    .join(
+                        subquery,
+                        TaskReportEntity.id == subquery.c.id  # 通过ID连接确保获取完整实体
+                    )
+                    .where(subquery.c.rn == 1)  # 只取每个task_id的最新记录
                 )
+
                 result = await session.execute(stmt)
-                task_report_entities = result.scalars().all()
+                task_report_entities = result.scalars().all()  # 直接获取实体对象列表
                 return task_report_entities
         except Exception as e:
             err = "查询当前任务报告失败"

@@ -75,28 +75,34 @@ class TaskManager():
                 # 创建一个别名用于子查询
                 task_alias = aliased(TaskEntity)
 
-                # 构建子查询，为每个op_id分配一个行号
+                # 构建子查询，为每个op_id分配一个行号，并过滤掉已删除的任务
                 subquery = (
                     select(
-                        task_alias,
+                        task_alias.id,  # 只选择需要的列，避免返回整个对象
                         func.row_number().over(
                             partition_by=task_alias.op_id,
                             order_by=desc(task_alias.created_time)
                         ).label('rn')
                     )
-                    .where(task_alias.op_id.in_(op_ids))
+                    .where(
+                        task_alias.op_id.in_(op_ids),
+                        task_alias.status != TaskStatus.DELETED.value
+                    )
                     .subquery()
                 )
+
+                # 主查询连接子查询，获取完整的TaskEntity对象
                 stmt = (
                     select(TaskEntity)
-                    .join(subquery, and_(
-                        TaskEntity.op_id == subquery.c.op_id,
-                        subquery.c.rn == 1,
-                        TaskEntity.status != TaskStatus.DELETED.value
-                    ))
+                    .join(
+                        subquery,
+                        TaskEntity.id == subquery.c.id  # 通过ID连接确保获取完整对象
+                    )
+                    .where(subquery.c.rn == 1)  # 只取每个op_id的第一个结果
                 )
+
                 result = await session.execute(stmt)
-                task_entities = result.scalars().all()
+                task_entities = result.scalars().all()  # 直接获取TaskEntity对象列表
                 return task_entities
         except Exception as e:
             err = "查询当前任务失败"

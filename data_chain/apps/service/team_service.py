@@ -35,7 +35,7 @@ class TeamService:
         elif req.team_type == TeamType.MYJOINED:
             total, team_entities = await TeamManager.list_team_myjoined_by_user_sub(user_sub, req)
         else:
-            total, team_entities = await TeamManager.list_pulic_team(user_sub, req)
+            total, team_entities = await TeamManager.list_pulic_team(req)
         teams = []
         for team_entity in team_entities:
             team = await Convertor.convert_team_entity_to_team(team_entity)

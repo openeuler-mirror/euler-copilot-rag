@@ -26,7 +26,7 @@ from data_chain.entities.common import DEFAULt_DOC_TYPE_ID
 
 
 class ListTeamRequest(BaseModel):
-    team_type: TeamType = Field(default=TeamType.ALL, description="团队类型", alias="teamType")
+    team_type: Optional[TeamType] = Field(default=None, description="团队类型", alias="teamType")
     team_id: Optional[uuid.UUID] = Field(default=None, description="团队id", alias="teamId")
     team_name: Optional[str] = Field(default=None, description="团队名称", alias="teamName")
     page: int = Field(default=1, description="页码")

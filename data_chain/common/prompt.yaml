@@ -31,6 +31,8 @@ OCR_ENHANCED_PROMPT: '你是一个图片ocr内容总结专家，你的任务是�
 
   #8 请仅输出图片的总结即可，不要输出其他内容
 
+  #9 不要输出坐标等信息，输出每个部分相对位置的描述即可
+
   上下文:{image_related_text}
 
   当前图片上一部分的ocr内容总结:{pre_part_description}

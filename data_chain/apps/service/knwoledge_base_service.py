@@ -62,6 +62,7 @@ class KnowledgeBaseService:
         try:
             # 获取用户所在团队
             team_entities = await TeamManager.list_all_team_user_created_or_joined(user_sub)
+            team_entities.sort(key=lambda x: x.created_at, reverse=True)
             team_ids = [team_entity.id for team_entity in team_entities]
             # 获取知识库
             knowledge_base_entities = await KnowledgeBaseManager.list_knowledge_base_by_team_ids(team_ids, kb_name)

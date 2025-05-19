@@ -68,6 +68,7 @@ class KnowledgeBaseManager():
     @staticmethod
     async def list_knowledge_base_by_team_ids(
             team_ids: List[uuid.UUID],
+            kb_id: uuid.UUID = None,
             kb_name: str = None) -> List[KnowledgeBaseEntity]:
         """根据团队ID获取知识库"""
         try:
@@ -75,6 +76,8 @@ class KnowledgeBaseManager():
                 stmt = select(KnowledgeBaseEntity).where(
                     and_(KnowledgeBaseEntity.team_id.in_(team_ids),
                          KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELETED.value))
+                if kb_id:
+                    stmt = stmt.where(KnowledgeBaseEntity.id == kb_id)
                 if kb_name:
                     stmt = stmt.where(KnowledgeBaseEntity.name.like(f"%{kb_name}%"))
                 result = await session.execute(stmt)

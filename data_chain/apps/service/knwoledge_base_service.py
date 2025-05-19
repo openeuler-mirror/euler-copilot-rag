@@ -57,15 +57,15 @@ class KnowledgeBaseService:
             raise e
 
     @staticmethod
-    async def list_kb_by_user_sub(user_sub: str, kb_name: str = None) -> ListAllKnowledgeBaseMsg:
+    async def list_kb_by_user_sub(user_sub: str, kb_id: uuid.UUID, kb_name: str = None) -> ListAllKnowledgeBaseMsg:
         """列出知识库"""
         try:
             # 获取用户所在团队
             team_entities = await TeamManager.list_all_team_user_created_or_joined(user_sub)
-            team_entities.sort(key=lambda x: x.created_at, reverse=True)
+            team_entities.sort(key=lambda x: x.created_time, reverse=True)
             team_ids = [team_entity.id for team_entity in team_entities]
             # 获取知识库
-            knowledge_base_entities = await KnowledgeBaseManager.list_knowledge_base_by_team_ids(team_ids, kb_name)
+            knowledge_base_entities = await KnowledgeBaseManager.list_knowledge_base_by_team_ids(team_ids, kb_id, kb_name)
             team_knowledge_bases_dict = {}
             for knowledge_base_entity in knowledge_base_entities:
                 team_id = knowledge_base_entity.team_id

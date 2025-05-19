@@ -35,9 +35,10 @@ router = APIRouter(prefix='/kb', tags=['Knowledge Base'])
 async def list_kb_by_user_sub(
     user_sub: Annotated[str, Depends(get_user_sub)],
     action: Annotated[str, Depends(get_route_info)],
+    kb_id: Optional[UUID] = Query(default=None, alias="kbId"),
     kb_name:  Optional[str] = Query(default=None, alias="kbName")
 ):
-    list_all_kb_msg = await KnowledgeBaseService.list_kb_by_user_sub(user_sub, kb_name=kb_name)
+    list_all_kb_msg = await KnowledgeBaseService.list_kb_by_user_sub(user_sub, kb_id=kb_id, kb_name=kb_name)
     return ListAllKnowledgeBaseResponse(result=list_all_kb_msg)
 
 

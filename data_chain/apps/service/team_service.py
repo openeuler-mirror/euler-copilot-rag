@@ -34,8 +34,14 @@ class TeamService:
             total, team_entities = await TeamManager.list_team_mycreated_user_sub(user_sub, req)
         elif req.team_type == TeamType.MYJOINED:
             total, team_entities = await TeamManager.list_team_myjoined_by_user_sub(user_sub, req)
-        else:
+        elif req.team_type == TeamType.PUBLIC:
             total, team_entities = await TeamManager.list_pulic_team(req)
+        else:
+            total_mycreated, team_entities_mycreated = await TeamManager.list_team_mycreated_user_sub(user_sub, req)
+            total_myjoined, team_entities_myjoined = await TeamManager.list_team_myjoined_by_user_sub(user_sub, req)
+            total = total_mycreated + total_myjoined
+            team_entities = team_entities_mycreated + team_entities_myjoined
+            team_entities.sort(key=lambda x: x.created_time, reverse=True)
         teams = []
         for team_entity in team_entities:
             team = await Convertor.convert_team_entity_to_team(team_entity)

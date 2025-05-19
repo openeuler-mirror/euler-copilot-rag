@@ -12,7 +12,7 @@ class TeamType(str, Enum):
     """团队类型"""
     MYCREATED = "mycreated"
     MYJOINED = "myjoined"
-    ALL = "all"
+    PUBLIC = "public"
 
 
 class TeamStatus(str, Enum):

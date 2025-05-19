@@ -90,7 +90,6 @@ class QAManager:
             raise e
 
     @staticmethod
-    @staticmethod
     async def list_data_in_dataset(req: ListDataInDatasetRequest) -> tuple[int, List[QAEntity]]:
         """根据数据集ID列出数据"""
         try:

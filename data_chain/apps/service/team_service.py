@@ -41,7 +41,7 @@ class TeamService:
             total_myjoined, team_entities_myjoined = await TeamManager.list_team_myjoined_by_user_sub(user_sub, req)
             total = total_mycreated + total_myjoined
             team_entities = team_entities_mycreated + team_entities_myjoined
-            team_entities.sort(key=lambda x: x.create_time, reverse=True)
+            team_entities.sort(key=lambda x: x.created_time, reverse=True)
         teams = []
         for team_entity in team_entities:
             team = await Convertor.convert_team_entity_to_team(team_entity)

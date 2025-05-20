@@ -1,6 +1,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 import asyncio
 import uuid
+from typing import Optional
 from data_chain.entities.enum import TaskType, TaskStatus
 from data_chain.apps.base.task.worker.base_worker import BaseWorker
 from data_chain.stores.mongodb.mongodb import MongoDB, Task
@@ -9,9 +10,56 @@ from data_chain.manager.task_queue_mamanger import TaskQueueManager
 from data_chain.logger.logger import logger as logging
 
 
+class AsyncTimeoutLock:
+    """带超时控制的异步锁"""
+
+    def __init__(self, timeout: float = 10.0):
+        """
+        初始化锁
+
+        Args:
+            timeout: 获取锁的默认超时时间（秒）
+        """
+        self._lock = asyncio.Lock()
+        self._timeout = timeout
+
+    async def acquire(self, timeout: Optional[float] = None) -> bool:
+        """
+        获取锁，支持超时控制
+
+        Args:
+            timeout: 超时时间（秒），如果为None则使用默认超时
+
+        Returns:
+            bool: 是否成功获取锁
+        """
+        timeout = timeout or self._timeout
+        try:
+            await asyncio.wait_for(self._lock.acquire(), timeout=timeout)
+            return True
+        except asyncio.TimeoutError:
+            return False
+
+    def release(self) -> None:
+        """释放锁"""
+        self._lock.release()
+
+    async def __aenter__(self) -> None:
+        """异步上下文管理器进入方法"""
+        success = await self.acquire()
+        if not success:
+            raise asyncio.TimeoutError("获取锁超时")
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """异步上下文管理器退出方法"""
+        if self._lock.locked():
+            self.release()
+
+
 class TaskQueueService:
     """任务队列"""
-    lock = asyncio.Lock()
+    lock = AsyncTimeoutLock()
 
     @staticmethod
     async def init_task_queue():

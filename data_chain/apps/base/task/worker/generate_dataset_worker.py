@@ -139,8 +139,8 @@ class GenerateDataSetWorker(BaseWorker):
             for j in range(len(doc_chunk.chunks)):
                 chunk = doc_chunk.chunks[j].text
                 if dataset_entity.is_chunk_related:
-                    l = i-1
-                    r = i+1
+                    l = j-1
+                    r = j+1
                     tokens_sub = 0
                     while TokenTool.get_tokens(chunk) < llm.max_tokens:
                         if l < 0 and r >= len(doc_chunks):
@@ -148,7 +148,7 @@ class GenerateDataSetWorker(BaseWorker):
                         if tokens_sub > 0:
                             if l >= 0:
                                 tokens_sub += TokenTool.get_tokens(doc_chunks[i].chunks[l].text)
-                                chunk += doc_chunks[i].chunks[l].text
+                                chunk = doc_chunks[i].chunks[l].text+chunk
                                 l -= 1
                             else:
                                 tokens_sub -= TokenTool.get_tokens(doc_chunks[i].chunks[r].text)
@@ -161,12 +161,8 @@ class GenerateDataSetWorker(BaseWorker):
                                 r += 1
                             else:
                                 tokens_sub -= TokenTool.get_tokens(doc_chunks[i].chunks[l].text)
-                                chunk += doc_chunks[i].chunks[l].text
+                                chunk = doc_chunks[i].chunks[l].text+chunk
                                 l -= 1
-                    if i > 0:
-                        chunk = doc_chunk.chunks[i-1].text + chunk
-                    if i < len(doc_chunk.chunks) - 1:
-                        chunk = chunk + doc_chunk.chunks[i+1].text
                 qa_cnt = random.randint(0, 2*(division+(index <= remainder)))
                 if i == len(doc_chunks)-1 and j == len(doc_chunk.chunks)-1:
                     qa_cnt = data_cnt
@@ -238,7 +234,7 @@ class GenerateDataSetWorker(BaseWorker):
                         question=q,
                         answer=ans,
                         chunk=chunk,
-                        chunk_type=doc_chunk.chunks[i].type)
+                        chunk_type=doc_chunk.chunks[j].type)
                     qa_entities.append(qa_entity)
                 if len(qa_entities) >= dataset_entity.data_cnt:
                     break

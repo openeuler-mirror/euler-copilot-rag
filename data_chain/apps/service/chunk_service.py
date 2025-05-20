@@ -93,7 +93,7 @@ class ChunkService:
             except Exception as e:
                 err = f"[ChunkService] 搜索分片失败，error: {e}"
                 logging.exception(err)
-                return SearchChunkMsg(total=0, chunks=[])
+                return SearchChunkMsg(docChunks=[])
         if len(chunk_entities) == 0:
             return SearchChunkMsg(docChunks=[])
         if req.is_rerank:

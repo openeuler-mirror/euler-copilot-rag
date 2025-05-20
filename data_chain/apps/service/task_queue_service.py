@@ -12,6 +12,7 @@ from data_chain.logger.logger import logger as logging
 class TaskQueueService:
     """任务队列"""
     lock = asyncio.Lock()
+    LOCK_TIMEOUT = 5
 
     @staticmethod
     async def init_task_queue():
@@ -40,7 +41,7 @@ class TaskQueueService:
     async def init_task(task_type: str, op_id: uuid.UUID) -> uuid.UUID:
         """初始化任务"""
         try:
-            async with TaskQueueService.lock:
+            async with asyncio.wait_for(TaskQueueService.lock.acquire(), timeout=TaskQueueService.LOCK_TIMEOUT):
                 task_id = await BaseWorker.init(task_type, op_id)
                 if task_id:
                     await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.PENDING.value))
@@ -54,7 +55,7 @@ class TaskQueueService:
     async def stop_task(task_id: uuid.UUID):
         """停止任务"""
         try:
-            async with TaskQueueService.lock:
+            async with asyncio.wait_for(TaskQueueService.lock.acquire(), timeout=TaskQueueService.LOCK_TIMEOUT):
                 flag = await BaseWorker.stop(task_id)
                 if not flag:
                     return None
@@ -68,7 +69,7 @@ class TaskQueueService:
     async def delete_task(task_id: uuid.UUID):
         """删除任务"""
         try:
-            async with TaskQueueService.lock:
+            async with asyncio.wait_for(TaskQueueService.lock.acquire(), timeout=TaskQueueService.LOCK_TIMEOUT):
                 flag = await BaseWorker.stop(task_id)
                 task_id = await BaseWorker.delete(task_id)
                 return task_id
@@ -81,7 +82,7 @@ class TaskQueueService:
     async def handle_successed_tasks():
         handle_successed_task_limit = 1024
         for i in range(handle_successed_task_limit):
-            async with TaskQueueService.lock:
+            async with asyncio.wait_for(TaskQueueService.lock.acquire(), timeout=TaskQueueService.LOCK_TIMEOUT):
                 task = await TaskQueueManager.get_oldest_tasks_by_status(TaskStatus.SUCCESS.value)
                 if task is None:
                     break
@@ -96,7 +97,7 @@ class TaskQueueService:
     async def handle_failed_tasks():
         handle_failed_task_limit = 1024
         for i in range(handle_failed_task_limit):
-            async with TaskQueueService.lock:
+            async with asyncio.wait_for(TaskQueueService.lock.acquire(), timeout=TaskQueueService.LOCK_TIMEOUT):
                 task = await TaskQueueManager.get_oldest_tasks_by_status(TaskStatus.FAILED.value)
                 if task is None:
                     break
@@ -117,7 +118,7 @@ class TaskQueueService:
     async def handle_pending_tasks():
         handle_pending_task_limit = 128
         for i in range(handle_pending_task_limit):
-            async with TaskQueueService.lock:
+            async with asyncio.wait_for(TaskQueueService.lock.acquire(), timeout=TaskQueueService.LOCK_TIMEOUT):
                 task = await TaskQueueManager.get_oldest_tasks_by_status(TaskStatus.PENDING.value)
                 if task is None:
                     break

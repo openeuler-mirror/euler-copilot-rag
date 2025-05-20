@@ -45,13 +45,13 @@ class KnowledgeBaseManager():
             async with await DataBase.get_session() as session:
                 stmt = select(KnowledgeBaseEntity).where(
                     KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELETED.value)
-                if req.team_id:
+                if req.team_id is not None:
                     stmt = stmt.where(KnowledgeBaseEntity.team_id == req.team_id)
-                if req.kb_id:
+                if req.kb_id is not None:
                     stmt = stmt.where(KnowledgeBaseEntity.id == req.kb_id)
-                if req.kb_name:
+                if req.kb_name is not None:
                     stmt = stmt.where(KnowledgeBaseEntity.name.like(f"%{req.kb_name}%"))
-                if req.author_name:
+                if req.author_name is not None:
                     stmt = stmt.where(KnowledgeBaseEntity.author_name.like(f"%{req.author_name}%"))
                 count_stmt = select(func.count()).select_from(stmt.subquery())
                 total = (await session.execute(count_stmt)).scalar()

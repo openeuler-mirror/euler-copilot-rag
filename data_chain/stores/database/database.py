@@ -370,7 +370,7 @@ class DataSetEntity(Base):
     is_chunk_related = Column(Boolean, default=False)  # 数据集是否关联上下文
     is_imported = Column(Boolean, default=False)  # 数据集是否导入
     status = Column(String, default=DataSetStatus.IDLE)  # 数据集状态
-    score = Column(Float)  # 数据集得分
+    score = Column(Float, default=-1)  # 数据集得分
     created_at = Column(
         TIMESTAMP(timezone=True),
         nullable=True,

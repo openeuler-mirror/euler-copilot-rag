@@ -84,19 +84,19 @@ class DatasetManager:
                     .outerjoin(subq, and_(DataSetEntity.id == subq.c.op_id, subq.c.rn == 1))
                 )
                 stmt = stmt.where(DataSetEntity.status != DataSetStatus.DELETED.value)
-                if req.kb_id:
+                if req.kb_id is not None:
                     stmt = stmt.where(DataSetEntity.kb_id == req.kb_id)
-                if req.dataset_id:
+                if req.dataset_id is not None:
                     stmt = stmt.where(DataSetEntity.id == req.dataset_id)
-                if req.dataset_name:
+                if req.dataset_name is not None:
                     stmt = stmt.where(DataSetEntity.name.ilike(f"%{req.dataset_name}%"))
-                if req.llm_id:
+                if req.llm_id is not None:
                     stmt = stmt.where(DataSetEntity.llm_id == req.llm_id)
-                if req.is_data_cleared:
+                if req.is_data_cleared is not None:
                     stmt = stmt.where(DataSetEntity.is_data_cleared == req.is_data_cleared)
-                if req.is_chunk_related:
+                if req.is_chunk_related is not None:
                     stmt = stmt.where(DataSetEntity.is_chunk_related == req.is_chunk_related)
-                if req.generate_status:
+                if req.generate_status is not None:
                     stmt = stmt.where(subq.c.status.in_([status.value for status in req.generate_status]))
                 stmt = stmt.order_by(DataSetEntity.created_at.desc(), DataSetEntity.id.desc())
                 if req.score_order:

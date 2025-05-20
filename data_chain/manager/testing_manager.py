@@ -82,20 +82,20 @@ class TestingManager():
                 inner_stmt = inner_stmt.where(DataSetEntity.status != DataSetStatus.DELETED.value)
                 inner_stmt = inner_stmt.where(TestingEntity.status != TestingStatus.DELETED.value)
 
-                if req.kb_id:
+                if req.kb_id is not None:
                     inner_stmt = inner_stmt.where(TestingEntity.kb_id == req.kb_id)
-                if req.testing_id:
+                if req.testing_id is not None:
                     inner_stmt = inner_stmt.where(TestingEntity.id == req.testing_id)
-                if req.testing_name:
+                if req.testing_name is not None:
                     inner_stmt = inner_stmt.where(TestingEntity.name.ilike(f"%{req.testing_name}%"))
-                if req.llm_ids:
+                if req.llm_ids is not None:
                     inner_stmt = inner_stmt.where(TestingEntity.llm_id.in_(req.llm_ids))
-                if req.search_methods:
+                if req.search_methods is not None:
                     inner_stmt = inner_stmt.where(TestingEntity.search_method.in_(
                         [search_method.value for search_method in req.search_methods]))
-                if req.run_status:
+                if req.run_status is not None:
                     inner_stmt = inner_stmt.where(subq.c.status.in_([status.value for status in req.run_status]))
-                if req.author_name:
+                if req.author_name is not None:
                     inner_stmt = inner_stmt.where(TestingEntity.author_name.ilike(f"%{req.author_name}%"))
 
                 inner_stmt = inner_stmt.order_by(desc(DataSetEntity.created_at), asc(DataSetEntity.id))

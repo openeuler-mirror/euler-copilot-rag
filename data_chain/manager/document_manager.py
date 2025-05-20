@@ -139,20 +139,20 @@ class DocumentManager():
                     .outerjoin(subq, and_(DocumentEntity.id == subq.c.op_id, subq.c.rn == 1))
                 )
                 stmt = stmt.where(DocumentEntity.status != DocumentStatus.DELETED.value)
-                if req.kb_id:
+                if req.kb_id is not None:
                     stmt = stmt.where(DocumentEntity.kb_id == req.kb_id)
-                if req.doc_id:
+                if req.doc_id is not None:
                     stmt = stmt.where(DocumentEntity.id == req.doc_id)
-                if req.doc_name:
+                if req.doc_name is not None:
                     stmt = stmt.where(DocumentEntity.name.ilike(f"%{req.doc_name}%"))
-                if req.doc_type_ids:
+                if req.doc_type_ids is not None:
                     stmt = stmt.where(DocumentEntity.type_id.in_(req.doc_type_ids))
-                if req.parse_status:
+                if req.parse_status is not None:
                     stmt = stmt.where(subq.c.status.in_([status.value for status in req.parse_status]))
-                if req.parse_methods:
+                if req.parse_methods is not None:
                     stmt = stmt.where(DocumentEntity.parse_method.in_(
                         [parse_method.value for parse_method in req.parse_methods]))
-                if req.author_name:
+                if req.author_name is not None:
                     stmt = stmt.where(DocumentEntity.author_name.ilike(f"%{req.author_name}%"))
                 if req.enabled is not None:
                     stmt = stmt.where(DocumentEntity.enabled == req.enabled)

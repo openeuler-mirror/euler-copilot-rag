@@ -128,11 +128,11 @@ class ChunkManager():
                     select(ChunkEntity)
                     .where(ChunkEntity.status != ChunkStatus.DELETED.value)
                 )
-                if req.doc_id:
+                if req.doc_id is not None:
                     stmt = stmt.where(ChunkEntity.doc_id == req.doc_id)
-                if req.text:
+                if req.text is not None:
                     stmt = stmt.where(ChunkEntity.text.ilike(f"%{req.text}%"))
-                if req.types:
+                if req.types is not None:
                     stmt = stmt.where(ChunkEntity.type.in_([t.value for t in req.types]))
                 count_stmt = select(func.count()).select_from(stmt.subquery())
                 total = (await session.execute(count_stmt)).scalar()

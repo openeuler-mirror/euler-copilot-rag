@@ -62,6 +62,12 @@ class TestingService:
             dataset_testings = []
             llm = await Convertor.convert_llm_config_to_llm()
             testing_ids = []
+            testing_entities = await TestingManager.list_testing(dataset_ids, req)
+            dataset_testing_dict = {}
+            for testing_entity in testing_entities:
+                if testing_entity.dataset_id not in dataset_testing_dict:
+                    dataset_testing_dict[testing_entity.dataset_id] = []
+                dataset_testing_dict[testing_entity.dataset_id].append(testing_entity)
             for dataset_id in dataset_ids:
                 dataset_entity = dataset_dict.get(dataset_id)
                 testing_entities = await TestingManager.list_testing_by_dataset_id(dataset_id)
@@ -70,7 +76,7 @@ class TestingService:
                     datasetName=dataset_entity.name,
                     testings=[]
                 )
-                for testing_entity in testing_entities:
+                for testing_entity in dataset_testing_dict.get(dataset_id, []):
                     testing = await Convertor.convert_testing_entity_to_testing(testing_entity)
                     testing.llm = llm
                     dataset_testing.testings.append(testing)

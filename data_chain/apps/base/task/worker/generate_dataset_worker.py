@@ -206,7 +206,7 @@ class GenerateDataSetWorker(BaseWorker):
                         logging.exception(err)
                         continue
                     for q, answer in zip(sub_qs, sub_answers):
-                        if len(qs) + len(answers) >= qa_cnt:
+                        if len(qs) >= qa_cnt:
                             break
                         if len(qa_entities) + len(qs) >= dataset_entity.data_cnt:
                             break

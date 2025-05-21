@@ -161,7 +161,7 @@ class TestingWorker(BaseWorker):
             )
             llm_answer = await llm.nostream([], prompt, question)
             sub_socres = []
-            pre = await TokenTool.cal_precision(question, bac_info, llm)
+            pre = await TokenTool.cal_precision(question, answer, llm)
             if pre != -1:
                 sub_socres.append(pre)
             rec = await TokenTool.cal_recall(answer, llm_answer, llm)

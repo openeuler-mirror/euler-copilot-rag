@@ -122,8 +122,14 @@ class GenerateDataSetWorker(BaseWorker):
             chunk_cnt += len(doc_chunk.chunks)
         if chunk_cnt == 0:
             return []
+        chunk_index_list = []
+        for i in range(chunk_cnt):
+            chunk_index_list.append(i)
+        random.shuffle(chunk_index_list)
         qa_entities = []
         data_cnt = dataset_entity.data_cnt
+        chunk_index_list = chunk_index_list[:data_cnt]
+        chunk_cnt = len(chunk_index_list)
         division = data_cnt // chunk_cnt
         remainder = data_cnt % chunk_cnt
         index = 0
@@ -137,6 +143,10 @@ class GenerateDataSetWorker(BaseWorker):
         for i in range(len(doc_chunks)):
             doc_chunk = doc_chunks[i]
             for j in range(len(doc_chunk.chunks)):
+                if index not in chunk_index_list:
+                    index += 1
+                    continue
+                index += 1
                 chunk = doc_chunk.chunks[j].text
                 if dataset_entity.is_chunk_related:
                     l = j-1
@@ -163,14 +173,7 @@ class GenerateDataSetWorker(BaseWorker):
                                 tokens_sub -= TokenTool.get_tokens(doc_chunks[i].chunks[l].text)
                                 chunk = doc_chunks[i].chunks[l].text+chunk
                                 l -= 1
-                qa_cnt = random.randint(0, 2*(division+(index <= remainder)))
-                if i == len(doc_chunks)-1 and j == len(doc_chunk.chunks)-1:
-                    qa_cnt = data_cnt
-                qa_cnt = min(qa_cnt, data_cnt)
-                if qa_cnt == 0:
-                    continue
-                data_cnt -= qa_cnt
-                data_cnt = max(data_cnt, 0)
+                qa_cnt = division+(index < remainder)
                 qs = []
                 answers = []
                 rd = 5
@@ -203,6 +206,8 @@ class GenerateDataSetWorker(BaseWorker):
                         logging.exception(err)
                         continue
                     for q, answer in zip(sub_qs, sub_answers):
+                        if len(qs) >= qa_cnt:
+                            break
                         if len(qa_entities) + len(qs) >= dataset_entity.data_cnt:
                             break
                         try:
@@ -238,7 +243,6 @@ class GenerateDataSetWorker(BaseWorker):
                     qa_entities.append(qa_entity)
                 if len(qa_entities) >= dataset_entity.data_cnt:
                     break
-                index += 1
             if len(qa_entities) >= dataset_entity.data_cnt:
                 break
         if len(qa_entities) > 0:

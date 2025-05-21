@@ -125,6 +125,44 @@ class TestingManager():
             raise e
 
     @staticmethod
+    async def list_testing(dataset_ids: list[uuid.UUID], req: ListTestingRequest) -> List[TestingEntity]:
+        """查询测试"""
+        try:
+            async with await DataBase.get_session() as session:
+                subq = (select(TaskEntity.op_id, TaskEntity.status, func.row_number().over(
+                    partition_by=TaskEntity.op_id, order_by=desc(TaskEntity.created_time)).label('rn')).subquery())
+
+                stmt = (
+                    select(TestingEntity)
+                    .outerjoin(subq, and_(TestingEntity.id == subq.c.op_id, subq.c.rn == 1))
+                )
+                stmt = stmt.where(TestingEntity.dataset_id.in_(dataset_ids))
+                stmt = stmt.where(TestingEntity.status != TestingStatus.DELETED.value)
+                if req.kb_id is not None:
+                    stmt = stmt.where(TestingEntity.kb_id == req.kb_id)
+                if req.testing_id is not None:
+                    stmt = stmt.where(TestingEntity.id == req.testing_id)
+                if req.testing_name is not None:
+                    stmt = stmt.where(TestingEntity.name.ilike(f"%{req.testing_name}%"))
+                if req.llm_ids is not None:
+                    stmt = stmt.where(TestingEntity.llm_id.in_(req.llm_ids))
+                if req.search_methods is not None:
+                    stmt = stmt.where(TestingEntity.search_method.in_(
+                        [search_method.value for search_method in req.search_methods]))
+                if req.run_status is not None:
+                    stmt = stmt.where(subq.c.status.in_([status.value for status in req.run_status]))
+                if req.author_name is not None:
+                    stmt = stmt.where(TestingEntity.author_name.ilike(f"%{req.author_name}%"))
+                stmt = stmt.order_by(desc(TestingEntity.created_at), asc(TestingEntity.id))
+                result = await session.execute(stmt)
+                testing_entitys = result.scalars().all()
+                return testing_entitys
+        except Exception as e:
+            err = "查询测试失败"
+            logging.exception("[TestingManager] %s", err)
+            raise e
+
+    @staticmethod
     async def update_testing_by_testing_id(testing_id: uuid.UUID, testing_dict: Dict[str, str]) -> TestingEntity:
         """根据测试ID更新测试"""
         try:

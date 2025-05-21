@@ -136,7 +136,7 @@ class TestingWorker(BaseWorker):
         testcase_entities = []
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
             prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-        prompt_template = prompt_dict.get('LLM_PROMPT_TEMPLAT', '')
+        prompt_template = prompt_dict.get('LLM_PROMPT_TEMPLATE', '')
         for qa_entity in qa_entities:
             question = qa_entity.question
             answer = qa_entity.answer
@@ -155,13 +155,13 @@ class TestingWorker(BaseWorker):
                 for chunk_entity in chunk_entities:
                     sub_bac_info += chunk_entity.text
                 bac_info += sub_bac_info+'\n'
-            bac_info = TokenTool.get_k_tokens_words_from_content(bac_info, llm.max_tokens)
+            bac_info = TokenTool.get_k_tokens_words_from_content(bac_info, llm.max_tokens//8*7)
             prompt = prompt_template.format(
                 bac_info=bac_info
             )
             llm_answer = await llm.nostream([], prompt, question)
             sub_socres = []
-            pre = await TokenTool.cal_precision(question, bac_info, llm)
+            pre = await TokenTool.cal_precision(question, answer, llm)
             if pre != -1:
                 sub_socres.append(pre)
             rec = await TokenTool.cal_recall(answer, llm_answer, llm)

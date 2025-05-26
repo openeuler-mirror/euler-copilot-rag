@@ -357,11 +357,11 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def push_up_words_feature(parse_result: ParseResult, llm: LLM = None) -> None:
         '''推送上层词特征'''
-        async def dfs(node: ParseNode, parent_node: ParseNode, llm) -> None:
+        async def dfs(node: ParseNode, parent_node: ParseNode, llm: LLM = None) -> None:
             if parent_node is not None:
                 node.pre_id = parent_node.id
             for child_node in node.link_nodes:
-                await dfs(child_node, node)
+                await dfs(child_node, node, llm)
             if node.title is not None:
                 if len(node.title) == 0:
                     if llm is not None:
@@ -391,31 +391,13 @@ class ParseDocumentWorker(BaseWorker):
                         node.text_feature = title
                         node.content = node.text_feature
                     else:
-                        if parent_node and parent_node.title:
-                            if len(parent_node.title) > 0:
-                                content += parent_node.title + '\n'
-                            else:
-                                sentences = TokenTool.get_top_k_keysentence(parent_node.content, 1)
-                                if sentences:
-                                    content += sentences[0] + '\n'
-                        for node in node.link_nodes:
-                            if node.title:
-                                content += node.title + '\n'
-                            else:
-                                sentences = TokenTool.get_top_k_keysentence(node.content, 1)
-                                if sentences:
-                                    content += sentences[0] + '\n'
-                        sentences = TokenTool.get_top_k_keysentence(content, 1)
-                        if sentences:
-                            node.text_feature = sentences[0]
-                        else:
-                            node.text_feature = ''
-                        node.content = node.text_feature
+                        node.text_feature = ''
+                        node.content = ''
                 else:
                     node.text_feature = node.title
                     node.content = node.text_feature
         if parse_result.parse_topology_type == DocParseRelutTopology.TREE:
-            await dfs(parse_result.nodes, None, llm)
+            await dfs(parse_result.nodes[0], None, llm)
 
     @staticmethod
     async def update_doc_abstract(doc_id: uuid.UUID, parse_result: ParseResult, llm: LLM = None) -> str:

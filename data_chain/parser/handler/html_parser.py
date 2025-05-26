@@ -41,6 +41,8 @@ class HTMLParser(BaseParser):
 
     @staticmethod
     async def build_subtree(html: str, current_level: int = 0) -> list[ParseNode]:
+        print('---------------------------------------------------------------------')
+        print(html)
         soup = BeautifulSoup(html, 'html.parser')
 
         # 获取body元素作为起点（如果是完整HTML文档）
@@ -68,15 +70,26 @@ class HTMLParser(BaseParser):
                 child_subtree = await HTMLParser.build_subtree(inner_html, current_level+1)
                 parse_topology_type = ChunkParseTopology.TREENORMAL if len(
                     child_subtree) else ChunkParseTopology.TREELEAF
-                node = ParseNode(
-                    id=uuid.uuid4(),
-                    title="",
-                    lv=current_level,
-                    parse_topology_type=parse_topology_type,
-                    content="",
-                    type=ChunkType.TEXT,
-                    link_nodes=child_subtree
-                )
+                if child_subtree:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        title="",
+                        lv=current_level,
+                        parse_topology_type=parse_topology_type,
+                        content="",
+                        type=ChunkType.TEXT,
+                        link_nodes=child_subtree
+                    )
+                else:
+                    text = element.get_text(strip=True)
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=text,
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
                 subtree.append(node)
             elif element.name.startswith('h'):
                 level = int(element.name[1:])
@@ -169,7 +182,7 @@ class HTMLParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p' or element.name == 'head' or element.name == 'title':
+            elif element.name == 'p' or element.name == 'head' or element.name == 'title' or element.name == 'span' or element.name == 'pre':
                 para_text = element.get_text().strip()
                 if para_text:
                     node = ParseNode(
@@ -239,9 +252,6 @@ class HTMLParser(BaseParser):
             link_nodes=[]
         )
         root.link_nodes = await HTMLParser.build_subtree(html, 0)
-        for node in root.link_nodes:
-            print(f"Node ID: {node.id}, Title: {node.title}, Level: {node.lv}, Type: {node.type}, Content: {node.content}")
-            print(f"Node Link Nodes: {[n.id for n in node.link_nodes]}")
         nodes = []
         await HTMLParser.flatten_tree(root, nodes)
         return nodes

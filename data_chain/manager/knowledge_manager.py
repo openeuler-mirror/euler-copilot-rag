@@ -89,22 +89,6 @@ class KnowledgeBaseManager():
             raise e
 
     @staticmethod
-    async def list_kb_entity_by_doc_ids(doc_ids: List[uuid.UUID]) -> List[KnowledgeBaseEntity]:
-        """根据文档ID获取知识库"""
-        try:
-            async with await DataBase.get_session() as session:
-                stmt = select(KnowledgeBaseEntity).join(DocumentEntity).where(
-                    and_(DocumentEntity.id.in_(doc_ids),
-                         DocumentEntity.status != DocumentStatus.DELETED.value))
-                result = await session.execute(stmt)
-                knowledge_base_entities = result.scalars().all()
-                return knowledge_base_entities
-        except Exception as e:
-            err = "获取知识库失败"
-            logging.exception("[KnowledgeBaseManager] %s", err)
-            raise e
-
-    @staticmethod
     async def list_doc_types_by_kb_id(kb_id: uuid.UUID) -> List[DocumentTypeEntity]:
         """列出知识库文档类型"""
         try:

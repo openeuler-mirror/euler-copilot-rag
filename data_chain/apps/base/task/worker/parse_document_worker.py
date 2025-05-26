@@ -358,7 +358,7 @@ class ParseDocumentWorker(BaseWorker):
     async def push_up_words_feature(parse_result: ParseResult, llm: LLM = None) -> None:
         '''推送上层词特征'''
         async def dfs(node: ParseNode, parent_node: ParseNode, llm) -> None:
-            if parent_node is None:
+            if parent_node is not None:
                 node.pre_id = parent_node.id
             for child_node in node.link_nodes:
                 await dfs(child_node, node)

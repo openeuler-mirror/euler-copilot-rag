@@ -8,7 +8,7 @@ class BaseParser:
     def find_worker_class(worker_name):
         subclasses = BaseParser.__subclasses__()
         for subclass in subclasses:
-            if subclass.name == worker_name:
+            if worker_name in subclass.name:
                 return subclass
         return None
 

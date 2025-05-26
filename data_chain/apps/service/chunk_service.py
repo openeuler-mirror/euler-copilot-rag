@@ -76,6 +76,7 @@ class ChunkService:
 
     async def search_chunks(user_sub: str, action: str, req: SearchChunkRequest) -> SearchChunkMsg:
         """根据查询条件搜索分片"""
+        logging.error("[ChunkService] 搜索分片，查询条件: %s", req)
         chunk_entities = []
         for kb_id in req.kb_ids:
             try:
@@ -105,23 +106,25 @@ class ChunkService:
             tokens_limit = req.tokens_limit
             tokens_limit_every_chunk = tokens_limit // len(chunk_entities)
             leave_tokens = 0
+            related_chunk_entities = []
             for chunk_entity in chunk_entities:
                 leave_tokens = tokens_limit_every_chunk+leave_tokens
                 try:
-                    related_chunk_entities = await BaseSearcher.related_surround_chunk(chunk_entity, tokens_limit-chunk_entity.tokens, chunk_ids)
+                    sub_related_chunk_entities = await BaseSearcher.related_surround_chunk(chunk_entity, leave_tokens-chunk_entity.tokens, chunk_ids)
                 except Exception as e:
                     leave_tokens += tokens_limit_every_chunk
                     err = f"[ChunkService] 关联上下文失败，error: {e}"
                     logging.exception(err)
                     continue
                 tokens_sum = 0
-                for related_chunk_entity in related_chunk_entities:
+                for related_chunk_entity in sub_related_chunk_entities:
                     tokens_sum += related_chunk_entity.tokens
                 leave_tokens -= tokens_sum
                 if leave_tokens < 0:
                     leave_tokens = 0
-                chunk_ids += [chunk_entity.id for chunk_entity in related_chunk_entities]
-                chunk_entities += related_chunk_entities
+                chunk_ids += [chunk_entity.id for chunk_entity in sub_related_chunk_entities]
+                related_chunk_entities += sub_related_chunk_entities
+            chunk_entities += related_chunk_entities
         search_chunk_msg = SearchChunkMsg(docChunks=[])
         if req.is_classify_by_doc:
             doc_chunks = await BaseSearcher.classify_by_doc_id(chunk_entities)

@@ -47,7 +47,6 @@ class TaskQueueService:
         except Exception as e:
             err = f"[TaskQueueService] 初始化任务失败 {e}"
             logging.exception(err)
-            raise e
 
     @staticmethod
     async def stop_task(task_id: uuid.UUID):
@@ -60,7 +59,6 @@ class TaskQueueService:
         except Exception as e:
             err = f"[TaskQueueService] 停止任务失败 {e}"
             logging.exception(err)
-            raise e
 
     @staticmethod
     async def delete_task(task_id: uuid.UUID):
@@ -72,7 +70,6 @@ class TaskQueueService:
         except Exception as e:
             err = f"[TaskQueueService] 删除任务失败 {e}"
             logging.exception(err)
-            raise e
 
     @staticmethod
     async def handle_successed_tasks():

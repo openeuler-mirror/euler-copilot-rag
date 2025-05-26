@@ -31,8 +31,13 @@ from data_chain.manager.team_manager import TeamManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
 from data_chain.manager.document_manager import DocumentManager
+from data_chain.manager.testing_manager import TestingManager
+from data_chain.manager.dataset_manager import DataSetManager
 from data_chain.manager.role_manager import RoleManager
 from data_chain.manager.task_manager import TaskManager
+from data_chain.apps.service.document_service import DocumentService
+from data_chain.apps.service.dataset_service import DataSetService
+from data_chain.apps.service.acc_testing_service import TestingService
 
 
 class KnowledgeBaseService:
@@ -336,6 +341,15 @@ class KnowledgeBaseService:
         kb_ids_deleted = []
         for kb_id in kb_ids:
             try:
+                document_entities = await DocumentManager.list_all_document_by_kb_id(kb_id)
+                dataset_entities = await DataSetService.list_dataset_by_kb_id(kb_id)
+                testing_entities = await TestingService.list_testing_by_kb_id(kb_id)
+                doc_ids = [doc_entity.id for doc_entity in document_entities]
+                await DocumentService.delete_docs_by_ids(doc_ids)
+                dataset_ids = [dataset_entity.id for dataset_entity in dataset_entities]
+                await DataSetService.delete_data_by_data_ids(dataset_ids)
+                testing_ids = [testing_entity.id for testing_entity in testing_entities]
+                await TestingService.delete_testing_by_testing_ids(testing_ids)
                 task_entity = await TaskManager.get_current_task_by_op_id(kb_id)
                 if task_entity is not None:
                     await TaskQueueService.stop_task(task_entity.id)

@@ -340,6 +340,9 @@ class DataSetService:
             data_ids: list[uuid.UUID]) -> list[uuid.UUID]:
         """根据数据ID删除数据"""
         try:
+            task_entities = await TaskManager.list_current_tasks_by_op_ids(data_ids)
+            for task_entity in task_entities:
+                await TaskQueueService.stop_task(task_entity.id)
             data_entities = await QAManager.update_qa_by_qa_ids(
                 data_ids, {"status": DocumentStatus.DELETED.value})
             data_ids = [data_entity.id for data_entity in data_entities]

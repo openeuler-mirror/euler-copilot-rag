@@ -43,6 +43,25 @@ class TestingManager():
             raise e
 
     @staticmethod
+    async def list_testing_by_kb_id(kb_id: uuid.UUID) -> List[TestingEntity]:
+        """根据知识库ID查询测试"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = (
+                    select(TestingEntity)
+                    .where(TestingEntity.kb_id == kb_id)
+                )
+                stmt = stmt.where(TestingEntity.status != TestingStatus.DELETED.value)
+                stmt = stmt.order_by(desc(TestingEntity.created_at))
+                stmt = stmt.order_by(asc(TestingEntity.id))
+                result = await session.execute(stmt)
+                return result.scalars().all()
+        except Exception as e:
+            err = "查询测试失败"
+            logging.exception("[TestingManager] %s", err)
+            raise e
+
+    @staticmethod
     async def list_testing_by_dataset_id(dataset_id: uuid.UUID) -> List[TestingEntity]:
         """根据数据集ID查询测试"""
         try:

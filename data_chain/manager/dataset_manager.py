@@ -118,6 +118,24 @@ class DatasetManager:
             raise e
 
     @staticmethod
+    async def list_dataset_by_kb_id(kb_id: uuid.UUID) -> List[DataSetEntity]:
+        """根据知识库ID查询数据集"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = (
+                    select(DataSetEntity)
+                    .where(DataSetEntity.kb_id == kb_id)
+                )
+                stmt = stmt.where(DataSetEntity.status != DataSetStatus.DELETED.value)
+                stmt = stmt.order_by(DataSetEntity.id.desc())
+                result = await session.execute(stmt)
+                return result.scalars().all()
+        except Exception as e:
+            err = "根据知识库ID查询数据集失败"
+            logging.exception("[DatasetManager] %s", err)
+            raise e
+
+    @staticmethod
     async def list_datasets_by_dataset_ids(dataset_ids: List[uuid.UUID]) -> List[DataSetEntity]:
         """根据数据集ID列表查询数据集"""
         try:

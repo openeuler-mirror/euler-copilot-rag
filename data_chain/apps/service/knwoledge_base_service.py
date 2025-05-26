@@ -32,7 +32,7 @@ from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
 from data_chain.manager.document_manager import DocumentManager
 from data_chain.manager.testing_manager import TestingManager
-from data_chain.manager.dataset_manager import DataSetManager
+from data_chain.manager.dataset_manager import DatasetManager
 from data_chain.manager.role_manager import RoleManager
 from data_chain.manager.task_manager import TaskManager
 from data_chain.apps.service.document_service import DocumentService
@@ -342,8 +342,8 @@ class KnowledgeBaseService:
         for kb_id in kb_ids:
             try:
                 document_entities = await DocumentManager.list_all_document_by_kb_id(kb_id)
-                dataset_entities = await DataSetService.list_dataset_by_kb_id(kb_id)
-                testing_entities = await TestingService.list_testing_by_kb_id(kb_id)
+                dataset_entities = await DatasetManager.list_dataset_by_kb_id(kb_id)
+                testing_entities = await TestingManager.list_testing_by_kb_id(kb_id)
                 doc_ids = [doc_entity.id for doc_entity in document_entities]
                 await DocumentService.delete_docs_by_ids(doc_ids)
                 dataset_ids = [dataset_entity.id for dataset_entity in dataset_entities]

@@ -178,7 +178,7 @@ class HTMLParser(BaseParser):
         return nodes
 
     @staticmethod
-    async def parse(file_path) -> ParseResult:
+    async def parser(file_path) -> ParseResult:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
             html = file.read()
         nodes = await HTMLParser.html_to_tree(html)

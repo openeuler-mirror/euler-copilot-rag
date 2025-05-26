@@ -9,6 +9,8 @@ from data_chain.stores.database.database import TeamEntity
 from data_chain.apps.base.convertor import Convertor
 from data_chain.manager.team_manager import TeamManager
 from data_chain.manager.role_manager import RoleManager
+from data_chain.manager.knowledge_manager import KnowledgeBaseManager
+from data_chain.apps.service.knwoledge_base_service import KnowledgeBaseService
 
 
 class TeamService:
@@ -95,6 +97,9 @@ class TeamService:
             team_id: uuid.UUID) -> bool:
         """软删除团队"""
         try:
+            knowlede_base_entities = await KnowledgeBaseManager.list_knowledge_base_by_team_ids([team_id])
+            kb_ids = [kb_entity.id for kb_entity in knowlede_base_entities]
+            await KnowledgeBaseService.delete_kb_by_kb_ids(kb_ids)
             team_entity = await TeamManager.update_team_by_id(
                 team_id, {"status": TeamStatus.DELETED.value})
             if team_entity is None:

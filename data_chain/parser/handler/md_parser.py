@@ -166,7 +166,7 @@ class MdParser(BaseParser):
         return nodes
 
     @staticmethod
-    async def parse(file_path: str) -> ParseResult:
+    async def parser(file_path: str) -> ParseResult:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             markdown_text = f.read()
         nodes = await MdParser.markdown_to_tree(markdown_text)

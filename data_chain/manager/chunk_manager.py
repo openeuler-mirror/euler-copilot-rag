@@ -187,9 +187,9 @@ class ChunkManager():
                 )
                 if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
-                if chunk_to_type:
+                if chunk_to_type is not None:
                     stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
-                if pre_ids:
+                if pre_ids is not None:
                     stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
                 result = await session.execute(stmt)
                 chunk_entities = result.scalars().all()
@@ -207,7 +207,6 @@ class ChunkManager():
         try:
             async with await DataBase.get_session() as session:
                 kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
-                tokenizer = ''
                 if kb_entity.tokenizer == Tokenizer.ZH.value:
                     if 'opengauss' in config['DATABASE_URL']:
                         tokenizer = 'chparser'
@@ -215,6 +214,11 @@ class ChunkManager():
                         tokenizer = 'zhparser'
                 elif kb_entity.tokenizer == Tokenizer.EN.value:
                     tokenizer = 'english'
+                else:
+                    if 'opengauss' in config['DATABASE_URL']:
+                        tokenizer = 'chparser'
+                    else:
+                        tokenizer = 'zhparser'
                 stmt = (
                     select(ChunkEntity)
                     .join(DocumentEntity,
@@ -235,9 +239,9 @@ class ChunkManager():
                 )
                 if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
-                if chunk_to_type:
+                if chunk_to_type is not None:
                     stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
-                if pre_ids:
+                if pre_ids is not None:
                     stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
                 result = await session.execute(stmt)
                 chunk_entities = result.scalars().all()

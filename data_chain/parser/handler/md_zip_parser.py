@@ -187,7 +187,7 @@ class MdZipParser(BaseParser):
         return nodes
 
     @staticmethod
-    async def parse(file_path: str) -> ParseResult:
+    async def parser(file_path: str) -> ParseResult:
         target_file_path = os.path.join(os.path.dirname(file_path), 'temp')
         await ZipHandler.unzip_file(file_path, target_file_path)
         markdown_file = [f for f in os.listdir(target_file_path) if f.endswith('.md')]

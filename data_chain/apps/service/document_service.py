@@ -268,8 +268,7 @@ class DocumentService:
             doc_entities = await DocumentManager.update_document_by_doc_ids(
                 doc_ids, {"status": DocumentStatus.DELETED.value})
             doc_ids = [doc_entity.id for doc_entity in doc_entities]
-            kb_entities = await KnowledgeBaseManager.list_kb_entity_by_doc_ids(doc_ids)
-            kb_ids = [kb_entity.id for kb_entity in kb_entities]
+            kb_ids = [doc_entity.kb_id for doc_entity in doc_entities if doc_entity.kb_id is not None]
             kb_ids = list(set(kb_ids))
             for kb_id in kb_ids:
                 await KnowledgeBaseManager.update_doc_cnt_and_doc_size(kb_id=kb_id)

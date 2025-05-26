@@ -44,7 +44,10 @@ class TaskManager():
         """根据op_id获取当前最近的任务"""
         try:
             async with await DataBase.get_session() as session:
-                stmt = select(TaskEntity).where(TaskEntity.op_id == op_id).order_by(desc(TaskEntity.created_time))
+                stmt = select(TaskEntity).where(
+                    and_(TaskEntity.op_id == op_id, TaskEntity.status != TaskStatus.DELETED.value)).order_by(
+                    desc(TaskEntity.created_time)
+                )
                 result = await session.execute(stmt)
                 task_entity = result.scalars().first()
                 return task_entity

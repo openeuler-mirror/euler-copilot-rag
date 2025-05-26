@@ -286,11 +286,7 @@ class ParseDocumentWorker(BaseWorker):
         for node in parse_result.nodes:
             if node.type == ChunkType.TEXT:
                 tokens = TokenTool.get_tokens(node.content)
-                if len(nodes) == 0 or (
-                    len(nodes)
-                    and (
-                        nodes[-1].type != ChunkType.TEXT or TokenTool.get_tokens(nodes[-1].content) + tokens > doc_entity.
-                        chunk_size)):
+                if len(nodes) == 0 or (len(nodes) and (nodes[-1].type != ChunkType.TEXT or TokenTool.get_tokens(nodes[-1].content) + tokens > doc_entity.chunk_size)):
                     nodes.append(node)
                 else:
                     nodes[-1].content += node.content

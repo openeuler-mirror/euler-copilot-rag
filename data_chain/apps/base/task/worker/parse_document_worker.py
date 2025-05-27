@@ -280,7 +280,7 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def merge_and_split_text(parse_result: ParseResult, doc_entity: DocumentEntity) -> None:
         '''合并和拆分内容'''
-        if doc_entity.parse_method == ParseMethod.QA or doc_entity.parse_relut_topology == DocParseRelutTopology.TREE:
+        if doc_entity.parse_method == ParseMethod.QA or parse_result.parse_topology_type == DocParseRelutTopology.TREE:
             return
         nodes = []
         for node in parse_result.nodes:
@@ -498,8 +498,6 @@ class ParseDocumentWorker(BaseWorker):
             await ParseDocumentWorker.report(task_id, '下载文档', current_stage, stage_cnt)
             file_path = os.path.join(tmp_path, str(task_entity.op_id)+'.'+doc_entity.extension)
             parse_result = await ParseDocumentWorker.parse_doc(doc_entity, file_path)
-            for node in parse_result.nodes:
-                logging.error(f"[ParseDocumentWorker] 节点ID: {node.id}, 内容: {node.content}, 特征: {node.text_feature}")
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '解析文档', current_stage, stage_cnt)
             await ParseDocumentWorker.handle_parse_result(parse_result, doc_entity, llm)

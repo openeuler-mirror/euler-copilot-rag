@@ -369,7 +369,6 @@ class ParseDocumentWorker(BaseWorker):
                                 sentences = TokenTool.get_top_k_keysentence(node.content, 1)
                                 if sentences:
                                     content += sentences[0] + '\n'
-                            index += 1
                         if content:
                             title = await TokenTool.get_title_by_llm(content, llm)
                             if "无法生成标题" in title:

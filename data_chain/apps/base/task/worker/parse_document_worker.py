@@ -380,6 +380,8 @@ class ParseDocumentWorker(BaseWorker):
                             index += 1
                         if content:
                             title = await TokenTool.get_title_by_llm(content, llm)
+                            if "无法生成标题" in title:
+                                title = ''
                         else:
                             title = ''
                         if not title:

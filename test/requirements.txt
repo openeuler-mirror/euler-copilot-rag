@@ -1,0 +1,6 @@
+jieba==0.42.1
+pandas==2.1.4
+pydantic==2.10.2
+langchain==0.1.16
+langchain-openai==0.1.7
+synonyms==3.23.5

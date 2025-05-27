@@ -29,7 +29,7 @@ class HTMLParser(BaseParser):
     async def get_image_blob(img_src: str) -> bytes:
         if img_src.startswith(('http://', 'https://')):
             try:
-                response = requests.get(img_src)
+                response = requests.get(img_src, timeout=3)
                 response.raise_for_status()
                 return response.content
             except requests.RequestException as e:
@@ -62,7 +62,9 @@ class HTMLParser(BaseParser):
                 )
                 subtree.append(node)
                 continue
-            if element.name == 'div':
+            if element.name == 'div' or element.name == 'head' or element.name == 'header' or \
+                    element.name == 'body' or element.name == 'section' or element.name == 'article' or \
+                    element.name == 'nav' or element.name == 'main':
                 # 处理div内部元素
                 inner_html = ''.join(str(child) for child in element.children)
                 child_subtree = await HTMLParser.build_subtree(inner_html, current_level+1)
@@ -92,7 +94,7 @@ class HTMLParser(BaseParser):
             elif element.name.startswith('h'):
                 try:
                     level = int(element.name[1:])
-                except (ValueError, IndexError):
+                except Exception:
                     level = current_level
                 title = element.get_text()
 
@@ -103,7 +105,10 @@ class HTMLParser(BaseParser):
                     sibling = element.next_sibling
                     while sibling:
                         if isinstance(sibling, Tag) and sibling.name.startswith('h'):
-                            next_level = int(sibling.name[1:])
+                            try:
+                                next_level = int(sibling.name[1:])
+                            except Exception:
+                                next_level = current_level
                             if next_level <= current_level:
                                 break
 
@@ -150,7 +155,10 @@ class HTMLParser(BaseParser):
                     sibling = element.next_sibling
                     while sibling:
                         if isinstance(sibling, Tag) and sibling.name.startswith('h'):
-                            next_level = int(sibling.name[1:])
+                            try:
+                                next_level = int(sibling.name[1:])
+                            except Exception:
+                                next_level = current_level
                             if next_level <= current_level:
                                 break
 
@@ -183,7 +191,7 @@ class HTMLParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p' or element.name == 'head' or element.name == 'title' or element.name == 'span' or element.name == 'pre':
+            elif element.name == 'p' or element.name == 'title' or element.name == 'span' or element.name == 'pre':
                 para_text = element.get_text().strip()
                 if para_text:
                     node = ParseNode(
@@ -223,12 +231,19 @@ class HTMLParser(BaseParser):
             elif element.name == 'a' or element.name == 'link':
                 link_text = element.get_text().strip()
                 link_href = element.get('href')
+                link = ""
+                if link_text:
+                    link = link_text
+                if link_href:
+                    if link:
+                        link += " "
+                    link += link_href
                 if link_text and link_href:
                     node = ParseNode(
                         id=uuid.uuid4(),
                         lv=current_level,
                         parse_topology_type=ChunkParseTopology.TREELEAF,
-                        content=link_href,
+                        content=link,
                         type=ChunkType.LINK,
                         link_nodes=[]
                     )

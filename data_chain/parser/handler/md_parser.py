@@ -77,7 +77,7 @@ class MdParser(BaseParser):
             if element.name.startswith('h'):
                 try:
                     level = int(element.name[1:])
-                except (ValueError, IndexError):
+                except Exception:
                     level = current_level
                 title = element.get_text()
 
@@ -88,7 +88,10 @@ class MdParser(BaseParser):
                     sibling = element.next_sibling
                     while sibling:
                         if isinstance(sibling, Tag) and sibling.name.startswith('h'):
-                            next_level = int(sibling.name[1:])
+                            try:
+                                next_level = int(sibling.name[1:])
+                            except Exception:
+                                next_level = current_level
                             if next_level <= current_level:
                                 break
 
@@ -135,7 +138,10 @@ class MdParser(BaseParser):
                     sibling = element.next_sibling
                     while sibling:
                         if isinstance(sibling, Tag) and sibling.name.startswith('h'):
-                            next_level = int(sibling.name[1:])
+                            try:
+                                next_level = int(sibling.name[1:])
+                            except Exception:
+                                next_level = current_level
                             if next_level <= current_level:
                                 break
 

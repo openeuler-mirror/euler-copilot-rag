@@ -361,7 +361,6 @@ class ParseDocumentWorker(BaseWorker):
             if node.title is not None:
                 if len(node.title) == 0:
                     if llm is not None:
-                        content = '父标题\n'
                         if parent_node and parent_node.title:
                             if len(parent_node.title) > 0:
                                 content += parent_node.title + '\n'
@@ -371,7 +370,6 @@ class ParseDocumentWorker(BaseWorker):
                                     content += sentences[0] + '\n'
                         index = 0
                         for node in node.link_nodes:
-                            content += '子标题'+str(index) + '\n'
                             if node.title:
                                 content += node.title + '\n'
                             else:
@@ -379,7 +377,10 @@ class ParseDocumentWorker(BaseWorker):
                                 if sentences:
                                     content += sentences[0] + '\n'
                             index += 1
-                        title = await TokenTool.get_title_by_llm(content, llm)
+                        if content:
+                            title = await TokenTool.get_title_by_llm(content, llm)
+                        else:
+                            title = ''
                         if not title:
                             sentences = TokenTool.get_top_k_keysentence(content, 1)
                             if sentences:

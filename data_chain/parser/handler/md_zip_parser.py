@@ -86,7 +86,33 @@ class MdZipParser(BaseParser):
                 )
                 subtree.append(node)
                 continue
-            if element.name.startswith('h'):
+            if element.name == 'ol':
+                inner_html = ''.join(str(child) for child in element.children)
+                child_subtree = await MdZipParser.build_subtree(inner_html, current_level+1)
+                parse_topology_type = ChunkParseTopology.TREENORMAL if len(
+                    child_subtree) else ChunkParseTopology.TREELEAF
+                if child_subtree:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        title="",
+                        lv=current_level,
+                        parse_topology_type=parse_topology_type,
+                        content="",
+                        type=ChunkType.TEXT,
+                        link_nodes=child_subtree
+                    )
+                else:
+                    text = element.get_text(strip=True)
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=text,
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
+                subtree.append(node)
+            elif element.name.startswith('h'):
                 try:
                     level = int(element.name[1:])
                 except Exception:
@@ -175,7 +201,7 @@ class MdZipParser(BaseParser):
 
                 else:
                     pass
-            elif (element.name == 'p' or element.name == 'pre') and element.find('code'):
+            elif element.name == 'code':
                 code_text = element.find('code').get_text()
                 node = ParseNode(
                     id=uuid.uuid4(),
@@ -187,7 +213,7 @@ class MdZipParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p':
+            elif element.name == 'p' or element.name == 'li':
                 para_text = element.get_text().strip()
                 if para_text:
                     node = ParseNode(

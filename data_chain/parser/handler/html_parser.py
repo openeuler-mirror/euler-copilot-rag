@@ -64,7 +64,7 @@ class HTMLParser(BaseParser):
                 continue
             if element.name == 'div' or element.name == 'head' or element.name == 'header' or \
                     element.name == 'body' or element.name == 'section' or element.name == 'article' or \
-                    element.name == 'nav' or element.name == 'main':
+                    element.name == 'nav' or element.name == 'main' or element.name == 'ol':
                 # 处理div内部元素
                 inner_html = ''.join(str(child) for child in element.children)
                 child_subtree = await HTMLParser.build_subtree(inner_html, current_level+1)
@@ -191,7 +191,8 @@ class HTMLParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p' or element.name == 'title' or element.name == 'span' or element.name == 'pre':
+            elif element.name == 'p' or element.name == 'title' or element.name == 'span' or element.name == 'pre'\
+                    or element.name == 'li':
                 para_text = element.get_text().strip()
                 if para_text:
                     node = ParseNode(

@@ -98,88 +98,35 @@ class HTMLParser(BaseParser):
                     level = current_level
                 title = element.get_text()
 
-                if level > current_level:
-                    # 处理子标题
-                    # 提取该标题下的所有内容，直到下一个同级或更高级别的标题
-                    content_elements = []
-                    sibling = element.next_sibling
-                    while sibling:
-                        if isinstance(sibling, Tag) and sibling.name.startswith('h'):
-                            try:
-                                next_level = int(sibling.name[1:])
-                            except Exception:
-                                next_level = current_level
-                            if next_level <= current_level:
-                                break
-
-                        if isinstance(sibling, Tag):
-                            content_elements.append(sibling)
-                            # 从current_level_elements中移除该元素
-                            if sibling in current_level_elements:
-                                current_level_elements.remove(sibling)
-
-                        sibling = sibling.next_sibling
-
-                    # 如果有内容，处理这些内容
-                    if content_elements:
-                        content_html = ''.join(str(el) for el in content_elements)
-                        child_subtree = await HTMLParser.build_subtree(content_html, level)
-                        parse_topology_type = ChunkParseTopology.TREENORMAL
+                content_elements = []
+                while current_level_elements:
+                    sibling = current_level_elements[0]
+                    if sibling.name and sibling.name.startswith('h'):
+                        next_level = int(sibling.name[1:])
                     else:
-                        child_subtree = []
-                        parse_topology_type = ChunkParseTopology.TREELEAF
-
-                    node = ParseNode(
-                        id=uuid.uuid4(),
-                        title=title,
-                        lv=level,
-                        parse_topology_type=parse_topology_type,
-                        content="",
-                        type=ChunkType.TEXT,
-                        link_nodes=child_subtree
-                    )
-                    subtree.append(node)
-
-                elif level == current_level:
-                    # 处理同层标题
-                    node = ParseNode(
-                        id=uuid.uuid4(),
-                        title=title,
-                        lv=level,
-                        parse_topology_type=ChunkParseTopology.TREELEAF,
-                        content="",
-                        type=ChunkType.TEXT,
-                        link_nodes=[]
-                    )
-                    content_elements = []
-                    sibling = element.next_sibling
-                    while sibling:
-                        if isinstance(sibling, Tag) and sibling.name.startswith('h'):
-                            try:
-                                next_level = int(sibling.name[1:])
-                            except Exception:
-                                next_level = current_level
-                            if next_level <= current_level:
-                                break
-
-                        if isinstance(sibling, Tag):
-                            content_elements.append(sibling)
-                            # 从current_level_elements中移除该元素
-                            if sibling in current_level_elements:
-                                current_level_elements.remove(sibling)
-
-                        sibling = sibling.next_sibling
-
-                    if content_elements:
-                        content_html = ''.join(str(el) for el in content_elements)
-                        child_subtree = await HTMLParser.build_subtree(content_html, level + 1)
-                        node.parse_topology_type = ChunkParseTopology.TREENORMAL
-                        node.link_nodes = child_subtree
-
-                    subtree.append(node)
-
+                        next_level = level + 1
+                    if next_level <= level:
+                        break
+                    content_elements.append(current_level_elements.pop(0))
+                # 如果有内容，处理这些内容
+                if content_elements:
+                    content_html = ''.join(str(el) for el in content_elements)
+                    child_subtree = await HTMLParser.build_subtree(content_html, level)
+                    parse_topology_type = ChunkParseTopology.TREENORMAL
                 else:
-                    pass
+                    child_subtree = []
+                    parse_topology_type = ChunkParseTopology.TREELEAF
+
+                node = ParseNode(
+                    id=uuid.uuid4(),
+                    title=title,
+                    lv=level,
+                    parse_topology_type=parse_topology_type,
+                    content="",
+                    type=ChunkType.TEXT,
+                    link_nodes=child_subtree
+                )
+                subtree.append(node)
             elif element.name == 'code':
                 code_text = element.get_text().strip()
                 node = ParseNode(

@@ -361,6 +361,7 @@ class ParseDocumentWorker(BaseWorker):
             if node.title is not None:
                 if len(node.title) == 0:
                     if llm is not None:
+                        content = ''
                         if parent_node and parent_node.title:
                             if len(parent_node.title) > 0:
                                 content += parent_node.title + '\n'

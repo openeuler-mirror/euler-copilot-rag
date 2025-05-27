@@ -41,8 +41,6 @@ class HTMLParser(BaseParser):
 
     @staticmethod
     async def build_subtree(html: str, current_level: int = 0) -> list[ParseNode]:
-        print('---------------------------------------------------------------------')
-        print(html)
         soup = BeautifulSoup(html, 'html.parser')
 
         # 获取body元素作为起点（如果是完整HTML文档）
@@ -92,7 +90,10 @@ class HTMLParser(BaseParser):
                     )
                 subtree.append(node)
             elif element.name.startswith('h'):
-                level = int(element.name[1:])
+                try:
+                    level = int(element.name[1:])
+                except (ValueError, IndexError):
+                    level = current_level
                 title = element.get_text()
 
                 if level > current_level:

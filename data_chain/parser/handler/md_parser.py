@@ -75,7 +75,10 @@ class MdParser(BaseParser):
                 subtree.append(node)
                 continue
             if element.name.startswith('h'):
-                level = int(element.name[1:])
+                try:
+                    level = int(element.name[1:])
+                except (ValueError, IndexError):
+                    level = current_level
                 title = element.get_text()
 
                 if level > current_level:

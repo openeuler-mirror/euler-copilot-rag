@@ -245,6 +245,7 @@ class GenerateDataSetWorker(BaseWorker):
                 break
         if len(qa_entities) > 0:
             dataset_score = dataset_score / len(qa_entities)
+            dataset_score = max(0, min(100, dataset_score))
         await DatasetManager.update_dataset_by_dataset_id(
             dataset_entity.id, {'score': dataset_score})
         return qa_entities

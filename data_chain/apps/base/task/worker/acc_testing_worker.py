@@ -48,6 +48,7 @@ class TestingWorker(BaseWorker):
             err = f"[TestingWorker] 测试不存在，测试ID: {testing_id}"
             logging.exception(err)
             return None
+        await TestCaseManager.update_test_case_by_testing_id(testing_id, {"status": TestCaseStatus.DELETED.value})
         testing_entity = await TestingManager.update_testing_by_testing_id(testing_id, {"status": DataSetStatus.PENDING.value})
         task_entity = TaskEntity(
             team_id=testing_entity.team_id,
@@ -295,11 +296,22 @@ class TestingWorker(BaseWorker):
             ave_chunk_tokens = chunk_tokens / chunk_cnt
 
         def clean_value(value):
+            """清洗单元格值中的非法字符"""
             import re
-            illegal_chars = re.compile(r'[\000-\010]|[\013-\014]|[\016-\037]')
-            if isinstance(value, str):
-                return illegal_chars.sub('', value)
-            return value
+            if not isinstance(value, str):
+                return value
+
+            # 移除Excel不允许的字符（可根据实际报错调整）
+            invalid_chars = re.compile(r'[\000-\010\013\014\016-\037]')
+            cleaned_value = invalid_chars.sub('', value)
+
+            # 额外处理常见问题字符（如替换冒号、斜杠等）
+            problematic_chars = {'\\': '', '/': '', '*': '', '?': '', '"': "'", '<': '', '>': '', ':': ''}
+            for char, replacement in problematic_chars.items():
+                cleaned_value = cleaned_value.replace(char, replacement)
+
+            return cleaned_value
+
         test_config = {
             'kb_name(知识库名称)': [clean_value(kb_entity.name)],
             'dataset_name(数据集名称)': [clean_value(dataset_entity.name)],
@@ -353,7 +365,7 @@ class TestingWorker(BaseWorker):
             test_case_dict['leve(编辑距离得分)'].append(test_case_entity.leve)
             test_case_dict['jac(杰卡德相似度)'].append(test_case_entity.jac)
         test_case_df = pd.DataFrame(test_case_dict)
-        with pd.ExcelWriter(xlsx_path, engine='openpyxl') as writer:
+        with pd.ExcelWriter(xlsx_path, engine='xlsxwriter') as writer:
             model_config_df.to_excel(writer, sheet_name='config(配置)', index=False)
             ave_result_df.to_excel(writer, sheet_name='ave_result(平均结果)', index=False)
             test_case_df.to_excel(writer, sheet_name='test_case(测试结果)', index=False)

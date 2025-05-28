@@ -1,9 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
-from sqlalchemy import select, delete, update, func, between, asc, desc, and_
+from sqlalchemy import select, delete, update, func, between, asc, desc, and_, or_
 from datetime import datetime, timezone
 from typing import List, Dict
 import uuid
-from data_chain.entities.enum import DataSetStatus
+from data_chain.entities.enum import TaskType, TaskStatus, DataSetStatus
 from data_chain.entities.request_data import (
     ListDatasetRequest,
     ListDataInDatasetRequest
@@ -77,8 +77,8 @@ class DatasetManager:
         """列出数据集"""
         try:
             async with await DataBase.get_session() as session:
-                subq = (select(TaskEntity.op_id, TaskEntity.status, func.row_number().over(
-                    partition_by=TaskEntity.op_id, order_by=desc(TaskEntity.created_time)).label('rn')).subquery())
+                subq = (select(TaskEntity.op_id, TaskEntity.status, func.row_number().over(partition_by=TaskEntity.op_id, order_by=desc(
+                    TaskEntity.created_time)).label('rn')).where(TaskEntity.type != TaskType.DATASET_EXPORT.value).subquery())
                 stmt = (
                     select(DataSetEntity)
                     .outerjoin(subq, and_(DataSetEntity.id == subq.c.op_id, subq.c.rn == 1))
@@ -97,7 +97,9 @@ class DatasetManager:
                 if req.is_chunk_related is not None:
                     stmt = stmt.where(DataSetEntity.is_chunk_related == req.is_chunk_related)
                 if req.generate_status is not None:
-                    stmt = stmt.where(subq.c.status.in_([status.value for status in req.generate_status]))
+                    status_list = [status.value for status in req.generate_status]
+                    status_list += [DataSetStatus.DELETED.value]
+                    stmt = stmt.where(subq.c.status.in_(status_list))
                 stmt = stmt.order_by(DataSetEntity.created_at.desc(), DataSetEntity.id.desc())
                 if req.score_order:
                     if req.score_order == "asc":

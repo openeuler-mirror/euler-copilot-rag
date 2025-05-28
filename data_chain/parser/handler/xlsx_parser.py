@@ -10,7 +10,7 @@ from data_chain.logger.logger import logger as logging
 
 
 class XlsxParser(BaseParser):
-    name = 'xlsx'
+    name = 'xlsx|xls|csv'
     # 打开Excel文件
 
     @staticmethod
@@ -33,7 +33,10 @@ class XlsxParser(BaseParser):
     @staticmethod
     async def parser(file_path: str) -> ParseResult:
         try:
-            data = pd.read_excel(file_path, sheet_name=None, header=None)
+            if file_path.endswith(('.xlsx', '.xls')):
+                data = pd.read_excel(file_path, sheet_name=None, header=None)
+            elif file_path.endswith('.csv'):
+                data = pd.read_csv(file_path, header=None)
         except Exception as e:
             err = "读取xlsx文件失败"
             logging.exception("[XlsxParser] %s", err)

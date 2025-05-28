@@ -82,7 +82,7 @@ class DataSetService:
             total, dataset_entities = await DatasetManager.list_dataset(req)
             data_ids = [dataset_entity.id for dataset_entity in dataset_entities]
             llm = await Convertor.convert_llm_config_to_llm()
-            task_entities = await TaskManager.list_current_tasks_by_op_ids(data_ids)
+            task_entities = await TaskManager.list_current_tasks_by_op_ids(data_ids, [TaskType.DATASET_GENERATE.value, TaskType.DATASET_IMPORT.value])
             task_dict = {task_entity.op_id: task_entity for task_entity in task_entities}
             task_ids = [task_entity.id for task_entity in task_entities]
             task_report_entities = await TaskReportManager.list_current_task_report_by_task_ids(task_ids)
@@ -97,6 +97,8 @@ class DataSetService:
                 if task_entity:
                     task_report = task_report_dict.get(task_entity.id, None)
                     task = await Convertor.convert_task_entity_to_task(task_entity, task_report)
+                    if task.task_type == TaskType.DATASET_IMPORT.value:
+                        task.task_status = TaskStatus.SUCCESS.value
                     dataset.generate_task = task
                 datasets.append(dataset)
             return ListDatasetMsg(total=total, datasets=datasets)

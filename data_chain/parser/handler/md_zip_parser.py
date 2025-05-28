@@ -86,87 +86,69 @@ class MdZipParser(BaseParser):
                 )
                 subtree.append(node)
                 continue
-            if element.name.startswith('h'):
-                level = int(element.name[1:])
-                title = element.get_text()
-
-                if level > current_level:
-                    # 处理子标题
-                    # 提取该标题下的所有内容，直到下一个同级或更高级别的标题
-                    content_elements = []
-                    sibling = element.next_sibling
-                    while sibling:
-                        if isinstance(sibling, Tag) and sibling.name.startswith('h'):
-                            next_level = int(sibling.name[1:])
-                            if next_level <= current_level:
-                                break
-
-                        if isinstance(sibling, Tag):
-                            content_elements.append(sibling)
-                            # 从current_level_elements中移除该元素
-                            if sibling in current_level_elements:
-                                current_level_elements.remove(sibling)
-
-                        sibling = sibling.next_sibling
-
-                    # 如果有内容，处理这些内容
-                    if content_elements:
-                        content_html = ''.join(str(el) for el in content_elements)
-                        child_subtree = await MdZipParser.build_subtree(content_html, level)
-                        parse_topology_type = ChunkParseTopology.TREENORMAL
-                    else:
-                        child_subtree = []
-                        parse_topology_type = ChunkParseTopology.TREELEAF
-
+            if element.name == 'ol':
+                inner_html = ''.join(str(child) for child in element.children)
+                child_subtree = await MdZipParser.build_subtree(inner_html, current_level+1)
+                parse_topology_type = ChunkParseTopology.TREENORMAL if len(
+                    child_subtree) else ChunkParseTopology.TREELEAF
+                if child_subtree:
                     node = ParseNode(
                         id=uuid.uuid4(),
-                        title=title,
-                        lv=level,
+                        title="",
+                        lv=current_level,
                         parse_topology_type=parse_topology_type,
                         content="",
                         type=ChunkType.TEXT,
                         link_nodes=child_subtree
                     )
-                    subtree.append(node)
-
-                elif level == current_level:
-                    # 处理同层标题
+                else:
+                    text = element.get_text(strip=True)
                     node = ParseNode(
                         id=uuid.uuid4(),
-                        title=title,
-                        lv=level,
+                        lv=current_level,
                         parse_topology_type=ChunkParseTopology.TREELEAF,
-                        content="",
+                        content=text,
                         type=ChunkType.TEXT,
                         link_nodes=[]
                     )
-                    content_elements = []
-                    sibling = element.next_sibling
-                    while sibling:
-                        if isinstance(sibling, Tag) and sibling.name.startswith('h'):
-                            next_level = int(sibling.name[1:])
-                            if next_level <= current_level:
-                                break
+                subtree.append(node)
+            elif element.name.startswith('h'):
+                try:
+                    level = int(element.name[1:])
+                except Exception:
+                    level = current_level
+                title = element.get_text()
 
-                        if isinstance(sibling, Tag):
-                            content_elements.append(sibling)
-                            # 从current_level_elements中移除该元素
-                            if sibling in current_level_elements:
-                                current_level_elements.remove(sibling)
-
-                        sibling = sibling.next_sibling
-
-                    if content_elements:
-                        content_html = ''.join(str(el) for el in content_elements)
-                        child_subtree = await MdZipParser.build_subtree(content_html, level + 1)
-                        node.parse_topology_type = ChunkParseTopology.TREENORMAL
-                        node.link_nodes = child_subtree
-
-                    subtree.append(node)
-
+                content_elements = []
+                while current_level_elements:
+                    sibling = current_level_elements[0]
+                    if sibling.name and sibling.name.startswith('h'):
+                        next_level = int(sibling.name[1:])
+                    else:
+                        next_level = level + 1
+                    if next_level <= level:
+                        break
+                    content_elements.append(current_level_elements.pop(0))
+                # 如果有内容，处理这些内容
+                if content_elements:
+                    content_html = ''.join(str(el) for el in content_elements)
+                    child_subtree = await MdZipParser.build_subtree(content_html, level)
+                    parse_topology_type = ChunkParseTopology.TREENORMAL
                 else:
-                    pass
-            elif (element.name == 'p' or element.name == 'pre') and element.find('code'):
+                    child_subtree = []
+                    parse_topology_type = ChunkParseTopology.TREELEAF
+
+                node = ParseNode(
+                    id=uuid.uuid4(),
+                    title=title,
+                    lv=level,
+                    parse_topology_type=parse_topology_type,
+                    content="",
+                    type=ChunkType.TEXT,
+                    link_nodes=child_subtree
+                )
+                subtree.append(node)
+            elif element.name == 'code':
                 code_text = element.find('code').get_text()
                 node = ParseNode(
                     id=uuid.uuid4(),
@@ -178,7 +160,7 @@ class MdZipParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p':
+            elif element.name == 'p' or element.name == 'li':
                 para_text = element.get_text().strip()
                 if para_text:
                     node = ParseNode(

@@ -293,14 +293,21 @@ class TestingWorker(BaseWorker):
         ave_chunk_tokens = 0
         if chunk_cnt != 0:
             ave_chunk_tokens = chunk_tokens / chunk_cnt
+
+        def clean_value(value):
+            import re
+            illegal_chars = re.compile(r'[\000-\010]|[\013-\014]|[\016-\037]')
+            if isinstance(value, str):
+                return illegal_chars.sub('', value)
+            return value
         test_config = {
-            'kb_name(知识库名称)': [kb_entity.name],
-            'dataset_name(数据集名称)': [dataset_entity.name],
+            'kb_name(知识库名称)': [clean_value(kb_entity.name)],
+            'dataset_name(数据集名称)': [clean_value(dataset_entity.name)],
             'doc_cnt(文档数量)': [doc_cnt],
             'chunk_cnt(分片数量)': [chunk_cnt],
             'chunk_tokens(分片平均token数)': [ave_chunk_tokens],
-            'llm(大模型)': [config['MODEL_NAME']],
-            'embedding_model(向量检索)': [config['EMBEDDING_MODEL_NAME']],
+            'llm(大模型)': [clean_value(config['MODEL_NAME'])],
+            'embedding_model(向量检索)': [clean_value(config['EMBEDDING_MODEL_NAME'])],
         }
         model_config_df = pd.DataFrame(test_config)
         ave_result = {
@@ -331,10 +338,10 @@ class TestingWorker(BaseWorker):
             'jac(杰卡德相似度)': []
         }
         for test_case_entity in testcase_entities:
-            test_case_dict['question'].append(test_case_entity.question)
-            test_case_dict['answer'].append(test_case_entity.answer)
-            test_case_dict['chunk'].append(test_case_entity.chunk)
-            test_case_dict['doc_name'].append(test_case_entity.doc_name)
+            test_case_dict['question'].append(clean_value(test_case_entity.question))
+            test_case_dict['answer'].append(clean_value(test_case_entity.answer))
+            test_case_dict['chunk'].append(clean_value(test_case_entity.chunk))
+            test_case_dict['doc_name'].append(clean_value(test_case_entity.doc_name))
             test_case_dict['llm_answer'].append(test_case_entity.llm_answer)
             test_case_dict['related_chunk'].append(test_case_entity.related_chunk)
             test_case_dict['score(综合得分)'].append(test_case_entity.score)

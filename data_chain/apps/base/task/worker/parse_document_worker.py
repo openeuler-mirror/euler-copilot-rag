@@ -197,7 +197,7 @@ class ParseDocumentWorker(BaseWorker):
                     )
                     parse_result.nodes.append(node)
         else:
-            if doc_entity.extension == 'xlsx' or doc_entity.extension == 'csv':
+            if doc_entity.extension == 'xlsx' or doc_entity.extension == 'xls' or doc_entity.extension == 'csv':
                 for node in parse_result.nodes:
                     node.content = '|'.join(node.content)
                     node.text_feature = node.content
@@ -280,17 +280,13 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def merge_and_split_text(parse_result: ParseResult, doc_entity: DocumentEntity) -> None:
         '''合并和拆分内容'''
-        if doc_entity.parse_method == ParseMethod.QA or doc_entity.parse_relut_topology == DocParseRelutTopology.TREE:
+        if doc_entity.parse_method == ParseMethod.QA or parse_result.parse_topology_type == DocParseRelutTopology.TREE:
             return
         nodes = []
         for node in parse_result.nodes:
             if node.type == ChunkType.TEXT:
                 tokens = TokenTool.get_tokens(node.content)
-                if len(nodes) == 0 or (
-                    len(nodes)
-                    and (
-                        nodes[-1].type != ChunkType.TEXT or TokenTool.get_tokens(nodes[-1].content) + tokens > doc_entity.
-                        chunk_size)):
+                if len(nodes) == 0 or (len(nodes) and (nodes[-1].type != ChunkType.TEXT or TokenTool.get_tokens(nodes[-1].content) + tokens > doc_entity.chunk_size)):
                     nodes.append(node)
                 else:
                     nodes[-1].content += node.content
@@ -365,25 +361,20 @@ class ParseDocumentWorker(BaseWorker):
             if node.title is not None:
                 if len(node.title) == 0:
                     if llm is not None:
-                        content = '父标题\n'
-                        if parent_node and parent_node.title:
-                            if len(parent_node.title) > 0:
-                                content += parent_node.title + '\n'
-                            else:
-                                sentences = TokenTool.get_top_k_keysentence(parent_node.content, 1)
-                                if sentences:
-                                    content += sentences[0] + '\n'
-                        index = 0
+                        content = ''
                         for node in node.link_nodes:
-                            content += '子标题'+str(index) + '\n'
                             if node.title:
                                 content += node.title + '\n'
                             else:
                                 sentences = TokenTool.get_top_k_keysentence(node.content, 1)
                                 if sentences:
                                     content += sentences[0] + '\n'
-                            index += 1
-                        title = await TokenTool.get_title_by_llm(content, llm)
+                        if content:
+                            title = await TokenTool.get_title_by_llm(content, llm)
+                            if "无法生成标题" in title:
+                                title = ''
+                        else:
+                            title = ''
                         if not title:
                             sentences = TokenTool.get_top_k_keysentence(content, 1)
                             if sentences:

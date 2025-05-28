@@ -200,7 +200,6 @@ class MdParser(BaseParser):
     @staticmethod
     async def markdown_to_tree(markdown_text: str) -> ParseNode:
         html = markdown.markdown(markdown_text, extensions=['tables'])
-        print(html)
         root = ParseNode(
             id=uuid.uuid4(),
             title="",

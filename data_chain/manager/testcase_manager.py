@@ -4,6 +4,7 @@ from sqlalchemy import select, delete, update, desc, asc, func, exists, or_, and
 from sqlalchemy.orm import aliased
 import uuid
 from typing import Dict, List, Optional, Tuple
+from data_chain.entities.enum import TestingStatus, TestCaseStatus
 from data_chain.entities.request_data import ListTestCaseRequest
 from data_chain.logger.logger import logger as logging
 from data_chain.stores.database.database import DataBase, TestingEntity, TestCaseEntity
@@ -46,7 +47,8 @@ class TestCaseManager():
             async with await DataBase.get_session() as session:
                 stmt = (
                     select(TestCaseEntity)
-                    .where(TestCaseEntity.testing_id == req.testing_id)
+                    .where(TestCaseEntity.testing_id == req.testing_id,
+                           TestCaseEntity.status != TestCaseStatus.DELETED.value)
                 )
                 count_stmt = select(func.count()).select_from(stmt.subquery())
                 total = (await session.execute(count_stmt)).scalar()

@@ -80,20 +80,34 @@ class TaskManager():
                 # 创建一个别名用于子查询
                 task_alias = aliased(TaskEntity)
                 if task_types is not None:
-                    task_alias = task_alias.where(task_alias.type.in_(task_types))
-                subquery = (
-                    select(
-                        task_alias.id,  # 只选择需要的列，避免返回整个对象
-                        func.row_number().over(
-                            partition_by=task_alias.op_id,
-                            order_by=desc(task_alias.created_time)
-                        ).label('rn')
+                    subquery = (
+                        select(
+                            task_alias.id,  # 只选择需要的列，避免返回整个对象
+                            func.row_number().over(
+                                partition_by=task_alias.op_id,
+                                order_by=desc(task_alias.created_time)
+                            ).label('rn')
+                        )
+                        .where(
+                            task_alias.op_id.in_(op_ids),
+                            task_alias.type.in_(task_types),
+                        )
+                        .subquery()
                     )
-                    .where(
-                        task_alias.op_id.in_(op_ids)
+                else:
+                    subquery = (
+                        select(
+                            task_alias.id,  # 只选择ID列，用于后续连接
+                            func.row_number().over(
+                                partition_by=task_alias.op_id,
+                                order_by=desc(task_alias.created_time)
+                            ).label('rn')
+                        )
+                        .where(
+                            task_alias.op_id.in_(op_ids),
+                        )
+                        .subquery()
                     )
-                    .subquery()
-                )
 
                 # 主查询连接子查询，获取完整的TaskEntity对象
                 stmt = (

@@ -40,7 +40,7 @@ class TaskManager():
             raise e
 
     @staticmethod
-    async def get_current_task_by_op_id(op_id: uuid.UUID) -> Optional[TaskEntity]:
+    async def get_current_task_by_op_id(op_id: uuid.UUID, task_type: str = None) -> Optional[TaskEntity]:
         """根据op_id获取当前最近的任务"""
         try:
             async with await DataBase.get_session() as session:
@@ -48,6 +48,8 @@ class TaskManager():
                     and_(TaskEntity.op_id == op_id, TaskEntity.status != TaskStatus.DELETED.value)).order_by(
                     desc(TaskEntity.created_time)
                 )
+                if task_type is not None:
+                    stmt = stmt.where(TaskEntity.type == task_type)
                 result = await session.execute(stmt)
                 task_entity = result.scalars().first()
                 return task_entity
@@ -71,14 +73,14 @@ class TaskManager():
             raise e
 
     @staticmethod
-    async def list_current_tasks_by_op_ids(op_ids: list[uuid.UUID]) -> List[TaskEntity]:
+    async def list_current_tasks_by_op_ids(op_ids: list[uuid.UUID], task_types: list[str] = None) -> List[TaskEntity]:
         """根据op_id列表查询当前任务"""
         try:
             async with await DataBase.get_session() as session:
                 # 创建一个别名用于子查询
                 task_alias = aliased(TaskEntity)
-
-                # 构建子查询，为每个op_id分配一个行号，并过滤掉已删除的任务
+                if task_types is not None:
+                    task_alias = task_alias.where(task_alias.type.in_(task_types))
                 subquery = (
                     select(
                         task_alias.id,  # 只选择需要的列，避免返回整个对象
@@ -88,8 +90,7 @@ class TaskManager():
                         ).label('rn')
                     )
                     .where(
-                        task_alias.op_id.in_(op_ids),
-                        task_alias.status != TaskStatus.DELETED.value
+                        task_alias.op_id.in_(op_ids)
                     )
                     .subquery()
                 )
@@ -103,7 +104,6 @@ class TaskManager():
                     )
                     .where(subquery.c.rn == 1)  # 只取每个op_id的第一个结果
                 )
-
                 result = await session.execute(stmt)
                 task_entities = result.scalars().all()  # 直接获取TaskEntity对象列表
                 return task_entities

@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 import yaml
 from pydantic import BaseModel, Field
@@ -47,7 +48,15 @@ class EnhancedByLLMSearcher(BaseSearcher):
             )
             while len(chunk_entities) < top_k and rd < max_retry:
                 rd += 1
-                sub_chunk_entities = await ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids)
+                chunk_entities_get_by_vector = []
+                for _ in range(3):
+                    try:
+                        sub_chunk_entities = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=3)
+                        break
+                    except Exception as e:
+                        err = f"[EnhancedByLLMSearcher] 向量检索失败，error: {e}"
+                        logging.error(err)
+                        continue
                 for chunk_entity in sub_chunk_entities:
                     sys_call = prompt_template.format(
                         chunk=chunk_entity.text,

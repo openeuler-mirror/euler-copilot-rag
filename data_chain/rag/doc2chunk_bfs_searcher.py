@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from pydantic import BaseModel, Field
 import random
@@ -33,7 +34,15 @@ class Doc2ChunkBfsSearcher(BaseSearcher):
         try:
             root_chunk_entities_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(kb_id, query, top_k//2, doc_ids, banned_ids, ChunkParseTopology.TREEROOT.value)
             banned_ids += [chunk_entity.id for chunk_entity in root_chunk_entities_keyword]
-            root_chunk_entities_vector = await ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(root_chunk_entities_keyword), doc_ids, banned_ids, ChunkParseTopology.TREEROOT.value)
+            root_chunk_entities_vector = []
+            for _ in range(3):
+                try:
+                    root_chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(root_chunk_entities_keyword), doc_ids, banned_ids, ChunkParseTopology.TREEROOT.value), timeout=3)
+                    break
+                except Exception as e:
+                    err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"
+                    logging.error(err)
+                    continue
             banned_ids += [chunk_entity.id for chunk_entity in root_chunk_entities_vector]
             chunk_entities = root_chunk_entities_keyword + root_chunk_entities_vector
             pre_ids = [chunk_entity.id for chunk_entity in chunk_entities]
@@ -42,13 +51,21 @@ class Doc2ChunkBfsSearcher(BaseSearcher):
             while rd < max_retry:
                 root_chunk_entities_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(kb_id, query, top_k//2, doc_ids, banned_ids, None, pre_ids)
                 banned_ids += [chunk_entity.id for chunk_entity in root_chunk_entities_keyword]
-                root_chunk_entities_vector = await ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(root_chunk_entities_keyword), doc_ids, banned_ids, None, pre_ids)
+                root_chunk_entities_vector = []
+                for _ in range(3):
+                    try:
+                        root_chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(root_chunk_entities_keyword), doc_ids, banned_ids, None, pre_ids), timeout=3)
+                        break
+                    except Exception as e:
+                        err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"
+                        logging.error(err)
+                        continue
                 banned_ids += [chunk_entity.id for chunk_entity in root_chunk_entities_vector]
                 sub_chunk_entities = root_chunk_entities_keyword + root_chunk_entities_vector
                 if len(sub_chunk_entities) == 0:
                     break
                 chunk_entities += sub_chunk_entities
-                pre_ids += [chunk_entity.id for chunk_entity in sub_chunk_entities]
+                pre_ids = [chunk_entity.id for chunk_entity in sub_chunk_entities]
                 rd += 1
         except Exception as e:
             err = f"[KeywordVectorSearcher] 关键词向量检索失败，error: {e}"

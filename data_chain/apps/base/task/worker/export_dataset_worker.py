@@ -105,6 +105,22 @@ class ExportDataSetWorker(BaseWorker):
             task_id: uuid.UUID, dataset_entity: DataSetEntity, qa_entities: list[QAEntity],
             source_path: str, target_path: str) -> str:
         '''从文件中加载QA实体'''
+        def clean_value(value):
+            """清洗单元格值中的非法字符"""
+            import re
+            if not isinstance(value, str):
+                return value
+
+            # 移除Excel不允许的字符（可根据实际报错调整）
+            invalid_chars = re.compile(r'[\000-\010\013\014\016-\037]')
+            cleaned_value = invalid_chars.sub('', value)
+
+            # 额外处理常见问题字符（如替换冒号、斜杠等）
+            problematic_chars = {'\\': '', '/': '', '*': '', '?': '', '"': "'", '<': '', '>': '', ':': ''}
+            for char, replacement in problematic_chars.items():
+                cleaned_value = cleaned_value.replace(char, replacement)
+
+            return cleaned_value
         json_path = os.path.join(source_path, f"{dataset_entity.id}.json")
         yaml_path = os.path.join(source_path, f"{dataset_entity.id}.yaml")
         xlsx_path = os.path.join(source_path, f"{dataset_entity.id}.xlsx")
@@ -114,11 +130,11 @@ class ExportDataSetWorker(BaseWorker):
             'chunk': []
         }
         for qa_entity in qa_entities:
-            qa_dict['question'].append(qa_entity.question)
-            qa_dict['answer'].append(qa_entity.answer)
-            qa_dict['chunk'].append(qa_entity.chunk)
+            qa_dict['question'].append(clean_value(qa_entity.question))
+            qa_dict['answer'].append(clean_value(qa_entity.answer))
+            qa_dict['chunk'].append(clean_value(qa_entity.chunk))
         qa_df = pd.DataFrame(qa_dict)
-        with pd.ExcelWriter(xlsx_path, engine='openpyxl') as writer:
+        with pd.ExcelWriter(xlsx_path, engine='xlsxwriter') as writer:
             qa_df.to_excel(writer, sheet_name='qac', index=False)
         qa_list = []
         for qa_entity in qa_entities:

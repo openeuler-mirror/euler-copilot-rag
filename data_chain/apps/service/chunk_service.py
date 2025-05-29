@@ -101,10 +101,11 @@ class ChunkService:
             chunk_entities = await BaseSearcher.rerank(chunk_entities, req.query)
         chunk_entities = chunk_entities[:req.top_k]
         chunk_ids = [chunk_entity.id for chunk_entity in chunk_entities]
+        logging.error("[ChunkService] 搜索分片，查询结果数量: %s", len(chunk_entities))
         if req.is_related_surrounding:
             # 关联上下文
             tokens_limit = req.tokens_limit
-            tokens_limit_every_chunk = tokens_limit // len(chunk_entities)
+            tokens_limit_every_chunk = tokens_limit // len(chunk_entities) if len(chunk_entities) > 0 else tokens_limit
             leave_tokens = 0
             related_chunk_entities = []
             for chunk_entity in chunk_entities:
@@ -125,6 +126,7 @@ class ChunkService:
                 chunk_ids += [chunk_entity.id for chunk_entity in sub_related_chunk_entities]
                 related_chunk_entities += sub_related_chunk_entities
             chunk_entities += related_chunk_entities
+        logging.error(len(chunk_entities))
         search_chunk_msg = SearchChunkMsg(docChunks=[])
         if req.is_classify_by_doc:
             doc_chunks = await BaseSearcher.classify_by_doc_id(chunk_entities)

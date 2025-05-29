@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from pydantic import BaseModel, Field
 import random
@@ -31,7 +32,15 @@ class KeywordVectorSearcher(BaseSearcher):
         try:
             chunk_entities_get_by_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(kb_id, query, top_k//2, doc_ids, banned_ids)
             chunk_ids = [chunk_entity.id for chunk_entity in chunk_entities_get_by_keyword]
-            chunk_entities_get_by_vector = await ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword), doc_ids, banned_ids+chunk_ids)
+            chunk_entities_get_by_vector = []
+            for _ in range(3):
+                try:
+                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword), doc_ids, banned_ids+chunk_ids), timeout=3)
+                    break
+                except Exception as e:
+                    err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"
+                    logging.error(err)
+                    continue
             chunk_entities = chunk_entities_get_by_keyword + chunk_entities_get_by_vector
         except Exception as e:
             err = f"[KeywordVectorSearcher] 关键词向量检索失败，error: {e}"

@@ -18,6 +18,7 @@ class ParseNode(BaseModel):
     content: Any = Field(..., description="节点内容")
     type: ChunkType = Field(..., description="节点类型")
     link_nodes: list = Field(..., description="链接节点")
+    is_need_newline: bool = Field(default=False, description="是否需要换行")
 
 
 class ParseResult(BaseModel):

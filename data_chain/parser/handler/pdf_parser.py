@@ -151,7 +151,44 @@ class PdfParser(BaseParser):
                 xref = image_info[0]
                 # 提取基础图片（如果存在）
                 base_image = pdf_doc.extract_image(xref)
-                position = page.get_image_rects(xref)[0]
+
+                # 检查提取的图片是否有效
+                if not base_image or "image" not in base_image:
+                    logging.warning("[PdfParser] 标准方法提取失败，尝试替代方法 xref=%s", xref)
+                    continue
+
+                # 检查位置信息
+                rects = page.get_image_rects(xref)
+                if not rects:
+                    logging.warning("[PdfParser] 找不到图片位置，尝试基于布局估算 xref=%s", xref)
+                    width, height = base_image.get("width", 0), base_image.get("height", 0)
+                    if width <= 0 or height <= 0:
+                        logging.warning("[PdfParser] 图片尺寸无效，跳过 xref=%s", xref)
+                        continue
+                    # 获取页面尺寸
+                    page_width, page_height = page.rect.width, page.rect.height
+
+                    # 方法1: 默认居中布局
+                    x0 = (page_width - width) / 2
+                    y0 = (page_height - height) / 2
+
+                    # 方法2: 考虑文本布局，假设图片在页面上半部分
+                    # 这里可以集成文本布局分析，例如获取页面上的文本块位置
+                    # 然后避免与文本重叠
+
+                    # 方法3: 基于图片大小的智能布局
+                    # 如果图片很大，可能是全页图片，位置应从(0,0)开始
+                    if width > page_width * 0.8 and height > page_height * 0.8:
+                        x0, y0 = 0, 0
+                    # 如果图片很小，可能是图标或装饰，可能在角落
+                    elif width < page_width * 0.2 and height < page_height * 0.2:
+                        # 放在右上角作为默认位置
+                        x0 = page_width - width - 10  # 留出边距
+                        y0 = 10  # 留出边距
+
+                    position = fitz.Rect(x0, y0, x0 + width, y0 + height)
+                else:
+                    position = rects[0]
                 # 获取图片的二进制数据
                 blob = base_image["image"]
 
@@ -262,6 +299,10 @@ class PdfParser(BaseParser):
                 sub_nodes_with_bbox, image_nodes_with_bbox)
 
             nodes_with_bbox.extend(sub_nodes_with_bbox)
+        for i in range(1, len(nodes_with_bbox)):
+            '''根据bbox判断是否要进行换行'''
+            if nodes_with_bbox[i].bbox.y0 > nodes_with_bbox[i-1].bbox.y1 + 1:
+                nodes_with_bbox[i].node.is_need_newline = True
 
         nodes = [node_with_bbox.node for node_with_bbox in nodes_with_bbox]
         PdfParser.image_related_node_in_link_nodes(nodes)  # 假设这个方法在别处定义

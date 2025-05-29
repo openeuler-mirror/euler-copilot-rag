@@ -52,7 +52,8 @@ from data_chain.rag import (
     vector_searcher,
     keyword_and_vector_searcher,
     doc2chunk_searcher,
-    doc2chunk_bfs_searcher
+    doc2chunk_bfs_searcher,
+    enhanced_by_llm_searcher
 )
 from data_chain.stores.database.database import DataBase, ActionEntity, DocumentTypeEntity
 from data_chain.manager.role_manager import RoleManager

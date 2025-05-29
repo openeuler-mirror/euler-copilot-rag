@@ -276,6 +276,8 @@ class UploadTemporaryDocumentResponse(ResponseData):
 class DeleteTemporaryDocumentResponse(ResponseData):
     """DELETE /doc/temporary 响应"""
     result: list[uuid.UUID] = Field(default=[], description="临时文档ID列表")
+
+
 class ParseDocumentResponse(ResponseData):
     """POST /doc/parse 响应"""
     result: list[uuid.UUID] = Field(default=[], description="文档ID列表")
@@ -324,6 +326,7 @@ class DocChunk(BaseModel):
     """Post /chunk/search 数据结构"""
     doc_id: uuid.UUID = Field(description="文档ID", alias="docId")
     doc_name: str = Field(description="文档名称", alias="docName")
+    doc_link: str = Field(default="", description="文档链接", alias="docLink")
     chunks: list[Chunk] = Field(default=[], description="分片列表", alias="chunks")
 
 

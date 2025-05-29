@@ -20,6 +20,7 @@ from data_chain.entities.response_data import (
 from data_chain.apps.base.convertor import Convertor
 from data_chain.apps.service.task_queue_service import TaskQueueService
 from data_chain.apps.service.knwoledge_base_service import KnowledgeBaseService
+from data_chain.apps.service.document_service import DocumentService
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
 from data_chain.manager.document_manager import DocumentManager
@@ -143,6 +144,8 @@ class ChunkService:
                     chunk.text = TokenTool.compress_tokens(chunk.text)
                 dc = DocChunk(docId=chunk_entity.doc_id, docName=chunk_entity.doc_name, chunks=[chunk])
                 search_chunk_msg.doc_chunks.append(dc)
+        for doc_chunk in search_chunk_msg.doc_chunks:
+            doc_chunk.doc_link = await DocumentService.generate_doc_download_url(doc_chunk.doc_id)
         return search_chunk_msg
 
     async def update_chunk_by_id(chunk_id: uuid.UUID, req: UpdateChunkRequest) -> uuid.UUID:

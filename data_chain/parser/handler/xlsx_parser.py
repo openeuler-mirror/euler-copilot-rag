@@ -32,15 +32,37 @@ class XlsxParser(BaseParser):
 
     @staticmethod
     async def parser(file_path: str) -> ParseResult:
-        try:
-            if file_path.endswith(('.xlsx', '.xls')):
+        if file_path.endswith(('.xlsx', '.xls')):
+            try:
                 data = pd.read_excel(file_path, sheet_name=None, header=None)
-            elif file_path.endswith('.csv'):
+            except Exception as e:
+                err = f"[XlsxParser] 解析Excel文件失败，error: {e}"
+                logging.exception(err)
+                raise e
+        elif file_path.endswith('.csv'):
+            try:
                 data = pd.read_csv(file_path, header=None)
-        except Exception as e:
-            err = "读取xlsx文件失败"
-            logging.exception("[XlsxParser] %s", err)
-            raise e
+            except Exception as e:
+                err = f"[XlsxParser] 解析CSV文件失败，error: {e}"
+                logging.exception(err)
+                raise e
+        else:
+            data = None
+            try:
+                data = pd.read_excel(file_path, sheet_name=None, header=None)
+            except Exception as e:
+                err = f"[XlsxParser] 解析文件失败，error: {e}"
+                logging.exception(err)
+            try:
+                data = pd.read_csv(file_path, header=None)
+            except Exception as e:
+                err = f"[XlsxParser] 解析文件失败，error: {e}"
+                logging.exception(err)
+            if data is None:
+                err = f"[XlsxParser] 无法解析文件，file_path: {file_path}"
+                logging.exception(err)
+                raise Exception(err)
+
         nodes = []
         for sheet_name, df in data.items():
             table_array = await XlsxParser.extract_table_to_array(df)

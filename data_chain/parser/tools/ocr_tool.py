@@ -1,5 +1,4 @@
-from PIL import Image
-import asyncio
+from PIL import Image, ImageEnhance
 import yaml
 from paddleocr import PaddleOCR
 import numpy as np
@@ -13,23 +12,47 @@ class OcrTool:
     det_model_dir = 'data_chain/parser/model/ocr/ch_PP-OCRv4_det_infer'
     rec_model_dir = 'data_chain/parser/model/ocr/ch_PP-OCRv4_rec_infer'
     cls_model_dir = 'data_chain/parser/model/ocr/ch_ppocr_mobile_v2.0_cls_infer'
+    # 优化 OCR 参数配置
     model = PaddleOCR(
         det_model_dir=det_model_dir,
         rec_model_dir=rec_model_dir,
         cls_model_dir=cls_model_dir,
-        use_angle_cls=True,  # 是否使用角度分类模型
-        use_space_char=True  # 是否使用空格字符
+        use_angle_cls=True,
+        use_space_char=True,
+        det_db_thresh=0.3,       # 降低文本检测阈值，提高敏感度
+        det_db_box_thresh=0.5,   # 调整文本框阈值
     )
 
     @staticmethod
     async def ocr_from_image(image: np.ndarray) -> list:
         try:
+
+            # 尝试OCR识别
             ocr_result = OcrTool.model.ocr(image)
-            if ocr_result is None or ocr_result[0] is None:
+
+            # 如果第一次尝试失败，尝试不同的参数配置
+            if ocr_result is None or len(ocr_result) == 0 or ocr_result[0] is None:
+                logging.warning("[OCRTool] 第一次OCR尝试失败，尝试降低阈值...")
+                # 创建临时OCR实例，使用更低的阈值
+                temp_ocr = PaddleOCR(
+                    det_model_dir=OcrTool.det_model_dir,
+                    rec_model_dir=OcrTool.rec_model_dir,
+                    cls_model_dir=OcrTool.cls_model_dir,
+                    use_angle_cls=True,
+                    use_space_char=True,
+                    det_db_thresh=0.2,       # 更低的检测阈值
+                    det_db_box_thresh=0.4,   # 更低的文本框阈值
+                )
+                ocr_result = temp_ocr.ocr(image)
+
+            # 记录OCR结果状态
+            if ocr_result is None or len(ocr_result) == 0 or ocr_result[0] is None:
+                logging.warning("[OCRTool] 图片无法识别文本")
                 return None
+
             return ocr_result
         except Exception as e:
-            err = f"[OCRTool] OCR识别失败 {e}"
+            err = f"[OCRTool] OCR识别失败: {e}"
             logging.exception(err)
             return None
 

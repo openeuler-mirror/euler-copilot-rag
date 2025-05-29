@@ -262,6 +262,10 @@ class PdfParser(BaseParser):
                 sub_nodes_with_bbox, image_nodes_with_bbox)
 
             nodes_with_bbox.extend(sub_nodes_with_bbox)
+        for i in range(1, len(nodes_with_bbox)):
+            '''根据bbox判断是否要进行换行'''
+            if nodes_with_bbox[i].bbox.y0 > nodes_with_bbox[i-1].bbox.y1 + 1:
+                nodes_with_bbox[i].node.is_need_newline = True
 
         nodes = [node_with_bbox.node for node_with_bbox in nodes_with_bbox]
         PdfParser.image_related_node_in_link_nodes(nodes)  # 假设这个方法在别处定义

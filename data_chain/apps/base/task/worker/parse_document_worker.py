@@ -289,6 +289,8 @@ class ParseDocumentWorker(BaseWorker):
                 if len(nodes) == 0 or (len(nodes) and (nodes[-1].type != ChunkType.TEXT or TokenTool.get_tokens(nodes[-1].content) + tokens > doc_entity.chunk_size)):
                     nodes.append(node)
                 else:
+                    if node.is_need_newline:
+                        nodes[-1].content += '\n'
                     nodes[-1].content += node.content
             else:
                 nodes.append(node)

@@ -33,7 +33,7 @@ class Doc2ChunkSearcher(BaseSearcher):
         try:
             doc_entities_keyword = await DocumentManager.get_top_k_document_by_kb_id_keyword(kb_id, query, top_k, doc_ids, banned_ids)
             use_doc_ids = [doc_entity.id for doc_entity in doc_entities_keyword]
-            chunk_entities_get_by_vector = []
+            doc_entities_vector = []
             for _ in range(3):
                 try:
                     doc_entities_vector = await asyncio.wait_for(DocumentManager.get_top_k_document_by_kb_id_vector(kb_id, vector, top_k-len(doc_entities_keyword), doc_ids, banned_ids), timeout=3)
@@ -45,7 +45,15 @@ class Doc2ChunkSearcher(BaseSearcher):
             use_doc_ids += [doc_entity.id for doc_entity in doc_entities_vector]
             chunk_entities_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(kb_id, query, top_k//2, use_doc_ids, banned_ids)
             chunk_ids = [chunk_entity.id for chunk_entity in chunk_entities_keyword]
-            chunk_entities_vector += await ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_keyword), use_doc_ids, banned_ids+chunk_ids)
+            chunk_entities_vector = []
+            for _ in range(3):
+                try:
+                    chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_keyword), use_doc_ids, banned_ids+chunk_ids), timeout=3)
+                    break
+                except Exception as e:
+                    err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"
+                    logging.error(err)
+                    continue
             chunk_entities = chunk_entities_keyword + chunk_entities_vector
         except Exception as e:
             err = f"[KeywordVectorSearcher] 关键词向量检索失败，error: {e}"

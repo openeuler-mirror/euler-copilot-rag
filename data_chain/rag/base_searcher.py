@@ -65,7 +65,7 @@ class BaseSearcher:
         :param query: 查询
         :return: 相关上下文
         """
-        chunk_entities = await ChunkManager.fetch_surrounding_chunk_by_doc_id_and_global_offset(chunk_entity.doc_id, chunk_entity.global_offset, 50, banned_ids)
+        chunk_entities = await ChunkManager.fetch_surrounding_chunk_by_doc_id_and_global_offset(chunk_entity.doc_id, chunk_entity.global_offset, 100, banned_ids)
         chunk_entity_dict = {}
         lower = chunk_entity.global_offset-1
         upper = chunk_entity.global_offset+1

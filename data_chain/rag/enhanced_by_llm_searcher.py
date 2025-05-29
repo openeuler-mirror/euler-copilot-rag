@@ -39,7 +39,7 @@ class EnhancedByLLMSearcher(BaseSearcher):
             prompt_template = prompt_dict['CHUNK_QUERY_MATCH_PROMPT']
             chunk_entities = []
             rd = 0
-            max_retry = 5
+            max_retry = 15
             llm = LLM(
                 openai_api_key=config['OPENAI_API_KEY'],
                 openai_api_base=config['OPENAI_API_BASE'],
@@ -48,26 +48,33 @@ class EnhancedByLLMSearcher(BaseSearcher):
             )
             while len(chunk_entities) < top_k and rd < max_retry:
                 rd += 1
-                chunk_entities_get_by_vector = []
+                sub_chunk_entities_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(kb_id, query, top_k, doc_ids, banned_ids)
+                chunk_ids = [chunk_entity.id for chunk_entity in sub_chunk_entities_keyword]
+                banned_ids += chunk_ids
+                sub_chunk_entities_vector = []
                 for _ in range(3):
                     try:
-                        sub_chunk_entities = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=3)
+                        sub_chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=3)
                         break
                     except Exception as e:
                         err = f"[EnhancedByLLMSearcher] 向量检索失败，error: {e}"
                         logging.error(err)
                         continue
+                chunk_ids = [chunk_entity.id for chunk_entity in sub_chunk_entities_vector]
+                banned_ids += chunk_ids
+                sub_chunk_entities = sub_chunk_entities_keyword + sub_chunk_entities_vector
                 for chunk_entity in sub_chunk_entities:
                     sys_call = prompt_template.format(
-                        chunk=chunk_entity.text,
-                        query=query,
+                        chunk=TokenTool.get_k_tokens_words_from_content(chunk_entity.text, llm.max_tokens),
+                        question=query,
                     )
                     user_call = "请输出YES或NO"
                     result = await llm.nostream([], sys_call, user_call)
                     result = result.lower()
                     if result == "yes":
                         chunk_entities.append(chunk_entity)
-                chunk_ids = [chunk_entity.id for chunk_entity in sub_chunk_entities]
+                        logging.info(
+                            f"[EnhancedByLLMSearcher] 匹配到分片: {chunk_entity.id}, 分片内容: {chunk_entity.text[:50]}...")
                 banned_ids += chunk_ids
             return chunk_entities[:top_k]
         except Exception as e:

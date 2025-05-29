@@ -12,7 +12,7 @@ from data_chain.logger.logger import logger as logging
 from data_chain.apps.base.task.worker.base_worker import BaseWorker
 from data_chain.llm.llm import LLM
 from data_chain.entities.enum import TaskType, TaskStatus, KnowledgeBaseStatus, DocumentStatus, DataSetStatus, QAStatus
-from data_chain.entities.common import DEFAULt_DOC_TYPE_ID, EXPORT_DATASET_PATH_IN_OS, EXPORT_DATASET_PATH_IN_MINIO
+from data_chain.entities.common import DEFAULT_DOC_TYPE_ID, EXPORT_DATASET_PATH_IN_OS, EXPORT_DATASET_PATH_IN_MINIO
 from data_chain.parser.parse_result import ParseResult, ParseNode
 from data_chain.parser.tools.token_tool import TokenTool
 from data_chain.parser.handler.json_parser import JsonParser

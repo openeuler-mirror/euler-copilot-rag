@@ -7,11 +7,13 @@ import shutil
 import os
 from data_chain.entities.request_data import (
     ListDocumentRequest,
+    UploadTemporaryRequest,
     UpdateDocumentRequest
 )
 from data_chain.entities.response_data import (
     Task,
     Document,
+    DOC_STATUS,
     ListDocumentMsg,
     ListDocumentResponse
 )
@@ -25,8 +27,8 @@ from data_chain.manager.task_manager import TaskManager
 from data_chain.manager.task_report_manager import TaskReportManager
 from data_chain.stores.database.database import DocumentEntity
 from data_chain.stores.minio.minio import MinIO
-from data_chain.entities.enum import ParseMethod, DataSetStatus, DocumentStatus, TaskType
-from data_chain.entities.common import DOC_PATH_IN_OS, DOC_PATH_IN_MINIO, REPORT_PATH_IN_MINIO, DEFAULt_DOC_TYPE_ID
+from data_chain.entities.enum import ParseMethod, DataSetStatus, DocumentStatus, TaskType, TaskStatus
+from data_chain.entities.common import DOC_PATH_IN_OS, DOC_PATH_IN_MINIO, REPORT_PATH_IN_MINIO, DEFAULT_KNOWLEDGE_BASE_ID, DEFAULT_DOC_TYPE_ID
 from data_chain.logger.logger import logger as logging
 
 
@@ -147,6 +149,133 @@ class DocumentService:
             raise e
 
     @staticmethod
+    async def get_temporary_docs_status(user_sub: str, doc_ids: list[uuid.UUID]) -> list[DOC_STATUS]:
+        """获取临时文档状态"""
+        doc_entities = await DocumentManager.list_document_by_doc_ids(doc_ids)
+        doc_ids = []
+        for doc_entity in doc_entities:
+            if doc_entity.author_id != user_sub:
+                err = f"用户没有权限访问临时文档, 文档ID: {doc_entity.id}, 用户ID: {user_sub}"
+                logging.error("[DocumentService] %s", err)
+                continue
+            doc_ids.append(doc_entity.id)
+        task_entities = await TaskManager.list_current_tasks_by_op_ids(doc_ids)
+        task_dict = {task_entity.op_id: task_entity for task_entity in task_entities}
+        doc_status_list = []
+        for doc_id in doc_ids:
+            task_entity = task_dict.get(doc_id, None)
+            if task_entity is not None:
+                doc_status = DOC_STATUS(
+                    id=doc_id,
+                    status=task_entity.status,
+                )
+            else:
+                doc_status = DOC_STATUS(
+                    id=doc_id,
+                    status=TaskStatus.PENDING.value
+                )
+            doc_status_list.append(doc_status)
+        return doc_status_list
+
+    @staticmethod
+    async def upload_temporary_docs(user_sub: str, req: UploadTemporaryRequest):
+        """上传临时文档"""
+        try:
+            doc_entities = []
+            for doc in req.document_list:
+                id = doc.id
+                bucket_name = doc.bucket
+                file_name = doc.name
+                extension = file_name.split('.')[-1]
+                if not extension:
+                    extension = doc.type
+                tmp_path = os.path.join(DOC_PATH_IN_OS, str(id))
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
+                os.makedirs(tmp_path)
+                document_file_path = os.path.join(tmp_path, file_name)
+                flag = await MinIO.download_object(
+                    bucket_name=bucket_name,
+                    file_index=str(id),
+                    file_path=document_file_path
+                )
+                if not flag:
+                    err = f"下载临时文档失败, 文档ID: {id}, 存储桶: {bucket_name}"
+                    logging.error("[DocumentService] %s", err)
+                    continue
+                document = await DocumentManager.get_document_by_doc_id(id)
+                if document is not None:
+                    err = f"文档已存在, 文档ID: {id}"
+                    logging.error("[DocumentService] %s", err)
+                    continue
+                doc_entity = DocumentEntity(
+                    id=id,
+                    kb_id=DEFAULT_KNOWLEDGE_BASE_ID,
+                    author_id=user_sub,
+                    author_name=user_sub,
+                    name=file_name,
+                    extension=extension,
+                    size=os.path.getsize(document_file_path),
+                    parse_method=ParseMethod.OCR.value,
+                    parse_relut_topology=None,
+                    chunk_size=1024,
+                    type_id=DEFAULT_DOC_TYPE_ID,
+                    enabled=True,
+                    status=DataSetStatus.IDLE.value,
+                    full_text='',
+                    abstract='',
+                    abstract_vector=None
+                )
+                doc_entities.append(doc_entity)
+                await MinIO.put_object(
+                    bucket_name=DOC_PATH_IN_MINIO,
+                    file_index=str(id),
+                    file_path=document_file_path
+                )
+        except Exception as e:
+            err = f"上传临时文档失败, 错误信息: {e}"
+            logging.error("[DocumentService] %s", err)
+            raise e
+        index = 0
+        while index < len(doc_entities):
+            try:
+                await DocumentManager.add_documents(doc_entities[index:index+1024])
+                index += 1024
+            except Exception as e:
+                err = f"上传文档失败, 文档名: {doc_entity.name}, 错误信息: {e}"
+                logging.error("[DocumentService] %s", err)
+                continue
+        for doc_entity in doc_entities:
+            await TaskQueueService.init_task(TaskType.DOC_PARSE.value, doc_entity.id)
+        doc_ids = [doc_entity.id for doc_entity in doc_entities]
+        await KnowledgeBaseManager.update_doc_cnt_and_doc_size(kb_id=DEFAULT_KNOWLEDGE_BASE_ID)
+        return doc_ids
+
+    @staticmethod
+    async def delete_temporary_docs(user_sub: str, doc_ids: list[uuid.UUID]) -> list[uuid.UUID]:
+        """删除临时文档"""
+        try:
+            doc_entities = await DocumentManager.list_document_by_doc_ids(doc_ids)
+            doc_ids = []
+            for doc_entity in doc_entities:
+                if doc_entity.author_id != user_sub:
+                    err = f"用户没有权限删除临时文档, 文档ID: {doc_entity.id}, 用户ID: {user_sub}"
+                    logging.error("[DocumentService] %s", err)
+                    continue
+                doc_ids.append(doc_entity.id)
+            task_entities = await TaskManager.list_current_tasks_by_op_ids(doc_ids)
+            for task_entity in task_entities:
+                await TaskQueueService.stop_task(task_entity.id)
+            doc_entities = await DocumentManager.update_document_by_doc_ids(
+                doc_ids, {"status": DocumentStatus.DELETED.value})
+            doc_ids = [doc_entity.id for doc_entity in doc_entities]
+            return doc_ids
+        except Exception as e:
+            err = "删除临时文档失败"
+            logging.exception("[DocumentService] %s", err)
+            raise e
+
+    @staticmethod
     async def upload_docs(user_sub: str, kb_id: uuid.UUID, docs: list[UploadFile]) -> list[uuid.UUID]:
         """上传文档"""
         kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
@@ -193,7 +322,7 @@ class DocumentService:
                     parse_method=kb_entity.default_parse_method,
                     parse_relut_topology=None,
                     chunk_size=kb_entity.default_chunk_size,
-                    type_id=DEFAULt_DOC_TYPE_ID,
+                    type_id=DEFAULT_DOC_TYPE_ID,
                     enabled=True,
                     status=DataSetStatus.IDLE.value,
                     full_text='',

@@ -196,6 +196,22 @@ class DocumentManager():
             raise e
 
     @staticmethod
+    async def list_document_by_doc_ids(doc_ids: list[uuid.UUID]) -> List[DocumentEntity]:
+        """根据文档ID获取文档列表"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = select(DocumentEntity).where(
+                    and_(DocumentEntity.id.in_(doc_ids),
+                         DocumentEntity.status != DocumentStatus.DELETED.value))
+                result = await session.execute(stmt)
+                document_entities = result.scalars().all()
+                return document_entities
+        except Exception as e:
+            err = "获取文档列表失败"
+            logging.exception("[DocumentManager] %s", err)
+            raise e
+
+    @staticmethod
     async def get_document_by_doc_id(doc_id: uuid.UUID) -> DocumentEntity:
         """根据文档ID获取文档"""
         try:

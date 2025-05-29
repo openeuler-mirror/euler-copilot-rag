@@ -10,7 +10,10 @@ from typing import Annotated
 from uuid import UUID
 from data_chain.entities.request_data import (
     ListDocumentRequest,
-    UpdateDocumentRequest
+    UpdateDocumentRequest,
+    GetTemporaryDocumentStatusRequest,
+    UploadTemporaryRequest,
+    DeleteTemporaryDocumentRequest
 )
 
 from data_chain.entities.response_data import (
@@ -20,7 +23,10 @@ from data_chain.entities.response_data import (
     UploadDocumentResponse,
     ParseDocumentResponse,
     UpdateDocumentResponse,
-    DeleteDocumentResponse
+    DeleteDocumentResponse,
+    GetTemporaryDocumentStatusResponse,
+    UploadTemporaryDocumentResponse,
+    DeleteTemporaryDocumentResponse
 )
 from data_chain.apps.service.session_service import get_user_sub, verify_user
 from data_chain.apps.service.router_service import get_route_info
@@ -152,3 +158,27 @@ async def delete_docs_by_ids(
             raise Exception("用户没有权限删除该文档")
     await DocumentService.delete_docs_by_ids(doc_ids)
     return DeleteDocumentResponse(result=doc_ids)
+
+
+@router.get('/temporary/status', response_class=GetTemporaryDocumentStatusResponse, dependencies=[Depends(verify_user)])
+async def get_temporary_docs_status(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        req: Annotated[GetTemporaryDocumentStatusRequest, Body()]):
+    doc_status_list = await DocumentService.get_temporary_docs_status(user_sub, req.ids)
+    return GetTemporaryDocumentStatusResponse(result=doc_status_list)
+
+
+@router.post('/temporary/parser', response_model=UploadTemporaryDocumentResponse, dependencies=[Depends(verify_user)])
+async def upload_temporary_docs(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        req: Annotated[UploadTemporaryRequest, Body()]):
+    doc_ids = await DocumentService.upload_temporary_docs(user_sub, req)
+    return UploadTemporaryDocumentResponse(result=doc_ids)
+
+
+@router.get('/temporary/delete', response_model=DeleteTemporaryDocumentResponse, dependencies=[Depends(verify_user)])
+async def delete_temporary_docs(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        req: Annotated[DeleteTemporaryDocumentRequest, Body()]):
+    doc_ids = await DocumentService.delete_temporary_docs(user_sub, req.ids)
+    return DeleteTemporaryDocumentResponse(result=doc_ids)

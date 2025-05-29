@@ -23,7 +23,7 @@ from data_chain.entities.response_data import (
 from data_chain.apps.base.zip_handler import ZipHandler
 from data_chain.apps.service.task_queue_service import TaskQueueService
 from data_chain.entities.enum import Tokenizer, ParseMethod, TeamType, TeamStatus, KnowledgeBaseStatus, TaskType
-from data_chain.entities.common import DEFAULt_DOC_TYPE_ID, default_roles, IMPORT_KB_PATH_IN_OS, EXPORT_KB_PATH_IN_MINIO, IMPORT_KB_PATH_IN_MINIO
+from data_chain.entities.common import DEFAULT_DOC_TYPE_ID, default_roles, IMPORT_KB_PATH_IN_OS, EXPORT_KB_PATH_IN_MINIO, IMPORT_KB_PATH_IN_MINIO
 from data_chain.stores.database.database import TeamEntity, KnowledgeBaseEntity, DocumentTypeEntity
 from data_chain.stores.minio.minio import MinIO
 from data_chain.apps.base.convertor import Convertor
@@ -300,7 +300,7 @@ class KnowledgeBaseService:
         delete_doc_type_ids = old_doc_type_ids - new_doc_type_ids
         add_doc_type_ids = new_doc_type_ids - old_doc_type_ids
         update_doc_type_ids = old_doc_type_ids & new_doc_type_ids
-        await DocumentManager.update_doc_type_by_kb_id(kb_id, delete_doc_type_ids, DEFAULt_DOC_TYPE_ID)
+        await DocumentManager.update_doc_type_by_kb_id(kb_id, delete_doc_type_ids, DEFAULT_DOC_TYPE_ID)
         doc_type_entities = []
         for doc_type_id in add_doc_type_ids:
             doc_type_entity = DocumentTypeEntity(

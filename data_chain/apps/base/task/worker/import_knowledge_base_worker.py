@@ -9,7 +9,7 @@ from data_chain.logger.logger import logger as logging
 from data_chain.apps.service.task_queue_service import TaskQueueService
 from data_chain.apps.base.task.worker.base_worker import BaseWorker
 from data_chain.entities.enum import TaskType, TaskStatus, KnowledgeBaseStatus, DocumentStatus
-from data_chain.entities.common import DEFAULt_DOC_TYPE_ID, IMPORT_KB_PATH_IN_OS, DOC_PATH_IN_MINIO, IMPORT_KB_PATH_IN_MINIO
+from data_chain.entities.common import DEFAULT_DOC_TYPE_ID, IMPORT_KB_PATH_IN_OS, DOC_PATH_IN_MINIO, IMPORT_KB_PATH_IN_MINIO
 from data_chain.manager.task_manager import TaskManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
@@ -139,7 +139,7 @@ class ImportKnowledgeBaseWorker(BaseWorker):
                 doc_path = os.path.join(doc_download_path, doc_name)
                 if not os.path.exists(doc_path):
                     continue
-                doc_type_id = doc_types_old_id_map_to_new_id.get(doc_config.get("type_id"), DEFAULt_DOC_TYPE_ID)
+                doc_type_id = doc_types_old_id_map_to_new_id.get(doc_config.get("type_id"), DEFAULT_DOC_TYPE_ID)
                 document_entity = DocumentEntity(
                     team_id=kb_entity.team_id,
                     kb_id=kb_entity.id,

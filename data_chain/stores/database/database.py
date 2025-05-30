@@ -2,6 +2,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import Index
 from uuid import uuid4
+import urllib.parse
 from data_chain.logger.logger import logger as logging
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, Float, String, func
@@ -536,8 +537,17 @@ class TaskReportEntity(Base):
 
 
 class DataBase:
+
+    # 对密码进行 URL 编码
+    password = config['DATABASE_PASSWORD']
+    encoded_password = urllib.parse.quote_plus(password)
+
+    if config['DATABASE_TYPE'] == 'opengauss':
+        database_url = f"opengauss+asyncpg://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
+    else:
+        database_url = f"postgresql+asyncpg://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
     engine = create_async_engine(
-        config['DATABASE_URL'],
+        database_url,
         echo=False,
         pool_recycle=300,
         pool_pre_ping=True
@@ -545,7 +555,7 @@ class DataBase:
 
     @classmethod
     async def init_all_table(cls):
-        if 'opengauss' in config['DATABASE_URL']:
+        if config['DATABASE_TYPE'] == 'opengauss':
             from sqlalchemy import event
             from opengauss_sqlalchemy.register_async import register_vector
 

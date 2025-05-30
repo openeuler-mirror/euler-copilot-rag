@@ -25,7 +25,12 @@ class ConfigModel(DictBaseModel):
     # LOG METHOD
     LOG_METHOD: str = Field('stdout', description="日志记录方式")
     # Database
-    DATABASE_URL: str = Field(None, description="Database数据库链接url")
+    DATABASE_TYPE: str = Field(default="postgres", description="数据库类型")
+    DATABASE_HOST: str = Field(None, description="数据库地址")
+    DATABASE_PORT: int = Field(None, description="数据库端口")
+    DATABASE_USER: str = Field(None, description="数据库用户名")
+    DATABASE_PASSWORD: str = Field(None, description="数据库密码")
+    DATABASE_DB: str = Field(None, description="数据库名称")
     # MinIO
     MINIO_ENDPOINT: str = Field(None, description="MinIO连接地址")
     MINIO_ACCESS_KEY: str = Field(None, description="Minio认证ak")

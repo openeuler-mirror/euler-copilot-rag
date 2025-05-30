@@ -160,7 +160,8 @@ async def delete_docs_by_ids(
     return DeleteDocumentResponse(result=doc_ids)
 
 
-@router.get('/temporary/status', response_class=GetTemporaryDocumentStatusResponse, dependencies=[Depends(verify_user)])
+@router.post('/temporary/status', response_class=GetTemporaryDocumentStatusResponse, dependencies=[
+    Depends(verify_user)])
 async def get_temporary_docs_status(
         user_sub: Annotated[str, Depends(get_user_sub)],
         req: Annotated[GetTemporaryDocumentStatusRequest, Body()]):
@@ -176,7 +177,7 @@ async def upload_temporary_docs(
     return UploadTemporaryDocumentResponse(result=doc_ids)
 
 
-@router.get('/temporary/delete', response_model=DeleteTemporaryDocumentResponse, dependencies=[Depends(verify_user)])
+@router.delete('/temporary/delete', response_model=DeleteTemporaryDocumentResponse, dependencies=[Depends(verify_user)])
 async def delete_temporary_docs(
         user_sub: Annotated[str, Depends(get_user_sub)],
         req: Annotated[DeleteTemporaryDocumentRequest, Body()]):

@@ -232,6 +232,8 @@ class DocumentService:
                     file_index=str(id),
                     file_path=document_file_path
                 )
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
         except Exception as e:
             err = f"上传临时文档失败, 错误信息: {e}"
             logging.error("[DocumentService] %s", err)

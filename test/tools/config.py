@@ -7,5 +7,4 @@ config = {
     "REQUEST_TIMEOUT": 120,
     "MAX_TOKENS": 8096,
     "MODEL_ENH": "false",
-    "DOCUMENTS_PATH": "./document",
 }

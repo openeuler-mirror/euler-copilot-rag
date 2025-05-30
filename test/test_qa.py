@@ -136,7 +136,7 @@ def parser():
     
     # 离线模式参数
     offline = subparser.add_parser('offline', help='Offline mode for processing documents')  # noqa: F841
-    
+    offline.add_argument("-i", "--input_path", required=True, default="./document", help="Path of document names",)
     # 在线模式所需添加的参数
     online = subparser.add_parser('online', help='Online mode for processing documents')
     online.add_argument('-n', '--name', type=str, required=True, help='User name')
@@ -176,7 +176,6 @@ llm = LLM(model_name=config['MODEL_NAME'],
           max_tokens=config['MAX_TOKENS'],
           request_timeout=60,
           temperature=0.35)
-document_path = config['DOCUMENTS_PATH']
 
 def get_random_number(l, r):
     return random.randint(l, r-1)
@@ -576,14 +575,14 @@ if __name__ == '__main__':
     else:
         # 离线模式
         # print(document_path)
-        t_QAs = get_document(document_path)
+        t_QAs = get_document(args.input_path)
         print(f"获取到{len(t_QAs)}个文档")
         for item in t_QAs[0]:
             single_item = {
                 "type": item['领域'],
                 "question": item['问题'],
                 "answer": item['标准答案'],
-                "witChainD_answer": item['witChainD 回答'],
+                "witChainD_answer": item['llm的回答'],
                 "text": item['原始片段'],
                 "witChainD_source": item['检索片段'],
             }
@@ -621,7 +620,7 @@ if __name__ == '__main__':
                     '领域': str(QA['type']),
                     '问题': str(QA['question']),
                     '标准答案': str(QA['answer']),
-                    'witChainD 回答': str(QA['witChainD_answer']),
+                    'llm的回答': str(QA['witChainD_answer']),
                     'context_relevancy(上下文相关性)': str(QA['context_relevancy']),
                     'context_recall(召回率)': str(QA['context_recall']),
                     'faithfulness(忠实性)': str(QA['faithfulness']),
@@ -643,7 +642,7 @@ if __name__ == '__main__':
                     '领域': str(QA['type']),
                     '问题': str(QA['question']),
                     '标准答案': str(QA['answer']),
-                    'witChainD 回答': str(QA['witChainD_answer']),
+                    'llm的回答': str(QA['witChainD_answer']),
                     'context_relevancy(上下文相关性)': str(QA['context_relevancy']),
                     'context_recall(召回率)': str(QA['context_recall']),
                     'faithfulness(忠实性)': str(QA['faithfulness']),

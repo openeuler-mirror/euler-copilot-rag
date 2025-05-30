@@ -79,7 +79,7 @@ class DocumentManager():
                 kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
                 tokenizer = ''
                 if kb_entity.tokenizer == Tokenizer.ZH.value:
-                    if 'opengauss' in config['DATABASE_URL']:
+                    if config['DATABASE_TYPE'].lower() == 'opengauss':
                         tokenizer = 'chparser'
                     else:
                         tokenizer = 'zhparser'

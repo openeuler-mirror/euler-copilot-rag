@@ -22,7 +22,7 @@ from data_chain.entities.enum import (
     TaskType,
     TaskStatus,
     OrderType)
-from data_chain.entities.common import DEFAULt_DOC_TYPE_ID
+from data_chain.entities.common import DEFAULT_DOC_TYPE_ID
 
 
 class ListTeamRequest(BaseModel):
@@ -116,11 +116,30 @@ class ListDocumentRequest(BaseModel):
 
 class UpdateDocumentRequest(BaseModel):
     doc_name: str = Field(default='这是一个默认的文档名称', min_length=1, max_length=150, alias="docName")
-    doc_type_id: uuid.UUID = Field(default=DEFAULt_DOC_TYPE_ID, description="文档类型的id", alias="docTypeId")
+    doc_type_id: uuid.UUID = Field(default=DEFAULT_DOC_TYPE_ID, description="文档类型的id", alias="docTypeId")
     parse_method: ParseMethod = Field(
         default=ParseMethod.GENERAL, description="知识库默认解析方法", alias="parseMethod")
     chunk_size: int = Field(default=512, description="知识库默认文件分块大小", alias="chunkSize", min=128, max=2048)
     enabled: bool = Field(default=True, description="文档是否启用")
+
+
+class GetTemporaryDocumentStatusRequest(BaseModel):
+    ids: List[uuid.UUID] = Field(default=[], description="临时文档id列表", alias="ids")
+
+
+class TemporaryDocument(BaseModel):
+    id: uuid.UUID = Field(description="临时文档id", alias="id")
+    name: str = Field(default='这是一个默认的临时文档名称', min_length=1, max_length=150, alias="name")
+    bucket: str = Field(default='default', description="临时文档存储的桶名称", alias="bucket")
+    type: str = Field(default='txt', description="临时文档的类型", alias="type")
+
+
+class UploadTemporaryRequest(BaseModel):
+    document_list: List[TemporaryDocument] = Field(default=[], description="临时文档列表")
+
+
+class DeleteTemporaryDocumentRequest(BaseModel):
+    ids: List[uuid.UUID] = Field(default=[], description="临时文档id列表", alias="ids")
 
 
 class ListChunkRequest(BaseModel):

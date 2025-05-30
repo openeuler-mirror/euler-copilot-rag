@@ -208,14 +208,14 @@ class ChunkManager():
             async with await DataBase.get_session() as session:
                 kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
                 if kb_entity.tokenizer == Tokenizer.ZH.value:
-                    if 'opengauss' in config['DATABASE_URL']:
+                    if config['DATABASE_TYPE'].lower() == 'opengauss':
                         tokenizer = 'chparser'
                     else:
                         tokenizer = 'zhparser'
                 elif kb_entity.tokenizer == Tokenizer.EN.value:
                     tokenizer = 'english'
                 else:
-                    if 'opengauss' in config['DATABASE_URL']:
+                    if config['DATABASE_TYPE'].lower() == 'opengauss':
                         tokenizer = 'chparser'
                     else:
                         tokenizer = 'zhparser'

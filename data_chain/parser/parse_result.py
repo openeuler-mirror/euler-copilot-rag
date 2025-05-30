@@ -2,7 +2,7 @@ from typing import Any, Optional
 import uuid
 from pydantic import BaseModel, Field, validator, constr
 from data_chain.entities.enum import DocParseRelutTopology, ChunkParseTopology, ChunkType
-from data_chain.entities.common import DEFAULt_DOC_TYPE_ID
+from data_chain.entities.common import DEFAULT_DOC_TYPE_ID
 
 
 class ParseNode(BaseModel):

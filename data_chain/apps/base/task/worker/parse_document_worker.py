@@ -20,7 +20,7 @@ from data_chain.config.config import config
 from data_chain.logger.logger import logger as logging
 from data_chain.apps.base.task.worker.base_worker import BaseWorker
 from data_chain.entities.enum import TaskType, TaskStatus, KnowledgeBaseStatus, ParseMethod, DocumentStatus, ChunkStatus, ImageStatus, DocParseRelutTopology, ChunkParseTopology, ChunkType
-from data_chain.entities.common import DEFAULt_DOC_TYPE_ID, REPORT_PATH_IN_MINIO, DOC_PATH_IN_MINIO, DOC_PATH_IN_OS, IMAGE_PATH_IN_MINIO
+from data_chain.entities.common import DEFAULT_DOC_TYPE_ID, REPORT_PATH_IN_MINIO, DOC_PATH_IN_MINIO, DOC_PATH_IN_OS, IMAGE_PATH_IN_MINIO
 from data_chain.manager.task_manager import TaskManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager

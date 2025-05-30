@@ -79,7 +79,7 @@ class DocumentManager():
                 kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
                 tokenizer = ''
                 if kb_entity.tokenizer == Tokenizer.ZH.value:
-                    if 'opengauss' in config['DATABASE_URL']:
+                    if config['DATABASE_TYPE'].lower() == 'opengauss':
                         tokenizer = 'chparser'
                     else:
                         tokenizer = 'zhparser'
@@ -192,6 +192,22 @@ class DocumentManager():
                 return document_entities
         except Exception as e:
             err = "获取所有文档列表失败"
+            logging.exception("[DocumentManager] %s", err)
+            raise e
+
+    @staticmethod
+    async def list_document_by_doc_ids(doc_ids: list[uuid.UUID]) -> List[DocumentEntity]:
+        """根据文档ID获取文档列表"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = select(DocumentEntity).where(
+                    and_(DocumentEntity.id.in_(doc_ids),
+                         DocumentEntity.status != DocumentStatus.DELETED.value))
+                result = await session.execute(stmt)
+                document_entities = result.scalars().all()
+                return document_entities
+        except Exception as e:
+            err = "获取文档列表失败"
             logging.exception("[DocumentManager] %s", err)
             raise e
 

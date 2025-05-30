@@ -8,7 +8,7 @@ import os
 import shutil
 from data_chain.config.config import config
 from data_chain.logger.logger import logger as logging
-from data_chain.entities.common import actions, DEFAULt_DOC_TYPE_ID
+from data_chain.entities.common import actions, DEFAULT_DOC_TYPE_ID
 from data_chain.apps.router import (
     team,
     knowledge_base,
@@ -55,9 +55,16 @@ from data_chain.rag import (
     doc2chunk_bfs_searcher,
     enhanced_by_llm_searcher
 )
-from data_chain.stores.database.database import DataBase, ActionEntity, DocumentTypeEntity
+from data_chain.stores.database.database import (
+    DataBase,
+    ActionEntity,
+    KnowledgeBaseEntity,
+    DocumentTypeEntity
+)
 from data_chain.manager.role_manager import RoleManager
+from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
+from data_chain.entities.enum import ParseMethod
 from data_chain.entities.common import (
     DOC_PATH_IN_OS,
     EXPORT_KB_PATH_IN_OS,
@@ -96,9 +103,17 @@ async def add_acitons():
         await RoleManager.add_action(action_entity)
 
 
+async def add_knowledge_base():
+    knowledge_base_entity = KnowledgeBaseEntity(
+        id=DEFAULT_DOC_TYPE_ID,
+        default_parse_method=ParseMethod.OCR.value
+    )
+    await KnowledgeBaseManager.add_knowledge_base(knowledge_base_entity)
+
+
 async def add_document_type():
     document_type_entity = DocumentTypeEntity(
-        id=DEFAULt_DOC_TYPE_ID,
+        id=DEFAULT_DOC_TYPE_ID,
         name="default",
     )
     await DocumentTypeManager.add_document_type(document_type_entity)

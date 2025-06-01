@@ -160,7 +160,7 @@ async def delete_docs_by_ids(
     return DeleteDocumentResponse(result=doc_ids)
 
 
-@router.post('/temporary/status', response_class=GetTemporaryDocumentStatusResponse, dependencies=[
+@router.post('/temporary/status', response_model=GetTemporaryDocumentStatusResponse, dependencies=[
     Depends(verify_user)])
 async def get_temporary_docs_status(
         user_sub: Annotated[str, Depends(get_user_sub)],

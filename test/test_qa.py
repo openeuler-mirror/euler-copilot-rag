@@ -579,7 +579,6 @@ if __name__ == '__main__':
         print(f"获取到{len(t_QAs)}个文档")
         for item in t_QAs[0]:
             single_item = {
-                "type": item['领域'],
                 "question": item['问题'],
                 "answer": item['标准答案'],
                 "witChainD_answer": item['llm的回答'],
@@ -692,9 +691,10 @@ if __name__ == '__main__':
         df.to_excel(writer, sheet_name="测试样例", index=False)
 
         # 写入第二个sheet（测试结果）
+        filtered_time_cost = {k: v for k, v in avg["time_cost"].items() if v != 0}
         flat_avg = {
             **{k: v for k, v in avg.items() if k != "time_cost"},
-            **{f"time_cost_{k}": v for k, v in avg["time_cost"].items()},
+            **{f"time_cost_{k}": v for k, v in filtered_time_cost.items()},
         }
         avg_df = pd.DataFrame([flat_avg])
         avg_df.to_excel(writer, sheet_name="测试结果", index=False)

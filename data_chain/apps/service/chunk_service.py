@@ -110,6 +110,9 @@ class ChunkService:
             tokens_limit_every_chunk = tokens_limit // len(chunk_entities) if len(chunk_entities) > 0 else tokens_limit
             leave_tokens = 0
             related_chunk_entities = []
+            token_sum = 0
+            for chunk_entity in chunk_entities:
+                token_sum += chunk_entity.tokens
             for chunk_entity in chunk_entities:
                 leave_tokens = tokens_limit_every_chunk+leave_tokens
                 try:
@@ -119,14 +122,15 @@ class ChunkService:
                     err = f"[ChunkService] 关联上下文失败，error: {e}"
                     logging.exception(err)
                     continue
-                tokens_sum = 0
                 for related_chunk_entity in sub_related_chunk_entities:
-                    tokens_sum += related_chunk_entity.tokens
-                leave_tokens -= tokens_sum
+                    token_sum += related_chunk_entity.tokens
+                    leave_tokens -= related_chunk_entity.tokens
                 if leave_tokens < 0:
                     leave_tokens = 0
                 chunk_ids += [chunk_entity.id for chunk_entity in sub_related_chunk_entities]
                 related_chunk_entities += sub_related_chunk_entities
+                if token_sum >= tokens_limit:
+                    break
             chunk_entities += related_chunk_entities
         logging.error(len(chunk_entities))
         search_chunk_msg = SearchChunkMsg(docChunks=[])

@@ -2,13 +2,20 @@ import yaml
 from fastapi import status
 import requests
 import uuid
+import urllib.parse
 from typing import Optional
 from pydantic import BaseModel, Field
 from chat2db.config.config import config
 ip = config['UVICORN_IP']
 port = config['UVICORN_PORT']
 base_url = f'http://{ip}:{port}'
-database_url = config['DATABASE_URL']
+password = config['DATABASE_PASSWORD']
+encoded_password = urllib.parse.quote_plus(password)
+
+if config['DATABASE_TYPE'].lower() == 'opengauss':
+    database_url = f"opengauss+psycopg2://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
+else:
+    database_url = f"postgresql+psycopg2://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
 
 
 class DatabaseDelRequest(BaseModel):

@@ -1,5 +1,6 @@
 import logging
 from uuid import uuid4
+import urllib.parse
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import TIMESTAMP, UUID, Column, String, Boolean, ForeignKey, create_engine, func, Index
@@ -33,7 +34,7 @@ class TableInfo(Base):
         TIMESTAMP(timezone=True),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp())
-    if 'opengauss' in config['DATABASE_URL']:
+    if config['DATABASE_TYPE'].lower() == 'opengauss':
         __table_args__ = (
             Index(
                 'table_note_vector_index',
@@ -77,7 +78,7 @@ class SqlExample(Base):
         TIMESTAMP(timezone=True),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp())
-    if 'opengauss' in config['DATABASE_URL']:
+    if config['DATABASE_TYPE'].lower() == 'opengauss':
         __table_args__ = (
             Index(
                 'question_vector_index',
@@ -105,15 +106,22 @@ class PostgresDB:
     @classmethod
     def get_mysql_engine(cls):
         if not cls._engine:
+            password = config['DATABASE_PASSWORD']
+            encoded_password = urllib.parse.quote_plus(password)
+
+            if config['DATABASE_TYPE'].lower() == 'opengauss':
+                database_url = f"opengauss+psycopg2://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
+            else:
+                database_url = f"postgresql+psycopg2://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
             cls.engine = create_engine(
-                config['DATABASE_URL'],
+                database_url,
                 hide_parameters=True,
                 echo=False,
                 pool_recycle=300,
                 pool_pre_ping=True)
 
             Base.metadata.create_all(cls.engine)
-            if 'opengauss' in config['DATABASE_URL']:
+            if config['DATABASE_TYPE'].lower() == 'opengauss':
                 from sqlalchemy import event
                 from opengauss_sqlalchemy.register_async import register_vector
 

@@ -142,19 +142,25 @@ class TestingWorker(BaseWorker):
             question = qa_entity.question
             answer = qa_entity.answer
             chunk = qa_entity.chunk
-            chunk_entities = await BaseSearcher.search(testing_entity.search_method, testing_entity.kb_id, question, top_k=testing_entity.top_k, doc_ids=None, banned_ids=[])
+            chunk_entities = await BaseSearcher.search(testing_entity.search_method, testing_entity.kb_id, question, top_k=2*testing_entity.top_k, doc_ids=None, banned_ids=[])
             related_chunk_entities = []
             banned_ids = [chunk_entity.id for chunk_entity in chunk_entities]
             divide_tokens = llm.max_tokens // len(chunk_entities) if chunk_entities else llm.max_tokens
             leave_tokens = 0
+            token_sum = 0
             for chunk_entity in chunk_entities:
-                leave_tokens += divide_tokens - chunk_entity.tokens
-                sub_related_chunk_entities = await BaseSearcher.related_surround_chunk(chunk_entity, leave_tokens, banned_ids)
+                token_sum += chunk_entity.tokens
+            for chunk_entity in chunk_entities:
+                leave_tokens = leave_tokens+divide_tokens
+                sub_related_chunk_entities = await BaseSearcher.related_surround_chunk(chunk_entity, leave_tokens-chunk_entity.tokens, banned_ids)
                 banned_ids += [sub_chunk_entity.id for sub_chunk_entity in sub_related_chunk_entities]
                 related_chunk_entities += sub_related_chunk_entities
                 for related_chunk_entity in sub_related_chunk_entities:
+                    token_sum += related_chunk_entity.tokens
                     leave_tokens -= related_chunk_entity.tokens
                 leave_tokens = max(leave_tokens, 0)
+                if token_sum >= llm.max_tokens:
+                    break
             chunk_entities += related_chunk_entities
             doc_chunk_dict = {}
             for chunk_entity in chunk_entities:

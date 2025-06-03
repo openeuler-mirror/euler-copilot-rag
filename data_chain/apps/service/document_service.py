@@ -184,7 +184,7 @@ class DocumentService:
             doc_entities = []
             for doc in req.document_list:
                 id = doc.id
-                bucket_name = doc.bucket
+                bucket_name = doc.bucket_name
                 file_name = doc.name
                 extension = file_name.split('.')[-1]
                 if not extension:

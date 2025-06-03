@@ -140,6 +140,7 @@ class GenerateDataSetWorker(BaseWorker):
         answer_generate_prompt_template = prompt_dict.get('GENERATE_ANSWER_FROM_QUESTION_AND_CONTENT_PROMPT', '')
         cal_qa_score_prompt_template = prompt_dict.get('CAL_QA_SCORE_PROMPT', '')
         dataset_score = 0
+        logging.error(f"{chunk_index_list}")
         for i in range(len(doc_chunks)):
             doc_chunk = doc_chunks[i]
             for j in range(len(doc_chunk.chunks)):

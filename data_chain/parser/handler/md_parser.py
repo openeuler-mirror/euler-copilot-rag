@@ -61,6 +61,7 @@ class MdParser(BaseParser):
         current_level_elements = list(root.children)
         # 过滤掉非标签节点（如文本节点）
         subtree = []
+        valid_headers = ["h1", "h2", "h3", "h4", "h5", "h6"]
         while current_level_elements:
             element = current_level_elements.pop(0)
             if not isinstance(element, Tag):
@@ -100,7 +101,7 @@ class MdParser(BaseParser):
                         link_nodes=[]
                     )
                 subtree.append(node)
-            elif element.name.startswith('h'):
+            elif element.name in valid_headers:
                 try:
                     level = int(element.name[1:])
                 except Exception:
@@ -110,7 +111,7 @@ class MdParser(BaseParser):
                 content_elements = []
                 while current_level_elements:
                     sibling = current_level_elements[0]
-                    if sibling.name and sibling.name.startswith('h'):
+                    if sibling.name and sibling.name in valid_headers:
                         next_level = int(sibling.name[1:])
                     else:
                         next_level = level + 1
@@ -224,4 +225,3 @@ class MdParser(BaseParser):
             nodes=nodes
         )
         return parse_result
-

@@ -45,7 +45,7 @@ class HTMLParser(BaseParser):
 
         # 获取body元素作为起点（如果是完整HTML文档）
         root = soup.body if soup.body else soup
-
+        valid_headers = ["h1", "h2", "h3", "h4", "h5", "h6"]
         # 获取当前层级的直接子元素
         current_level_elements = list(root.children)
         subtree = []
@@ -91,7 +91,7 @@ class HTMLParser(BaseParser):
                         link_nodes=[]
                     )
                 subtree.append(node)
-            elif element.name.startswith('h'):
+            elif element.name in valid_headers:
                 try:
                     level = int(element.name[1:])
                 except Exception:
@@ -101,7 +101,7 @@ class HTMLParser(BaseParser):
                 content_elements = []
                 while current_level_elements:
                     sibling = current_level_elements[0]
-                    if sibling.name and sibling.name.startswith('h'):
+                    if sibling.name and sibling.name in valid_headers:
                         next_level = int(sibling.name[1:])
                     else:
                         next_level = level + 1

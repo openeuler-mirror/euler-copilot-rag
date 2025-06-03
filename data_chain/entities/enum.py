@@ -160,6 +160,7 @@ class SearchMethod(str, Enum):
     DOC2CHUNK = "doc2chunk"
     DOC2CHUNK_BFS = "doc2chunk_bfs"
     ENHANCED_BY_LLM = "enhanced_by_llm"
+    QUERY_EXTEND = "query_extend"
 
 
 class TaskType(str, Enum):

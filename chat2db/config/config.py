@@ -14,7 +14,12 @@ class ConfigModel(BaseModel):
     SSL_ENABLE: str = Field(None, description="是否启用SSL连接")
 
     # Postgres
-    DATABASE_URL: str = Field(None, description="数据库url")
+    DATABASE_TYPE: str = Field(default="postgres", description="数据库类型")
+    DATABASE_HOST: str = Field(None, description="数据库地址")
+    DATABASE_PORT: int = Field(None, description="数据库端口")
+    DATABASE_USER: str = Field(None, description="数据库用户名")
+    DATABASE_PASSWORD: str = Field(None, description="数据库密码")
+    DATABASE_DB: str = Field(None, description="数据库名称")
 
     # QWEN
     LLM_KEY: str = Field(None, description="语言模型访问密钥")

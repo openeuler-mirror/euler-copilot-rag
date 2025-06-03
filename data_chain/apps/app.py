@@ -84,7 +84,6 @@ scheduler = AsyncIOScheduler()
 @app.on_event("startup")
 async def startup_event():
     await configure()
-    await DataBase.init_all_table()
     await add_acitons()
     await TaskQueueService.init_task_queue()
     await add_document_type()

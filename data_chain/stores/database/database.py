@@ -8,7 +8,6 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, Float, String, func
 from sqlalchemy.types import TIMESTAMP, UUID
 from sqlalchemy.orm import declarative_base
-
 from data_chain.config.config import config
 from data_chain.entities.enum import (Tokenizer,
                                       ParseMethod,
@@ -283,15 +282,26 @@ class DocumentEntity(Base):
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp()
     )
-    __table_args__ = (
-        Index(
-            'abstract_vector_index',
-            abstract_vector,
-            postgresql_using='hnsw',
-            postgresql_with={'m': 16, 'ef_construction': 200},
-            postgresql_ops={'abstract_vector': 'vector_cosine_ops'}
-        ),
-    )
+    if config["DATABASE_TYPE"].lower() == 'opengauss':
+        __table_args__ = (
+            Index(
+                'abstract_vector_index',
+                abstract_vector,
+                opengauss_using='hnsw',
+                opengauss_with={'m': 16, 'ef_construction': 200},
+                opengauss_ops={'abstract_vector': 'vector_cosine_ops'}
+            ),
+        )
+    else:
+        __table_args__ = (
+            Index(
+                'abstract_vector_index',
+                abstract_vector,
+                postgresql_using='hnsw',
+                postgresql_with={'m': 16, 'ef_construction': 200},
+                postgresql_ops={'abstract_vector': 'vector_cosine_ops'}
+            ),
+        )
 
 
 class ChunkEntity(Base):
@@ -323,16 +333,26 @@ class ChunkEntity(Base):
         TIMESTAMP(timezone=True),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp())
-
-    __table_args__ = (
-        Index(
-            'text_vector_index',
-            text_vector,
-            postgresql_using='hnsw',
-            postgresql_with={'m': 16, 'ef_construction': 200},
-            postgresql_ops={'text_vector': 'vector_cosine_ops'}
-        ),
-    )
+    if config["DATABASE_TYPE"].lower() == 'opengauss':
+        __table_args__ = (
+            Index(
+                'text_vector_index',
+                text_vector,
+                opengauss_using='hnsw',
+                opengauss_with={'m': 16, 'ef_construction': 200},
+                opengauss_ops={'text_vector': 'vector_cosine_ops'}
+            ),
+        )
+    else:
+        __table_args__ = (
+            Index(
+                'text_vector_index',
+                text_vector,
+                postgresql_using='hnsw',
+                postgresql_with={'m': 16, 'ef_construction': 200},
+                postgresql_ops={'text_vector': 'vector_cosine_ops'}
+            ),
+        )
 
 
 class ImageEntity(Base):
@@ -552,6 +572,7 @@ class DataBase:
         pool_recycle=300,
         pool_pre_ping=True
     )
+    init_all_table_flag = False
 
     @classmethod
     async def init_all_table(cls):
@@ -567,6 +588,9 @@ class DataBase:
 
     @classmethod
     async def get_session(cls):
+        if DataBase.init_all_table_flag is False:
+            await DataBase.init_all_table()
+            DataBase.init_all_table_flag = True
         connection = async_sessionmaker(DataBase.engine, expire_on_commit=False)()
         return cls._ConnectionManager(connection)
 

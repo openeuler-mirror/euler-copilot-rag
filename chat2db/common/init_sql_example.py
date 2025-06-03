@@ -13,9 +13,9 @@ password = config['DATABASE_PASSWORD']
 encoded_password = urllib.parse.quote_plus(password)
 
 if config['DATABASE_TYPE'].lower() == 'opengauss':
-    database_url = f"opengauss+asyncpg://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
+    database_url = f"opengauss+psycopg2://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
 else:
-    database_url = f"postgresql+asyncpg://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
+    database_url = f"postgresql+psycopg2://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
 
 
 class DatabaseDelRequest(BaseModel):

@@ -310,8 +310,6 @@ class ParseDocumentWorker(BaseWorker):
                             tmp = tmp[len(sub_sentence):]
                     else:
                         new_sentences.append(sentence)
-                for sentence in new_sentences:
-                    logging.error(f"[ParseDocumentWorker] {sentence} {TokenTool.get_tokens(sentence)}")
                 sentences = new_sentences
                 for sentence in sentences:
                     if TokenTool.get_tokens(tmp) + TokenTool.get_tokens(sentence) > doc_entity.chunk_size:
@@ -353,6 +351,7 @@ class ParseDocumentWorker(BaseWorker):
                 link_nodes=[]
             )
             nodes.append(tmp_node)
+        parse_result.nodes = nodes
 
     @staticmethod
     async def push_up_words_feature(parse_result: ParseResult, llm: LLM = None) -> None:

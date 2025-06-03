@@ -86,6 +86,7 @@ async def startup_event():
     await configure()
     await add_acitons()
     await TaskQueueService.init_task_queue()
+    await add_knowledge_base()
     await add_document_type()
     await init_path()
     scheduler.add_job(TaskQueueService.handle_tasks, 'interval', seconds=5)

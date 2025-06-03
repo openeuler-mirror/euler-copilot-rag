@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import uuid
 from typing import Dict, List, Tuple
 
-from data_chain.config import config
+from data_chain.config.config import config
 from data_chain.entities.enum import TaskStatus, OrderType
 from data_chain.stores.database.database import DataBase, KnowledgeBaseEntity, DocumentTypeEntity, DocumentEntity, TaskEntity
 from data_chain.entities.enum import KnowledgeBaseStatus, DocumentStatus

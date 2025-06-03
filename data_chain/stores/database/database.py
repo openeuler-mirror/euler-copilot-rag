@@ -208,7 +208,7 @@ class KnowledgeBaseEntity(Base):
     __tablename__ = 'knowledge_base'
 
     id = Column(UUID, default=uuid4, primary_key=True)
-    team_id = Column(UUID, ForeignKey('team.id', ondelete="CASCADE"))  # 团队id
+    team_id = Column(UUID, ForeignKey('team.id', ondelete="CASCADE"), nullable=True)  # 团队id
     author_id = Column(String)  # 作者id
     author_name = Column(String)  # 作者名称
     name = Column(String, default='')  # 知识库名资产名

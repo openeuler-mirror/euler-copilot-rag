@@ -43,7 +43,7 @@ class QueryExtendSearcher(BaseSearcher):
             model_name=config['MODEL_NAME'],
             max_tokens=config['MAX_TOKENS'],
         )
-        sys_call = prompt_template.format(k=2*top_k, query=query)
+        sys_call = prompt_template.format(k=2*top_k, question=query)
         user_call = "请输出扩写的问题列表"
         queries = await llm.nostream([], sys_call, user_call)
         try:

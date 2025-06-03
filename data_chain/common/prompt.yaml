@@ -352,7 +352,7 @@ CHUNK_QUERY_MATCH_PROMPT: '你是一个文本分析专家，你的任务是根�
   片段：{chunk}
   问题：{question}
   '
-  QUERY_EXTEND_PROMPT: '你是一个问题扩写专家，你的任务是根据给出的问题扩写{k}个问题
+QUERY_EXTEND_PROMPT: '你是一个问题扩写专家，你的任务是根据给出的问题扩写{k}个问题
   注意：
   #01 扩写的问题的内容必须来源于原问题中的内容
   #02 扩写的问题长度不超过50个字
@@ -362,10 +362,10 @@ CHUNK_QUERY_MATCH_PROMPT: '你是一个文本分析专家，你的任务是根�
   输入：openEuler是什么操作系统？
   输出：
   [
-    "openEuler是一个什么样的操作系统？",
-    "openEuler操作系统的特点是什么？",
-    "openEuler操作系统有哪些功能？",
-    "openEuler操作系统的优势是什么？"
+    \"openEuler是一个什么样的操作系统？\",
+    \"openEuler操作系统的特点是什么？\",
+    \"openEuler操作系统有哪些功能？\",
+    \"openEuler操作系统的优势是什么？\"
   ]
   下面是给出的问题：
   {question}

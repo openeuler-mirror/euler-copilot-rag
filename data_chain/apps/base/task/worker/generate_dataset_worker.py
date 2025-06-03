@@ -132,7 +132,9 @@ class GenerateDataSetWorker(BaseWorker):
         chunk_cnt = len(chunk_index_list)
         division = data_cnt // chunk_cnt
         remainder = data_cnt % chunk_cnt
+        logging.error(f"数据集总条目 {dataset_entity.data_cnt}, 分块数量: {chunk_cnt}, 每块数据量: {division}, 余数: {remainder}")
         index = 0
+        d_index = 0
         random.shuffle(doc_chunks)
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
             prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
@@ -148,6 +150,7 @@ class GenerateDataSetWorker(BaseWorker):
                     index += 1
                     continue
                 index += 1
+                d_index += 1
                 chunk = doc_chunk.chunks[j].text
                 if dataset_entity.is_chunk_related:
                     l = j-1
@@ -158,11 +161,11 @@ class GenerateDataSetWorker(BaseWorker):
                             break
                         if tokens_sub > 0:
                             if l >= 0:
-                                tokens_sub += TokenTool.get_tokens(doc_chunks[i].chunks[l].text)
+                                tokens_sub -= TokenTool.get_tokens(doc_chunks[i].chunks[l].text)
                                 chunk = doc_chunks[i].chunks[l].text+chunk
                                 l -= 1
                             else:
-                                tokens_sub -= TokenTool.get_tokens(doc_chunks[i].chunks[r].text)
+                                tokens_sub += TokenTool.get_tokens(doc_chunks[i].chunks[r].text)
                                 chunk += doc_chunks[i].chunks[r].text
                                 r += 1
                         else:
@@ -174,7 +177,7 @@ class GenerateDataSetWorker(BaseWorker):
                                 tokens_sub -= TokenTool.get_tokens(doc_chunks[i].chunks[l].text)
                                 chunk = doc_chunks[i].chunks[l].text+chunk
                                 l -= 1
-                qa_cnt = division+(index < remainder)
+                qa_cnt = division+(d_index <= remainder)
                 qs = []
                 answers = []
                 rd = 5
@@ -182,7 +185,7 @@ class GenerateDataSetWorker(BaseWorker):
                     rd -= 1
                     try:
                         sys_call = q_generate_prompt_template.format(
-                            k=qa_cnt,
+                            k=qa_cnt-len(qs),
                             content=TokenTool.get_k_tokens_words_from_content(chunk, llm.max_tokens)
                         )
                         usr_call = '请输出问题的列表'
@@ -192,6 +195,7 @@ class GenerateDataSetWorker(BaseWorker):
                         err = f"[GenerateDataSetWorker] 生成问题失败，错误信息: {e}"
                         logging.exception(err)
                         continue
+                    sub_qs = sub_qs[:qa_cnt-len(qs)]
                     sub_answers = []
                     try:
                         for q in sub_qs:

@@ -57,11 +57,10 @@ class DocumentManager():
                     .where(DocumentEntity.status != DocumentStatus.DELETED.value)
                     .where(DocumentEntity.enabled == True)
                     .where(DocumentEntity.abstract_vector.cosine_distance(vector).desc())
-                    .order_by(DocumentEntity.abstract_vector.cosine_distance(vector).desc())
-                    .limit(top_k)
                 )
                 if doc_ids:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
+                stmt = stmt.order_by(DocumentEntity.abstract_vector.cosine_distance(vector).desc()).limit(top_k)
                 result = await session.execute(stmt)
                 document_entities = result.scalars().all()
                 return document_entities
@@ -91,14 +90,13 @@ class DocumentManager():
                     .where(DocumentEntity.id.notin_(banned_ids))
                     .where(DocumentEntity.status != DocumentStatus.DELETED.value)
                     .where(DocumentEntity.enabled == True)
-                    .where(func.ts_rank_cd(
-                        func.to_tsvector(tokenizer, DocumentEntity.abstract),
-                        func.plainto_tsquery(tokenizer, query)
-                    ).desc())
-                    .limit(top_k)
                 )
                 if doc_ids:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
+                stmt = stmt.order_by(func.ts_rank_cd(
+                    func.to_tsvector(tokenizer, DocumentEntity.abstract),
+                    func.plainto_tsquery(tokenizer, query)
+                ).desc()).limit(top_k)
                 result = await session.execute(stmt)
                 document_entities = result.scalars().all()
                 return document_entities

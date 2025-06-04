@@ -182,8 +182,6 @@ class ChunkManager():
                     .where(ChunkEntity.kb_id == kb_id)
                     .where(ChunkEntity.status != ChunkStatus.DELETED.value)
                     .where(ChunkEntity.id.notin_(banned_ids))
-                    .order_by(ChunkEntity.text_vector.cosine_distance(vector).desc())
-                    .limit(top_k)
                 )
                 if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
@@ -192,6 +190,7 @@ class ChunkManager():
                 if pre_ids is not None:
                     stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
                 result = await session.execute(stmt)
+                stmt = stmt.order_by(ChunkEntity.text_vector.cosine_distance(vector).desc()).limit(top_k)
                 chunk_entities = result.scalars().all()
                 return chunk_entities
         except Exception as e:
@@ -229,13 +228,6 @@ class ChunkManager():
                     .where(ChunkEntity.kb_id == kb_id)
                     .where(ChunkEntity.status != ChunkStatus.DELETED.value)
                     .where(ChunkEntity.id.notin_(banned_ids))
-                    .order_by(
-                        func.ts_rank_cd(
-                            func.to_tsvector(tokenizer, ChunkEntity.text),
-                            func.plainto_tsquery(tokenizer, query)
-                        ).desc()
-                    )
-                    .limit(top_k)
                 )
                 if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
@@ -243,6 +235,12 @@ class ChunkManager():
                     stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
                 if pre_ids is not None:
                     stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
+                stmt = stmt.order_by(
+                    func.ts_rank_cd(
+                        func.to_tsvector(tokenizer, ChunkEntity.text),
+                        func.plainto_tsquery(tokenizer, query)
+                    ).desc()
+                ).limit(top_k)
                 result = await session.execute(stmt)
                 chunk_entities = result.scalars().all()
                 return chunk_entities

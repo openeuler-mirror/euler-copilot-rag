@@ -50,8 +50,10 @@ class DocumentManager():
         """根据知识库ID和向量获取前K个文档"""
         try:
             async with await DataBase.get_session() as session:
+                similarity_score = DocumentEntity.abstract.cosine_distance(vector).label("similarity_score")
                 stmt = (
-                    select(DocumentEntity)
+                    select(DocumentEntity, similarity_score)
+                    .where(similarity_score > 0)
                     .where(DocumentEntity.kb_id == kb_id)
                     .where(DocumentEntity.id.notin_(banned_ids))
                     .where(DocumentEntity.status != DocumentStatus.DELETED.value)
@@ -60,8 +62,12 @@ class DocumentManager():
                 )
                 if doc_ids:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
-                stmt = stmt.order_by(DocumentEntity.abstract_vector.cosine_distance(vector).desc()).limit(top_k)
+                stmt = stmt.order_by(
+                    similarity_score.desc()
+                )
+
                 result = await session.execute(stmt)
+
                 document_entities = result.scalars().all()
                 return document_entities
         except Exception as e:
@@ -84,8 +90,12 @@ class DocumentManager():
                         tokenizer = 'zhparser'
                 elif kb_entity.tokenizer == Tokenizer.EN.value:
                     tokenizer = 'english'
+                similarity_score = func.ts_rank_cd(
+                    func.to_tsvector(tokenizer, DocumentEntity.abstract),
+                    func.plainto_tsquery(tokenizer, query)
+                ).label("similarity_score")
                 stmt = (
-                    select(DocumentEntity)
+                    select(DocumentEntity, similarity_score)
                     .where(DocumentEntity.kb_id == kb_id)
                     .where(DocumentEntity.id.notin_(banned_ids))
                     .where(DocumentEntity.status != DocumentStatus.DELETED.value)
@@ -93,10 +103,11 @@ class DocumentManager():
                 )
                 if doc_ids:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
-                stmt = stmt.order_by(func.ts_rank_cd(
-                    func.to_tsvector(tokenizer, DocumentEntity.abstract),
-                    func.plainto_tsquery(tokenizer, query)
-                ).desc()).limit(top_k)
+
+                stmt = stmt.order_by(
+                    similarity_score.desc()
+                )
+                stmt = stmt.limit(top_k)
                 result = await session.execute(stmt)
                 document_entities = result.scalars().all()
                 return document_entities

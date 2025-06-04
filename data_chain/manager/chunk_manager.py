@@ -180,6 +180,7 @@ class ChunkManager():
                     .where(DocumentEntity.enabled == True)
                     .where(DocumentEntity.status != DocumentStatus.DELETED.value)
                     .where(ChunkEntity.kb_id == kb_id)
+                    .where(ChunkEntity.enabled == True)
                     .where(ChunkEntity.status != ChunkStatus.DELETED.value)
                     .where(ChunkEntity.id.notin_(banned_ids))
                 )
@@ -226,6 +227,7 @@ class ChunkManager():
                     .where(DocumentEntity.enabled == True)
                     .where(DocumentEntity.status != DocumentStatus.DELETED.value)
                     .where(ChunkEntity.kb_id == kb_id)
+                    .where(ChunkEntity.enabled == True)
                     .where(ChunkEntity.status != ChunkStatus.DELETED.value)
                     .where(ChunkEntity.id.notin_(banned_ids))
                 )
@@ -242,6 +244,7 @@ class ChunkManager():
                     ).desc()
                 ).limit(top_k)
                 result = await session.execute(stmt)
+
                 chunk_entities = result.scalars().all()
                 return chunk_entities
         except Exception as e:

@@ -273,7 +273,7 @@ class ParseDocumentWorker(BaseWorker):
                     node.content = await OcrTool.image_to_text(img_np, image_related_text, llm)
                     node.text_feature = node.content
                 except Exception as e:
-                    err = f"[ParseDocumentWorker] OCR失败，doc_id: {node.doc_id}, error: {e}"
+                    err = f"[ParseDocumentWorker] OCR失败 error: {e}"
                     logging.exception(err)
                     continue
 

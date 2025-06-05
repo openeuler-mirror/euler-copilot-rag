@@ -2,6 +2,7 @@ import asyncio
 from bs4 import BeautifulSoup, Tag
 import markdown
 import os
+import re
 import requests
 import uuid
 from data_chain.entities.enum import DocParseRelutTopology, ChunkParseTopology, ChunkType
@@ -48,6 +49,14 @@ class MdZipParser(BaseParser):
                 logging.warning(warining)
                 return None
         else:
+            # 1. 处理反斜杠问题 - 替换所有反斜杠为正斜杠
+            img_src = img_src.replace('\\', '/')
+
+            # 2. 移除可能的相对路径前缀（如 ./ 或 ../）
+            img_src = re.sub(r'^\./+', '', img_src)
+
+            # 3. 规范化路径（处理多余的斜杠等）
+            img_src = os.path.normpath(img_src)
             img_path = os.path.join(base_dir, img_src)
             if os.path.exists(img_path):
                 try:
@@ -76,18 +85,22 @@ class MdZipParser(BaseParser):
         subtree = []
         while current_level_elements:
             element = current_level_elements.pop(0)
+
             if not isinstance(element, Tag):
-                node = ParseNode(
-                    id=uuid.uuid4(),
-                    lv=current_level,
-                    parse_topology_type=ChunkParseTopology.TREELEAF,
-                    content=element.get_text(strip=True),
-                    type=ChunkType.TEXT,
-                    link_nodes=[]
-                )
-                subtree.append(node)
+                try:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=element.get_text(strip=True),
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+                except Exception as e:
+                    logging.error(f"[MdZipParser] 处理非标签节点失败: {e}")
                 continue
-            if element.name == 'ol':
+            if element.name == 'p' or element.name == 'ol' or element.name == 'hr':
                 inner_html = ''.join(str(child) for child in element.children)
                 child_subtree = await MdZipParser.build_subtree(file_path, inner_html, current_level+1)
                 parse_topology_type = ChunkParseTopology.TREENORMAL if len(
@@ -150,7 +163,7 @@ class MdZipParser(BaseParser):
                 )
                 subtree.append(node)
             elif element.name == 'code':
-                code_text = element.find('code').get_text()
+                code_text = element.get_text().strip()
                 node = ParseNode(
                     id=uuid.uuid4(),
 
@@ -161,7 +174,7 @@ class MdZipParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p' or element.name == 'li':
+            elif element.name == 'li':
                 para_text = element.get_text().strip()
                 if para_text:
                     node = ParseNode(
@@ -213,6 +226,7 @@ class MdZipParser(BaseParser):
     @staticmethod
     async def markdown_to_tree(file_path: str, markdown_text: str) -> ParseNode:
         html = markdown.markdown(markdown_text, extensions=['tables'])
+        logging.error(html)
         root = ParseNode(
             id=uuid.uuid4(),
             title="",
@@ -247,7 +261,7 @@ class MdZipParser(BaseParser):
         markdown_file_path = markdown_file_path_list[0] if markdown_file_path_list else None
         with open(markdown_file_path, 'r', encoding='utf-8', errors='ignore') as f:
             markdown_text = f.read()
-        nodes = await MdZipParser.markdown_to_tree(target_file_path, markdown_text)
+        nodes = await MdZipParser.markdown_to_tree(markdown_file_path, markdown_text)
         return ParseResult(
             parse_topology_type=DocParseRelutTopology.TREE,
             nodes=nodes

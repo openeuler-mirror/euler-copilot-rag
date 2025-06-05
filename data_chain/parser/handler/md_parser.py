@@ -65,17 +65,21 @@ class MdParser(BaseParser):
         while current_level_elements:
             element = current_level_elements.pop(0)
             if not isinstance(element, Tag):
-                node = ParseNode(
-                    id=uuid.uuid4(),
-                    lv=current_level,
-                    parse_topology_type=ChunkParseTopology.TREELEAF,
-                    content=element.get_text(strip=True),
-                    type=ChunkType.TEXT,
-                    link_nodes=[]
-                )
-                subtree.append(node)
+                try:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=element.get_text(strip=True),
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+                except Exception as e:
+                    logging.error(f"[MdParser] 处理非标签节点失败: {e}")
+
                 continue
-            if element.name == 'ol' or element.name == 'hr':
+            if element.name == 'p' or element.name == 'ol' or element.name == 'hr':
                 inner_html = ''.join(str(child) for child in element.children)
                 child_subtree = await MdParser.build_subtree(inner_html, current_level+1)
                 parse_topology_type = ChunkParseTopology.TREENORMAL if len(
@@ -138,7 +142,7 @@ class MdParser(BaseParser):
                 )
                 subtree.append(node)
             elif element.name == 'code':
-                code_text = element.find('code').get_text()
+                code_text = element.get_text().strip()
                 node = ParseNode(
                     id=uuid.uuid4(),
 
@@ -149,7 +153,7 @@ class MdParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p' or element.name == 'li':
+            elif element.name == 'li':
                 para_text = element.get_text().strip()
                 if para_text:
                     node = ParseNode(

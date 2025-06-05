@@ -52,19 +52,22 @@ class HTMLParser(BaseParser):
         while current_level_elements:
             element = current_level_elements.pop(0)
             if not isinstance(element, Tag):
-                node = ParseNode(
-                    id=uuid.uuid4(),
-                    lv=current_level,
-                    parse_topology_type=ChunkParseTopology.TREELEAF,
-                    content=element.get_text(strip=True),
-                    type=ChunkType.TEXT,
-                    link_nodes=[]
-                )
-                subtree.append(node)
+                try:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=element.get_text(strip=True),
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+                except Exception as e:
+                    logging.warning(f"[HTMLParser] 处理非标签元素失败: {e}")
                 continue
             if element.name == 'div' or element.name == 'head' or element.name == 'header' or \
                     element.name == 'body' or element.name == 'section' or element.name == 'article' or \
-                    element.name == 'nav' or element.name == 'main' or element.name == 'ol':
+                    element.name == 'nav' or element.name == 'main' or element.name == 'p' or element.name == 'ol':
                 # 处理div内部元素
                 inner_html = ''.join(str(child) for child in element.children)
                 child_subtree = await HTMLParser.build_subtree(inner_html, current_level+1)
@@ -138,7 +141,7 @@ class HTMLParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p' or element.name == 'title' or element.name == 'span' or element.name == 'pre'\
+            elif element.name == 'title' or element.name == 'span' or element.name == 'pre'\
                     or element.name == 'li':
                 para_text = element.get_text().strip()
                 if para_text:

@@ -157,7 +157,7 @@ class GenerateDataSetWorker(BaseWorker):
                     r = j+1
                     tokens_sub = 0
                     while TokenTool.get_tokens(chunk) < llm.max_tokens:
-                        if l < 0 and r >= len(doc_chunks):
+                        if l < 0 and r >= len(doc_chunks[i]):
                             break
                         if tokens_sub > 0:
                             if l >= 0:
@@ -169,7 +169,7 @@ class GenerateDataSetWorker(BaseWorker):
                                 chunk += doc_chunks[i].chunks[r].text
                                 r += 1
                         else:
-                            if r < len(doc_chunks):
+                            if r < len(doc_chunks[i]):
                                 tokens_sub += TokenTool.get_tokens(doc_chunks[i].chunks[r].text)
                                 chunk += doc_chunks[i].chunks[r].text
                                 r += 1

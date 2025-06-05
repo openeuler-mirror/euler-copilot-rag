@@ -89,7 +89,7 @@ class MdZipParser(BaseParser):
                 continue
             if element.name == 'ol':
                 inner_html = ''.join(str(child) for child in element.children)
-                child_subtree = await MdZipParser.build_subtree(inner_html, current_level+1)
+                child_subtree = await MdZipParser.build_subtree(file_path, inner_html, current_level+1)
                 parse_topology_type = ChunkParseTopology.TREENORMAL if len(
                     child_subtree) else ChunkParseTopology.TREELEAF
                 if child_subtree:
@@ -133,7 +133,7 @@ class MdZipParser(BaseParser):
                 # 如果有内容，处理这些内容
                 if content_elements:
                     content_html = ''.join(str(el) for el in content_elements)
-                    child_subtree = await MdZipParser.build_subtree(content_html, level)
+                    child_subtree = await MdZipParser.build_subtree(file_path, content_html, level)
                     parse_topology_type = ChunkParseTopology.TREENORMAL
                 else:
                     child_subtree = []
@@ -231,12 +231,20 @@ class MdZipParser(BaseParser):
     async def parser(file_path: str) -> ParseResult:
         target_file_path = os.path.join(os.path.dirname(file_path), 'temp')
         await ZipHandler.unzip_file(file_path, target_file_path)
-        markdown_file = [f for f in os.listdir(target_file_path) if f.endswith('.md')]
-        if not markdown_file:
+        # 递归查找markdown文件
+        markdown_file_path_list = []
+        for root, dirs, files in os.walk(target_file_path):
+            for file in files:
+                if file.endswith('.md'):
+                    target_file_path = os.path.join(root, file)
+                    markdown_file_path_list.append(target_file_path)
+            else:
+                continue
+        if not markdown_file_path_list:
             err = f"[MdZipParser] markdown文件不存在"
             logging.error(err)
             raise FileNotFoundError(err)
-        markdown_file_path = os.path.join(target_file_path, markdown_file[0]) if markdown_file else None
+        markdown_file_path = markdown_file_path_list[0] if markdown_file_path_list else None
         with open(markdown_file_path, 'r', encoding='utf-8', errors='ignore') as f:
             markdown_text = f.read()
         nodes = await MdZipParser.markdown_to_tree(target_file_path, markdown_text)

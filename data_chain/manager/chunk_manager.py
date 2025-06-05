@@ -209,7 +209,7 @@ class ChunkManager():
         except Exception as e:
             err = "根据知识库ID和向量查询文档解析结果失败"
             logging.exception("[ChunkManager] %s", err)
-            raise e
+            return []
 
     async def get_top_k_chunk_by_kb_id_keyword(
             kb_id: uuid.UUID, query: str,
@@ -271,7 +271,7 @@ class ChunkManager():
         except Exception as e:
             err = f"根据知识库ID和向量查询文档解析结果失败: {str(e)}"
             logging.exception("[ChunkManager] %s", err)
-            raise e
+            return []
 
     @staticmethod
     async def fetch_surrounding_chunk_by_doc_id_and_global_offset(

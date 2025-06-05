@@ -1,5 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-from sqlalchemy import select, update, func, text, or_, and_
+from sqlalchemy import select, update, func, text, or_, and_, Float, literal_column
 from typing import List, Tuple, Dict, Optional
 import uuid
 from data_chain.entities.enum import DocumentStatus, ChunkStatus, Tokenizer
@@ -265,6 +265,97 @@ class ChunkManager():
 
                 # 执行最终查询
                 result = await session.execute(stmt)
+                chunk_entities = result.scalars().all()
+
+                return chunk_entities
+        except Exception as e:
+            err = f"根据知识库ID和向量查询文档解析结果失败: {str(e)}"
+            logging.exception("[ChunkManager] %s", err)
+            return []
+
+    async def get_top_k_chunk_by_kb_id_dynamic_weighted_keyword(
+            kb_id: uuid.UUID, keywords: List[str], weights: List[float],
+            top_k: int, doc_ids: list[uuid.UUID] = None, banned_ids: list[uuid.UUID] = [],
+            chunk_to_type: str = None, pre_ids: list[uuid.UUID] = None) -> List[ChunkEntity]:
+        """根据知识库ID和关键词和关键词权重查询文档解析结果"""
+        try:
+            async with await DataBase.get_session() as session:
+                kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
+                if kb_entity.tokenizer == Tokenizer.ZH.value:
+                    if config['DATABASE_TYPE'].lower() == 'opengauss':
+                        tokenizer = 'chparser'
+                    else:
+                        tokenizer = 'zhparser'
+                elif kb_entity.tokenizer == Tokenizer.EN.value:
+                    tokenizer = 'english'
+                else:
+                    if config['DATABASE_TYPE'].lower() == 'opengauss':
+                        tokenizer = 'chparser'
+                    else:
+                        tokenizer = 'zhparser'
+
+                # 构建VALUES子句的参数
+                params = {}
+                values_clause = []
+
+                for i, (term, weight) in enumerate(zip(keywords, weights)):
+                    # 使用单独的参数名，避免与类型转换冲突
+                    params[f"term_{i}"] = term
+                    params[f"weight_{i}"] = weight
+                    # 在VALUES子句中使用类型转换函数
+                    values_clause.append(f"(CAST(:term_{i} AS TEXT), CAST(:weight_{i} AS FLOAT8))")
+
+                # 构建VALUES子句
+                values_text = f"(VALUES {', '.join(values_clause)}) AS t(term, weight)"
+
+                # 创建weighted_terms CTE
+                weighted_terms = (
+                    select(
+                        literal_column("t.term").label("term"),
+                        literal_column("t.weight").cast(Float).label("weight")
+                    )
+                    .select_from(text(values_text))
+                    .cte("weighted_terms")
+                )
+
+                # 计算相似度得分
+                similarity_score = func.sum(
+                    func.ts_rank_cd(
+                        func.to_tsvector(tokenizer, ChunkEntity.text),
+                        func.to_tsquery(tokenizer, weighted_terms.c.term)
+                    ) * weighted_terms.c.weight
+                ).label("similarity_score")
+
+                stmt = (
+                    select(ChunkEntity, similarity_score)
+                    .join(DocumentEntity,
+                          DocumentEntity.id == ChunkEntity.doc_id
+                          )
+                    .where(DocumentEntity.enabled == True)
+                    .where(DocumentEntity.status != DocumentStatus.DELETED.value)
+                    .where(ChunkEntity.kb_id == kb_id)
+                    .where(ChunkEntity.enabled == True)
+                    .where(ChunkEntity.status != ChunkStatus.DELETED.value)
+                    .where(ChunkEntity.id.notin_(banned_ids))
+                )
+                # 添加 GROUP BY 子句，按 ChunkEntity.id 分组
+                stmt = stmt.group_by(ChunkEntity.id)
+
+                stmt.having(similarity_score > 0)
+
+                if doc_ids is not None:
+                    stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
+                if chunk_to_type is not None:
+                    stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
+                if pre_ids is not None:
+                    stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
+
+                # 按相似度分数排序
+                stmt = stmt.order_by(similarity_score.desc())
+                stmt = stmt.limit(top_k)
+
+                # 执行最终查询
+                result = await session.execute(stmt, params=params)
                 chunk_entities = result.scalars().all()
 
                 return chunk_entities

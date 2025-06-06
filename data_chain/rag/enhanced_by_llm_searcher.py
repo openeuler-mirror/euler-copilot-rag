@@ -46,8 +46,7 @@ class EnhancedByLLMSearcher(BaseSearcher):
                 model_name=config['MODEL_NAME'],
                 max_tokens=config['MAX_TOKENS'],
             )
-            query_filtered = TokenTool.filter_stopwords(query)
-            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query_filtered)
+            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query)
             while len(chunk_entities) < top_k and rd < max_retry:
                 rd += 1
                 sub_chunk_entities_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_dynamic_weighted_keyword(

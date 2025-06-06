@@ -33,8 +33,7 @@ class KeywordVectorSearcher(BaseSearcher):
             chunk_entities_get_by_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(
                 kb_id, query, max(top_k//3, 1), doc_ids, banned_ids)
             banned_ids += [chunk_entity.id for chunk_entity in chunk_entities_get_by_keyword]
-            query_filtered = TokenTool.filter_stopwords(query)
-            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query_filtered)
+            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query)
             logging.error(f"[KeywordVectorSearcher] keywords: {keywords}, weights: {weights}")
             chunk_entities_get_by_dynamic_weighted_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_dynamic_weighted_keyword(kb_id, keywords, weights, top_k//2, doc_ids, banned_ids)
             banned_ids += [chunk_entity.id for chunk_entity in chunk_entities_get_by_dynamic_weighted_keyword]

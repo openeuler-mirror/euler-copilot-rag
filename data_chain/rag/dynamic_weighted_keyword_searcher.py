@@ -28,8 +28,7 @@ class DynamicWeightKeyWordSearcher(BaseSearcher):
         :return: 检索结果
         """
         try:
-            query_filtered = TokenTool.filter_stopwords(query)
-            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query_filtered)
+            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query)
             chunk_entities = await ChunkManager.get_top_k_chunk_by_kb_id_dynamic_weighted_keyword(kb_id, keywords, weights, top_k, doc_ids, banned_ids)
         except Exception as e:
             err = f"[KeywordVectorSearcher] 关键词向量检索失败，error: {e}"

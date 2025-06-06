@@ -157,25 +157,25 @@ class GenerateDataSetWorker(BaseWorker):
                     r = j+1
                     tokens_sub = 0
                     while TokenTool.get_tokens(chunk) < llm.max_tokens:
-                        if l < 0 and r >= len(doc_chunks[i]):
+                        if l < 0 and r >= len(doc_chunk.chunks):
                             break
                         if tokens_sub > 0:
                             if l >= 0:
-                                tokens_sub -= TokenTool.get_tokens(doc_chunks[i].chunks[l].text)
-                                chunk = doc_chunks[i].chunks[l].text+chunk
+                                tokens_sub -= TokenTool.get_tokens(doc_chunk.chunks[l].text)
+                                chunk = doc_chunk.chunks[l].text+chunk
                                 l -= 1
                             else:
-                                tokens_sub += TokenTool.get_tokens(doc_chunks[i].chunks[r].text)
-                                chunk += doc_chunks[i].chunks[r].text
+                                tokens_sub += TokenTool.get_tokens(doc_chunk.chunks[r].text)
+                                chunk += doc_chunk.chunks[r].text
                                 r += 1
                         else:
-                            if r < len(doc_chunks[i]):
-                                tokens_sub += TokenTool.get_tokens(doc_chunks[i].chunks[r].text)
-                                chunk += doc_chunks[i].chunks[r].text
+                            if r < len(doc_chunk.chunks):
+                                tokens_sub += TokenTool.get_tokens(doc_chunk.chunks[r].text)
+                                chunk += doc_chunk.chunks[r].text
                                 r += 1
                             else:
-                                tokens_sub -= TokenTool.get_tokens(doc_chunks[i].chunks[l].text)
-                                chunk = doc_chunks[i].chunks[l].text+chunk
+                                tokens_sub -= TokenTool.get_tokens(doc_chunk.chunks[l].text)
+                                chunk = doc_chunk.chunks[l].text+chunk
                                 l -= 1
                 qa_cnt = division+(d_index <= remainder)
                 qs = []

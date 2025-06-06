@@ -53,7 +53,9 @@ from data_chain.rag import (
     keyword_and_vector_searcher,
     doc2chunk_searcher,
     doc2chunk_bfs_searcher,
-    enhanced_by_llm_searcher
+    enhanced_by_llm_searcher,
+    query_extend_searcher,
+    dynamic_weighted_keyword_searcher
 )
 from data_chain.stores.database.database import (
     DataBase,

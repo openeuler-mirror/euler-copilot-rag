@@ -21,7 +21,7 @@ class KnowledgeBaseManager():
                 return knowledge_base_entity
         except Exception as e:
             err = "添加知识库失败"
-            logging.exception("[KnowledgeBaseManager] %s", err)
+            logging.error("[KnowledgeBaseManager] %s", err)
 
     @staticmethod
     async def get_knowledge_base_by_kb_id(kb_id: uuid.UUID) -> KnowledgeBaseEntity:

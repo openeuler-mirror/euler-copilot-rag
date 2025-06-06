@@ -45,26 +45,29 @@ class HTMLParser(BaseParser):
 
         # 获取body元素作为起点（如果是完整HTML文档）
         root = soup.body if soup.body else soup
-
+        valid_headers = ["h1", "h2", "h3", "h4", "h5", "h6"]
         # 获取当前层级的直接子元素
         current_level_elements = list(root.children)
         subtree = []
         while current_level_elements:
             element = current_level_elements.pop(0)
             if not isinstance(element, Tag):
-                node = ParseNode(
-                    id=uuid.uuid4(),
-                    lv=current_level,
-                    parse_topology_type=ChunkParseTopology.TREELEAF,
-                    content=element.get_text(strip=True),
-                    type=ChunkType.TEXT,
-                    link_nodes=[]
-                )
-                subtree.append(node)
+                try:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=element.get_text(strip=True),
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+                except Exception as e:
+                    logging.warning(f"[HTMLParser] 处理非标签元素失败: {e}")
                 continue
             if element.name == 'div' or element.name == 'head' or element.name == 'header' or \
                     element.name == 'body' or element.name == 'section' or element.name == 'article' or \
-                    element.name == 'nav' or element.name == 'main' or element.name == 'ol':
+                    element.name == 'nav' or element.name == 'main' or element.name == 'p' or element.name == 'ol':
                 # 处理div内部元素
                 inner_html = ''.join(str(child) for child in element.children)
                 child_subtree = await HTMLParser.build_subtree(inner_html, current_level+1)
@@ -91,7 +94,7 @@ class HTMLParser(BaseParser):
                         link_nodes=[]
                     )
                 subtree.append(node)
-            elif element.name.startswith('h'):
+            elif element.name in valid_headers:
                 try:
                     level = int(element.name[1:])
                 except Exception:
@@ -101,7 +104,7 @@ class HTMLParser(BaseParser):
                 content_elements = []
                 while current_level_elements:
                     sibling = current_level_elements[0]
-                    if sibling.name and sibling.name.startswith('h'):
+                    if sibling.name and sibling.name in valid_headers:
                         next_level = int(sibling.name[1:])
                     else:
                         next_level = level + 1
@@ -138,7 +141,7 @@ class HTMLParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p' or element.name == 'title' or element.name == 'span' or element.name == 'pre'\
+            elif element.name == 'title' or element.name == 'span' or element.name == 'pre'\
                     or element.name == 'li':
                 para_text = element.get_text().strip()
                 if para_text:

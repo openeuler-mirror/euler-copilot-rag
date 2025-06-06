@@ -52,7 +52,7 @@ async def list_llms_by_user_sub(
 
 @router.get('/embedding', response_model=ListEmbeddingResponse, dependencies=[Depends(verify_user)])
 async def list_embeddings():
-    embeddings = [embedding.value for embedding in Embedding]
+    embeddings = [config['EMBEDDING_MODEL_NAME']]
     return ListEmbeddingResponse(result=embeddings)
 
 

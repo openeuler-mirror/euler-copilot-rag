@@ -80,17 +80,6 @@ class ChunkService:
         logging.error("[ChunkService] 搜索分片，查询条件: %s", req)
         chunk_entities = []
         for kb_id in req.kb_ids:
-            if kb_id != DEFAULT_KNOWLEDGE_BASE_ID:
-                try:
-                    if not (await KnowledgeBaseService.validate_user_action_to_knowledge_base(
-                            user_sub, kb_id, action)):
-                        err = f"用户没有权限访问知识库中的块，知识库ID: {kb_id}"
-                        logging.error("[ChunkService] %s", err)
-                        continue
-                except Exception as e:
-                    err = f"验证用户对知识库的操作权限失败，error: {e}"
-                    logging.exception(err)
-                    continue
             try:
                 chunk_entities += await BaseSearcher.search(req.search_method.value, kb_id, req.query, 2*req.top_k, req.doc_ids, req.banned_ids)
             except Exception as e:

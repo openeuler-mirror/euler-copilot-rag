@@ -61,20 +61,25 @@ class MdParser(BaseParser):
         current_level_elements = list(root.children)
         # 过滤掉非标签节点（如文本节点）
         subtree = []
+        valid_headers = ["h1", "h2", "h3", "h4", "h5", "h6"]
         while current_level_elements:
             element = current_level_elements.pop(0)
             if not isinstance(element, Tag):
-                node = ParseNode(
-                    id=uuid.uuid4(),
-                    lv=current_level,
-                    parse_topology_type=ChunkParseTopology.TREELEAF,
-                    content=element.get_text(strip=True),
-                    type=ChunkType.TEXT,
-                    link_nodes=[]
-                )
-                subtree.append(node)
+                try:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=element.get_text(strip=True),
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+                except Exception as e:
+                    logging.error(f"[MdParser] 处理非标签节点失败: {e}")
+
                 continue
-            if element.name == 'ol' or element.name == 'hr':
+            if element.name == 'p' or element.name == 'ol' or element.name == 'hr':
                 inner_html = ''.join(str(child) for child in element.children)
                 child_subtree = await MdParser.build_subtree(inner_html, current_level+1)
                 parse_topology_type = ChunkParseTopology.TREENORMAL if len(
@@ -100,7 +105,7 @@ class MdParser(BaseParser):
                         link_nodes=[]
                     )
                 subtree.append(node)
-            elif element.name.startswith('h'):
+            elif element.name in valid_headers:
                 try:
                     level = int(element.name[1:])
                 except Exception:
@@ -110,7 +115,7 @@ class MdParser(BaseParser):
                 content_elements = []
                 while current_level_elements:
                     sibling = current_level_elements[0]
-                    if sibling.name and sibling.name.startswith('h'):
+                    if sibling.name and sibling.name in valid_headers:
                         next_level = int(sibling.name[1:])
                     else:
                         next_level = level + 1
@@ -137,7 +142,7 @@ class MdParser(BaseParser):
                 )
                 subtree.append(node)
             elif element.name == 'code':
-                code_text = element.find('code').get_text()
+                code_text = element.get_text().strip()
                 node = ParseNode(
                     id=uuid.uuid4(),
 
@@ -148,7 +153,7 @@ class MdParser(BaseParser):
                     link_nodes=[]
                 )
                 subtree.append(node)
-            elif element.name == 'p' or element.name == 'li':
+            elif element.name == 'li':
                 para_text = element.get_text().strip()
                 if para_text:
                     node = ParseNode(
@@ -224,4 +229,3 @@ class MdParser(BaseParser):
             nodes=nodes
         )
         return parse_result
-

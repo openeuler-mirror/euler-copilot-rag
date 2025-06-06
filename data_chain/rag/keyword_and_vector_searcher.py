@@ -30,7 +30,10 @@ class KeywordVectorSearcher(BaseSearcher):
         """
         vector = await Embedding.vectorize_embedding(query)
         try:
-            chunk_entities_get_by_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(kb_id, query, top_k//2, doc_ids, banned_ids)
+            query_filtered = TokenTool.filter_stopwords(query)
+            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query_filtered)
+            logging.error(f"[KeywordVectorSearcher] keywords: {keywords}, weights: {weights}")
+            chunk_entities_get_by_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_dynamic_weighted_keyword(kb_id, keywords, weights, top_k//2, doc_ids, banned_ids)
             chunk_ids = [chunk_entity.id for chunk_entity in chunk_entities_get_by_keyword]
             chunk_entities_get_by_vector = []
             for _ in range(3):
@@ -42,6 +45,9 @@ class KeywordVectorSearcher(BaseSearcher):
                     logging.error(err)
                     continue
             chunk_entities = chunk_entities_get_by_keyword + chunk_entities_get_by_vector
+            for chunk_entity in chunk_entities:
+                logging.error(
+                    f"[KeywordVectorSearcher] chunk_entity: {chunk_entity.id}, text: {chunk_entity.text[:100]}...")
         except Exception as e:
             err = f"[KeywordVectorSearcher] 关键词向量检索失败，error: {e}"
             logging.exception(err)

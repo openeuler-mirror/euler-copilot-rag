@@ -142,7 +142,7 @@ class TestingWorker(BaseWorker):
             question = qa_entity.question
             answer = qa_entity.answer
             chunk = qa_entity.chunk
-            chunk_entities = await BaseSearcher.search(testing_entity.search_method, testing_entity.kb_id, question, top_k=2*testing_entity.top_k, doc_ids=None, banned_ids=[])
+            chunk_entities = await BaseSearcher.search(testing_entity.search_method, testing_entity.kb_id, question, top_k=testing_entity.top_k, doc_ids=None, banned_ids=[])
             related_chunk_entities = []
             banned_ids = [chunk_entity.id for chunk_entity in chunk_entities]
             divide_tokens = llm.max_tokens // len(chunk_entities) if chunk_entities else llm.max_tokens

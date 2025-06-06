@@ -81,6 +81,7 @@ class QAManager:
                 stmt = (
                     select(QAEntity)
                     .where(QAEntity.dataset_id == dataset_id)
+                    .where(QAEntity.status != QAStatus.DELETED.value)
                 )
                 result = await session.execute(stmt)
                 return result.scalars().all()

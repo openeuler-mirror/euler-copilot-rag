@@ -402,11 +402,8 @@ class ParseDocumentWorker(BaseWorker):
         if llm is not None:
             abstract = await TokenTool.get_abstract_by_llm(abstract, llm)
         else:
-            sentences = TokenTool.get_top_k_keysentence(abstract, 1)
-            if sentences:
-                abstract = sentences[0]
-            else:
-                abstract = ''
+            keywords = TokenTool.get_top_k_keywords(abstract, 20)
+            abstract = ' '.join(keywords)
         abstract_vector = await Embedding.vectorize_embedding(abstract)
         await DocumentManager.update_document_by_doc_id(
             doc_id,

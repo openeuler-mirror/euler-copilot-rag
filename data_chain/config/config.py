@@ -67,8 +67,8 @@ class ConfigModel(DictBaseModel):
     PROMPT_PATH: str = Field(None, description="prompt路径")
     # Stop Words PATH
     STOP_WORDS_PATH: str = Field(None, description="停用词表存放位置")
-    # DOCUMENT PARSER
-    DOCUMENT_PARSE_USE_CPU_LIMIT: int = Field(default=4, description="文档解析器使用CPU核数")
+    # CPU Limit
+    USE_CPU_LIMIT: int = Field(default=64, description="文档解析器使用CPU核数")
     # Task Retry Time limit
     TASK_RETRY_TIME_LIMIT: int = Field(default=3, description="任务重试次数限制")
 

@@ -50,7 +50,7 @@ class DocumentManager():
         """根据知识库ID和向量获取前K个文档"""
         try:
             async with await DataBase.get_session() as session:
-                similarity_score = DocumentEntity.abstract.cosine_distance(vector).label("similarity_score")
+                similarity_score = DocumentEntity.abstract_vector.cosine_distance(vector).label("similarity_score")
                 stmt = (
                     select(DocumentEntity, similarity_score)
                     .where(similarity_score > 0)
@@ -58,7 +58,6 @@ class DocumentManager():
                     .where(DocumentEntity.id.notin_(banned_ids))
                     .where(DocumentEntity.status != DocumentStatus.DELETED.value)
                     .where(DocumentEntity.enabled == True)
-                    .where(DocumentEntity.abstract_vector.cosine_distance(vector).desc())
                 )
                 if doc_ids:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))

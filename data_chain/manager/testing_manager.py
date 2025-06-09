@@ -109,9 +109,9 @@ class TestingManager():
                     inner_stmt = inner_stmt.where(TestingEntity.name.ilike(f"%{req.testing_name}%"))
                 if req.llm_ids is not None:
                     inner_stmt = inner_stmt.where(TestingEntity.llm_id.in_(req.llm_ids))
-                if req.search_methods is not None:
+                if req.search_method is not None:
                     inner_stmt = inner_stmt.where(TestingEntity.search_method.in_(
-                        [search_method.value for search_method in req.search_methods]))
+                        [search_method.value for search_method in req.search_method]))
                 if req.run_status is not None:
                     inner_stmt = inner_stmt.where(subq.c.status.in_([status.value for status in req.run_status]))
                 if req.author_name is not None:

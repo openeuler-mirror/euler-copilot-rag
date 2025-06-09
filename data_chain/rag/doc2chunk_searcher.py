@@ -31,12 +31,13 @@ class Doc2ChunkSearcher(BaseSearcher):
         """
         vector = await Embedding.vectorize_embedding(query)
         try:
-            doc_entities_keyword = await DocumentManager.get_top_k_document_by_kb_id_keyword(kb_id, query, top_k, doc_ids, banned_ids)
+            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query)
+            doc_entities_keyword = await DocumentManager.get_top_k_document_by_kb_id_dynamic_weighted_keyword(kb_id, keywords, weights, top_k//2, doc_ids, [])
             use_doc_ids = [doc_entity.id for doc_entity in doc_entities_keyword]
             doc_entities_vector = []
             for _ in range(3):
                 try:
-                    doc_entities_vector = await asyncio.wait_for(DocumentManager.get_top_k_document_by_kb_id_vector(kb_id, vector, top_k-len(doc_entities_keyword), doc_ids, banned_ids), timeout=3)
+                    doc_entities_vector = await asyncio.wait_for(DocumentManager.get_top_k_document_by_kb_id_vector(kb_id, vector, top_k-len(doc_entities_keyword), doc_ids, use_doc_ids), timeout=3)
                     break
                 except Exception as e:
                     err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"

@@ -221,7 +221,7 @@ class ListTestingRequest(BaseModel):
     testing_id: Optional[uuid.UUID] = Field(default=None, description="测试id", alias="testingId")
     testing_name: Optional[str] = Field(default=None, description="测试名称", alias="testingName")
     llm_ids: Optional[list[str]] = Field(default=None, description="测试使用的大模型id", alias="llmIds")
-    search_methods: Optional[List[SearchMethod]] = Field(default=None, description="测试使用的检索方法", alias="searchMethods")
+    search_method: Optional[List[SearchMethod]] = Field(default=None, description="测试使用的检索方法", alias="searchMethod")
     run_status: Optional[List[TaskStatus]] = Field(default=None, description="测试运行状态", alias="runStatus")
     scores_order: Optional[OrderType] = Field(default=OrderType.DESC, description="测试评分", alias="scoresOrder")
     author_name: Optional[str] = Field(default=None, description="测试创建者", alias="authorName")

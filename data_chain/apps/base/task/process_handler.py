@@ -16,7 +16,7 @@ class ProcessHandler:
     lock = multiprocessing.Lock()  # 创建一个锁对象
     max_processes = min(
         max((os.cpu_count() or 1) // 2, 1),
-        config['DOCUMENT_PARSE_USE_CPU_LIMIT'])  # 获取CPU核心数作为最大进程数，默认为1
+        config['USE_CPU_LIMIT'])  # 获取CPU核心数作为最大进程数，默认为1
     time_out = 10
 
     @staticmethod

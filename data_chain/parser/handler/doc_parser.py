@@ -15,7 +15,7 @@ class DocParser(BaseParser):
     name = 'doc'
 
     @staticmethod
-    async def parser(self, file_path):
+    async def parser(file_path):
         binary = open(file_path, 'rb')
         try:
             js = parser.from_buffer(binary)

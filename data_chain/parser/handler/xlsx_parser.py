@@ -29,11 +29,12 @@ class XlsxParser(BaseParser):
             row_data = [str(cell) for cell in row]
             table_array.append(row_data)
         return table_array
+
     @staticmethod
-    async def read_data_from_excel(file_path:str):
-        data=None
+    async def read_data_from_excel(file_path: str):
+        data = None
         try:
-             data = pd.read_excel(file_path, sheet_name=None, header=None, engine='openpyxl')
+            data = pd.read_excel(file_path, sheet_name=None, header=None, engine='openpyxl')
         except Exception as e:
             logging.error(f"[XlsxParser] 解析Excel文件失败，error: {e}")
         if data:
@@ -61,16 +62,13 @@ class XlsxParser(BaseParser):
                 raise e
         else:
             data = None
-            try:
-                data = pd.read_excel(file_path, sheet_name=None, header=None)
-            except Exception as e:
-                err = f"[XlsxParser] 解析文件失败，error: {e}"
-                logging.exception(err)
-            try:
-                data = pd.read_csv(file_path, header=None)
-            except Exception as e:
-                err = f"[XlsxParser] 解析文件失败，error: {e}"
-                logging.exception(err)
+            data = await XlsxParser.read_data_from_excel(file_path)
+            if data is None:
+                try:
+                    data = pd.read_csv(file_path, header=None)
+                except Exception as e:
+                    err = f"[XlsxParser] 解析文件失败，error: {e}"
+                    logging.exception(err)
             if data is None:
                 err = f"[XlsxParser] 无法解析文件，file_path: {file_path}"
                 logging.exception(err)

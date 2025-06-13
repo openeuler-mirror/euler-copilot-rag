@@ -46,7 +46,7 @@ class LLM:
                 index = content[::-1].find(en_str[::-1])
                 if index != -1:
                     content = content[:len(content)-index]
-            logging.info("[LLM] 非流式输出内容: %s", content)
+            logging.error("[LLM] 非流式输出内容: %s", content)
         except Exception as e:
             err = f"[LLM] 非流式输出异常: {e}"
             logging.error("[LLM] %s", err)

@@ -554,8 +554,6 @@ class ParseDocumentWorker(BaseWorker):
             return None
         await DocumentManager.update_document_by_doc_id(task_entity.op_id, {"status": DocumentStatus.IDLE.value})
         if task_entity.status == TaskStatus.PENDING.value or task_entity.status == TaskStatus.RUNNING.value or task_entity.status == TaskStatus.FAILED.value:
-            if task_entity.status == TaskStatus.RUNNING.value or task_entity.status == TaskStatus.FAILED.value:
-                await TaskManager.update_task_by_id(task_id, {"status": TaskStatus.CANCLED.value})
             await DocumentManager.update_document_by_doc_id(task_entity.op_id, {"abstract": "", "abstract_vector": None})
             await ImageManager.update_images_by_doc_id(task_entity.op_id, {"status": ImageStatus.DELETED.value})
             await ChunkManager.update_chunk_by_doc_id(task_entity.op_id, {"status": ChunkStatus.DELETED.value})

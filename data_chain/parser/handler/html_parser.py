@@ -1,54 +1,234 @@
+import asyncio
+from bs4 import BeautifulSoup, Tag
+import markdown
+import os
+import requests
+import uuid
+from data_chain.entities.enum import DocParseRelutTopology, ChunkParseTopology, ChunkType
+from data_chain.parser.parse_result import ParseNode, ParseResult
+from data_chain.parser.handler.base_parser import BaseParser
 from data_chain.logger.logger import logger as logging
-from bs4 import BeautifulSoup
-from data_chain.parser.handler.base_parser import BaseService
 
 
-
-class HtmlService(BaseService):
-    # 读取 HTML 文件
+class HTMLParser(BaseParser):
+    name = 'html'
 
     @staticmethod
-    def open_file(file_path):
-        try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
-                html_content = file.read()
-            return html_content
-        except Exception as e:
-            logging.error(f"Error opening file {file_path} :{e}")
-            raise e
+    async def extract_table_to_array(table_html: str) -> list[list[str]]:
+        soup = BeautifulSoup(table_html, 'html.parser')
+        rows = soup.find_all('tr')
+        table_data = []
+        for row in rows:
+            cells = row.find_all(['th', 'td'])
+            row_data = [cell.get_text(strip=True, separator=' ') for cell in cells]
+            if row_data:
+                table_data.append(row_data)
+        return table_data
 
-    def element_to_dict(self, element):
-        node_dict = {
-            "tag": element.name,  # 当前节点的标签名
-            "attributes": element.attrs if element.attrs else None,  # 标签的属性（如果有）
-            "text": element.get_text(strip=True) if element.string else None,  # 标签内的文字
-            "children": [],  # 子节点列表
-            "id": self.get_uuid(),
-            "type": "general",
-            "type_attr": 'leaf',
-        }
+    @staticmethod
+    async def get_image_blob(img_src: str) -> bytes:
+        if img_src.startswith(('http://', 'https://')):
+            try:
+                response = requests.get(img_src, timeout=3)
+                response.raise_for_status()
+                return response.content
+            except requests.RequestException as e:
+                warining = f"[MdZipParser] 图片下载失败 {e}"
+                logging.warning(warining)
+                return None
+        else:
+            return None
 
-        # 处理图片
-        if element.name == "img":
-            node_dict["img"] = element.get('src', None)
-        # 处理列表
-        elif element.name in ["ul", "ol"]:
-            node_dict["list"] = [li.get_text(strip=True) for li in element.find_all('li')]
+    @staticmethod
+    async def build_subtree(html: str, current_level: int = 0) -> list[ParseNode]:
+        soup = BeautifulSoup(html, 'html.parser')
 
-        # 递归处理子元素
-        for child in element.children:
-            if child.name:  # 如果子节点是标签而不是字符串
-                node_dict['type_attr'] = 'node'
-                child_node = self.element_to_dict(child)
-                node_dict["children"].append(child_node)
+        # 获取body元素作为起点（如果是完整HTML文档）
+        root = soup.body if soup.body else soup
+        valid_headers = ["h1", "h2", "h3", "h4", "h5", "h6"]
+        # 获取当前层级的直接子元素
+        current_level_elements = list(root.children)
+        subtree = []
+        while current_level_elements:
+            element = current_level_elements.pop(0)
+            if not isinstance(element, Tag):
+                try:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=element.get_text(strip=True),
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+                except Exception as e:
+                    logging.warning(f"[HTMLParser] 处理非标签元素失败: {e}")
+                continue
+            if element.name == 'div' or element.name == 'head' or element.name == 'header' or \
+                    element.name == 'body' or element.name == 'section' or element.name == 'article' or \
+                    element.name == 'nav' or element.name == 'main' or element.name == 'p' or element.name == 'ol':
+                # 处理div内部元素
+                inner_html = ''.join(str(child) for child in element.children)
+                child_subtree = await HTMLParser.build_subtree(inner_html, current_level+1)
+                parse_topology_type = ChunkParseTopology.TREENORMAL if len(
+                    child_subtree) else ChunkParseTopology.TREELEAF
+                if child_subtree:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        title="",
+                        lv=current_level,
+                        parse_topology_type=parse_topology_type,
+                        content="",
+                        type=ChunkType.TEXT,
+                        link_nodes=child_subtree
+                    )
+                else:
+                    text = element.get_text(strip=True)
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=text,
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
+                subtree.append(node)
+            elif element.name in valid_headers:
+                try:
+                    level = int(element.name[1:])
+                except Exception:
+                    level = current_level
+                title = element.get_text()
 
-        return node_dict
+                content_elements = []
+                while current_level_elements:
+                    sibling = current_level_elements[0]
+                    if sibling.name and sibling.name in valid_headers:
+                        next_level = int(sibling.name[1:])
+                    else:
+                        next_level = level + 1
+                    if next_level <= level:
+                        break
+                    content_elements.append(current_level_elements.pop(0))
+                # 如果有内容，处理这些内容
+                if content_elements:
+                    content_html = ''.join(str(el) for el in content_elements)
+                    child_subtree = await HTMLParser.build_subtree(content_html, level)
+                    parse_topology_type = ChunkParseTopology.TREENORMAL
+                else:
+                    child_subtree = []
+                    parse_topology_type = ChunkParseTopology.TREELEAF
 
-    def parser(self, file_path):
-        html_content = self.open_file(file_path)
-        # 解析 HTML 内容
-        soup = BeautifulSoup(html_content, 'lxml')
-        tree = self.element_to_dict(soup)
-        chunks, chunk_links = self.build_chunks_and_links_by_tree(tree)
-        return chunks, chunk_links, []
+                node = ParseNode(
+                    id=uuid.uuid4(),
+                    title=title,
+                    lv=level,
+                    parse_topology_type=parse_topology_type,
+                    content="",
+                    type=ChunkType.TEXT,
+                    link_nodes=child_subtree
+                )
+                subtree.append(node)
+            elif element.name == 'code':
+                code_text = element.get_text().strip()
+                node = ParseNode(
+                    id=uuid.uuid4(),
+                    lv=current_level,
+                    parse_topology_type=ChunkParseTopology.TREELEAF,
+                    content=code_text,
+                    type=ChunkType.CODE,
+                    link_nodes=[]
+                )
+                subtree.append(node)
+            elif element.name == 'title' or element.name == 'span' or element.name == 'pre'\
+                    or element.name == 'li':
+                para_text = element.get_text().strip()
+                if para_text:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=para_text,
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+            elif element.name == 'img':
+                img_src = element.get('src')
+                img_blob = await HTMLParser.get_image_blob(img_src)
+                if img_blob:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=img_blob,
+                        type=ChunkType.IMAGE,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+            elif element.name == 'table':
+                table_array = await HTMLParser.extract_table_to_array(str(element))
+                for row in table_array:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=row,
+                        type=ChunkType.TABLE,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+            elif element.name == 'a' or element.name == 'link':
+                link_text = element.get_text().strip()
+                link_href = element.get('href')
+                link = ""
+                if link_text:
+                    link = link_text
+                if link_href:
+                    if link:
+                        link += " "
+                    link += link_href
+                if link_text and link_href:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        content=link,
+                        type=ChunkType.LINK,
+                        link_nodes=[]
+                    )
+                    subtree.append(node)
+        return subtree
 
+    @staticmethod
+    async def flatten_tree(root: ParseNode, nodes: list[ParseNode]) -> None:
+        nodes.append(root)
+        for child in root.link_nodes:
+            await HTMLParser.flatten_tree(child, nodes)
+
+    @staticmethod
+    async def html_to_tree(html: str) -> ParseNode:
+        root = ParseNode(
+            id=uuid.uuid4(),
+            title="",
+            lv=0,
+            parse_topology_type=ChunkParseTopology.TREEROOT,
+            content="",
+            type=ChunkType.TEXT,
+            link_nodes=[]
+        )
+        root.link_nodes = await HTMLParser.build_subtree(html, 0)
+        nodes = []
+        await HTMLParser.flatten_tree(root, nodes)
+        return nodes
+
+    @staticmethod
+    async def parser(file_path) -> ParseResult:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+            html = file.read()
+        nodes = await HTMLParser.html_to_tree(html)
+        return ParseResult(
+            parse_topology_type=DocParseRelutTopology.TREE,
+            nodes=nodes
+        )

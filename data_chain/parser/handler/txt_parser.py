@@ -1,51 +1,44 @@
 import uuid
 import chardet
+from data_chain.entities.enum import DocParseRelutTopology, ChunkParseTopology, ChunkType
+from data_chain.parser.parse_result import ParseNode, ParseResult
+from data_chain.parser.handler.base_parser import BaseParser
 from data_chain.logger.logger import logger as logging
-from data_chain.parser.handler.base_parser import BaseService
-
-Empty_id = uuid.UUID(int=0)
 
 
-class TxtService(BaseService):
-
-    # 提取段落分词结果
-    def extract_paragraph(self, paragraph):
-        sentences = self.split_sentences(paragraph, self.tokens)
-        results = []
-        for sentence in sentences:
-            results.append({
-                "type": "para",
-                "text": sentence,
-            })
-        return results
+class TxtParser(BaseParser):
+    name = 'txt'
 
     @staticmethod
     # 获取编码方式
-    def detect_encoding(file_path):
+    async def detect_encoding(file_path: str) -> str:
         with open(file_path, 'rb') as file:
             raw_data = file.read()
         result = chardet.detect(raw_data)
         encoding = result['encoding']
         return encoding
 
-    # 获取段落
-    def read_text_file_by_paragraph(self, file_path):
+    @staticmethod
+    async def parser(file_path: str) -> ParseResult:
+        enconding = await TxtParser.detect_encoding(file_path)
         try:
-            encoding = self.detect_encoding(file_path)
-            with open(file_path, 'r', encoding=encoding,errors='ignore') as file:  # 打开文件
+            with open(file_path, 'r', encoding=enconding, errors='ignore') as file:
                 content = file.read()
-                paragraphs = content.split('\n')
-            return paragraphs
         except Exception as e:
-            logging.error(f"Error opening file {file_path} :{e}")
-
-    async def parser(self, file_path):
-        # 使用函数
-        paragraphs = self.read_text_file_by_paragraph(file_path)
-        sentences = []
-        for paragraph in paragraphs:
-            sentences.extend(self.extract_paragraph(paragraph))
-        chunks = self.build_chunks_by_lines(sentences)
-        chunk_links = self.build_chunk_links_by_line(chunks)
-        # 打印每个段落
-        return chunks, chunk_links, []
+            err = "读取txt文件失败"
+            logging.exception("[TxtParser] %s", err)
+            raise e
+        node = ParseNode(
+            id=uuid.uuid4(),
+            title="",
+            lv=0,
+            parse_topology_type=ChunkParseTopology.GERNERAL,
+            content=content,
+            type=ChunkType.TEXT,
+            link_nodes=[]
+        )
+        parse_result = ParseResult(
+            parse_topology_type=DocParseRelutTopology.LIST,
+            nodes=[node]
+        )
+        return parse_result

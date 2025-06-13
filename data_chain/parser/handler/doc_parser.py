@@ -1,38 +1,47 @@
-from data_chain.logger.logger import logger as logging
+import asyncio
+from bs4 import BeautifulSoup
+import markdown
+import os
 from tika import parser
+import requests
+import uuid
+from data_chain.entities.enum import DocParseRelutTopology, ChunkParseTopology, ChunkType
+from data_chain.parser.parse_result import ParseNode, ParseResult
+from data_chain.parser.handler.base_parser import BaseParser
+from data_chain.logger.logger import logger as logging
 
-from data_chain.parser.handler.base_parser import BaseService
 
-
-
-class DocService(BaseService):
-    def extract_paragraph(self, paragraph):
-        sentences = self.split_sentences(paragraph, self.tokens)
-        results = []
-        for sentence in sentences:
-            results.append({
-                "type": "para",
-                "text": sentence,
-            })
-        return results
+class DocParser(BaseParser):
+    name = 'doc'
 
     @staticmethod
-    def open_file(file_path):
-        return open(file_path, 'rb')
-
-    async def parser(self, file_path):
-        binary = self.open_file(file_path)
+    async def parser(file_path):
+        binary = open(file_path, 'rb')
         try:
             js = parser.from_buffer(binary)
+            if js.get('status') != 200:
+                err = "tika服务异常"
+                logging.exception("[DocParser] %s", err)
+                raise Exception(err)
         except Exception as e:
-            logging.error(f"Error opening file {file_path} :{e}")
+            err = "tika服务异常"
+            logging.exception("[DocParser] %s", err)
             raise e
-        content=js.get('content','') 
-        paragraphs = content.split('\n')
-        sentences = []
-        for paragraph in paragraphs:
-            sentences.extend(self.extract_paragraph(paragraph))
-        chunks = self.build_chunks_by_lines(sentences)
-        chunk_links = self.build_chunk_links_by_line(chunks)
-        return chunks, chunk_links, []
-
+        try:
+            content = js.get('content', '')
+        except Exception as e:
+            err = "tika服务返回的内容异常"
+            logging.exception("[DocParser] %s", err)
+            raise e
+        parse_node = ParseNode(
+            id=uuid.uuid4(),
+            lv=0,
+            parse_topology_type=ChunkParseTopology.GERNERAL,
+            content=content,
+            type=ChunkType.TEXT,
+            link_nodes=[]
+        )
+        return ParseResult(
+            parse_topology_type=DocParseRelutTopology.LIST,
+            nodes=[parse_node]
+        )

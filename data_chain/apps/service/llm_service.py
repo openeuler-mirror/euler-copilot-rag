@@ -1,13 +1,14 @@
 from typing import List
 import time
 import yaml
+import json
 import jieba
+from data_chain.models.service import ModelDTO
 from data_chain.logger.logger import logger as logging
 from data_chain.config.config import config
 from data_chain.apps.base.model.llm import LLM
 from data_chain.parser.tools.split import split_tools
-
-
+from data_chain.apps.base.security.security import Security
 def load_stopwords(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         stopwords = set(line.strip() for line in f)
@@ -21,7 +22,7 @@ def filter_stopwords(text):
     return filtered_words
 
 
-async def question_rewrite(history: List[dict], question: str) -> str:
+async def question_rewrite(history: List[dict], question: str,model_dto:ModelDTO=None) -> str:
     if not history:
         return question
     try:
@@ -38,8 +39,11 @@ async def question_rewrite(history: List[dict], question: str) -> str:
             history_abstract_list.append(item['content'])
             sum_tokens += split_tools.get_tokens(item['content'])
         used_tokens = split_tools.get_tokens(prompt + question)
+        maxtokens=config['MODELS'][0]['MAX_TOKENS']
+        if model_dto is not None:
+            maxtokens=model_dto.max_tokens
         # 计算 history_prompt 的长度
-        if sum_tokens > config['MAX_TOKENS'] - used_tokens:
+        if sum_tokens > maxtokens - used_tokens:
             filtered_history = []
             # 使用 jieba 分词并去除停用词
             for item in history_abstract_list:
@@ -58,17 +62,23 @@ async def question_rewrite(history: List[dict], question: str) -> str:
                 history_prompt += "模型历史回答" + str(a_cnt) + ':' + item + "\n"
                 a_cnt += 1
                 character = 'user'
-
-        if split_tools.get_tokens(history_prompt) > config['MAX_TOKENS'] - used_tokens:
+        if split_tools.get_tokens(history_prompt) > maxtokens - used_tokens:
             splited_prompt = split_tools.split_words(history_prompt)
-            splited_prompt = splited_prompt[-(config['MAX_TOKENS'] - used_tokens):]
+            splited_prompt = splited_prompt[-(maxtokens - used_tokens):]
             history_prompt = ''.join(splited_prompt)
         prompt = prompt.format(history=history_prompt, question=question)
         user_call = "请输出改写后的问题"
-        default_llm = LLM(model_name=config['MODEL_NAME'],
-                          openai_api_base=config['OPENAI_API_BASE'],
-                          openai_api_key=config['OPENAI_API_KEY'],
-                          max_tokens=config['MAX_TOKENS'],
+        default_llm = LLM(model_name=config['MODELS'][0]['MODEL_NAME'],
+                          openai_api_base=config['MODELS'][0]['OPENAI_API_BASE'],
+                          openai_api_key=config['MODELS'][0]['OPENAI_API_KEY'],
+                          max_tokens=config['MODELS'][0]['MAX_TOKENS'],
+                          request_timeout=60,
+                          temperature=0.35)
+        if model_dto is not None:
+            default_llm = LLM(model_name=model_dto.model_name,
+                          openai_api_base=model_dto.openai_api_base,
+                          openai_api_key=model_dto.openai_api_key,
+                          max_tokens=model_dto.max_tokens,
                           request_timeout=60,
                           temperature=0.35)
         rewrite_question = await default_llm.nostream([], prompt, user_call)
@@ -85,7 +95,7 @@ async def question_split(question: str) -> List[str]:
     return [question]
 
 
-async def get_llm_answer(history, bac_info, question, is_stream=True):
+async def get_llm_answer(history, bac_info, question, is_stream=True,model_dto:ModelDTO=None):
     try:
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
             prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
@@ -95,28 +105,41 @@ async def get_llm_answer(history, bac_info, question, is_stream=True):
         logging.error(f'Get prompt failed : {e}')
         raise e
     llm = LLM(
-        openai_api_key=config['OPENAI_API_KEY'],
-        openai_api_base=config['OPENAI_API_BASE'],
-        model_name=config['MODEL_NAME'],
-        max_tokens=config['MAX_TOKENS'])
+        openai_api_key=config['MODELS'][0]['OPENAI_API_KEY'],
+        openai_api_base=config['MODELS'][0]['OPENAI_API_BASE'],
+        model_name=config['MODELS'][0]['MODEL_NAME'],
+        max_tokens=config['MODELS'][0]['MAX_TOKENS'])
+    if model_dto is not None:
+            llm = LLM(model_name=model_dto.model_name,
+                          openai_api_base=model_dto.openai_api_base,
+                          openai_api_key=model_dto.openai_api_key,
+                          max_tokens=model_dto.max_tokens
+            )
     if is_stream:
         return llm.stream(history, prompt, question)
     res = await llm.nostream(history, prompt, question)
     return res
 
 
-async def get_question_chunk_relation(question, chunk):
+async def get_question_chunk_relation(question, chunk,model_dto:ModelDTO=None):
     with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
         prompt_template_dict = yaml.load(f, Loader=yaml.SafeLoader)
 
     prompt = prompt_template_dict['DETERMINE_ANSWER_AND_QUESTION']
     prompt = prompt.format(chunk=chunk, question=question)
     user_call = "判断，并输出关联性编号"
-    default_llm = LLM(model_name=config['MODEL_NAME'],
-                      openai_api_base=config['OPENAI_API_BASE'],
-                      openai_api_key=config['OPENAI_API_KEY'],
-                      max_tokens=config['MAX_TOKENS'],
-                      request_timeout=60,
-                      temperature=0.35)
+    default_llm = LLM(model_name=config['MODELS'][0]['MODEL_NAME'],
+                          openai_api_base=config['MODELS'][0]['OPENAI_API_BASE'],
+                          openai_api_key=config['MODELS'][0]['OPENAI_API_KEY'],
+                          max_tokens=config['MODELS'][0]['MAX_TOKENS'],
+                          request_timeout=60,
+                          temperature=0.35)
+    if model_dto is not None:
+        default_llm = LLM(model_name=model_dto.model_name,
+                        openai_api_base=model_dto.openai_api_base,
+                        openai_api_key=model_dto.openai_api_key,
+                        max_tokens=model_dto.max_tokens,
+                        request_timeout=60,
+                        temperature=0.35)
     ans = await default_llm.nostream([], prompt, user_call)
     return ans

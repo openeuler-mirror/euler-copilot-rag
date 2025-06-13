@@ -3,291 +3,193 @@ from sqlalchemy import select, delete, update, desc, asc, func, exists, or_, and
 from sqlalchemy.orm import aliased
 import uuid
 from typing import Dict, List, Optional, Tuple
+from data_chain.entities.request_data import ListTaskRequest
 from data_chain.logger.logger import logger as logging
-from data_chain.stores.postgres.postgres import PostgresDB, TaskEntity, TaskStatusReportEntity, DocumentEntity, KnowledgeBaseEntity
-from data_chain.models.constant import TaskConstant
-
+from data_chain.stores.database.database import DataBase, TaskEntity
+from data_chain.entities.enum import TaskType, TaskStatus
 
 
 class TaskManager():
-
     @staticmethod
-    async def insert(entity: TaskEntity) -> TaskEntity:
+    async def add_task(task_entity: TaskEntity) -> TaskEntity:
+        """添加任务"""
         try:
-            async with await PostgresDB.get_session() as session:
-                session.add(entity)
+            async with await DataBase.get_session() as session:
+                session.add(task_entity)
                 await session.commit()
-                await session.refresh(entity)  # 刷新实体以获取可能由数据库生成的数据（例如自增ID）
-                return entity
+                await session.refresh(task_entity)
         except Exception as e:
-            logging.error(f"Failed to insert entity: {e}")
-            return None
+            err = "添加任务失败"
+            logging.exception("[TaskManager] %s", err)
+            raise e
+        return task_entity
 
     @staticmethod
-    async def update(task_id: uuid.UUID, update_dict: Dict):
+    async def get_task_by_task_id(task_id: uuid.UUID) -> TaskEntity:
+        """根据任务ID获取任务"""
         try:
-            async with await PostgresDB.get_session() as session:
-                stmt = select(TaskEntity).where(TaskEntity.id == task_id)
+            async with await DataBase.get_session() as session:
+                stmt = select(TaskEntity).where(and_(TaskEntity.id == task_id,
+                                                     TaskEntity.status != TaskStatus.DELETED.value))
                 result = await session.execute(stmt)
-                entity = result.scalars().first()
-                if entity is not None:
-                    for key, value in update_dict.items():
-                        setattr(entity, key, value)
-                    await session.commit()
-                    await session.refresh(entity)  # Refresh the entity to ensure it's up to date.
-                    return entity
+                task_entity = result.scalars().first()
+                return task_entity
         except Exception as e:
-            logging.error(f"Failed to update entity: {e}")
-        return None
+            err = "获取任务失败"
+            logging.exception("[TaskManager] %s", err)
+            raise e
 
     @staticmethod
-    async def update_task_by_op_id(op_id: uuid.UUID, update_dict: Dict):
+    async def get_current_task_by_op_id(op_id: uuid.UUID, task_type: str = None) -> Optional[TaskEntity]:
+        """根据op_id获取当前最近的任务"""
         try:
-            async with await PostgresDB.get_session() as session:
-                stmt = update(TaskEntity).where(TaskEntity.op_id == op_id).values(**update_dict)
-                await session.execute(stmt)
-                await session.commit()
-                return True
-        except Exception as e:
-            logging.error(f"Failed to update entity: {e}")
-        return False
-
-    @staticmethod
-    async def select_by_page(page_number: int, page_size: int, params: Dict) -> Tuple[int, List[TaskEntity]]:
-        try:
-            async with await PostgresDB.get_session() as session:
-                stmt = select(TaskEntity).where(TaskEntity.status != TaskConstant.TASK_STATUS_DELETED)
-                stmt = stmt.where(
-                    exists(select(1).where(or_(
-                        DocumentEntity.id == TaskEntity.op_id,
-                        KnowledgeBaseEntity.id == TaskEntity.op_id
-                    )))
+            async with await DataBase.get_session() as session:
+                stmt = select(TaskEntity).where(
+                    and_(TaskEntity.op_id == op_id, TaskEntity.status != TaskStatus.DELETED.value)).order_by(
+                    desc(TaskEntity.created_time)
                 )
-                if 'user_id' in params:
-                    stmt = stmt.where(TaskEntity.user_id == params['user_id'])
-                if 'id' in params:
-                    stmt = stmt.where(TaskEntity.id == params['id'])
-                if 'op_id' in params:
-                    stmt = stmt.where(TaskEntity.op_id == params['op_id'])
-                if 'types' in params:
-                    stmt = stmt.where(TaskEntity.type.in_(params['types']))
-                if 'status' in params:
-                    stmt = stmt.where(TaskEntity.status == params['status'])
-                if 'created_time_order' in params:
-                    if params['created_time_order'] == 'desc':
-                        stmt = stmt.order_by(desc(TaskEntity.created_time))
-                    elif params['created_time_order'] == 'asc':
-                        stmt = stmt.order_by(asc(TaskEntity.created_time))
+                if task_type is not None:
+                    stmt = stmt.where(TaskEntity.type == task_type)
+                result = await session.execute(stmt)
+                task_entity = result.scalars().first()
+                return task_entity
+        except Exception as e:
+            err = "获取任务失败"
+            logging.exception("[TaskManager] %s", err)
+            raise e
 
-                # Execute the count part of the query separately
+    @staticmethod
+    async def list_task_by_task_status(task_status: str) -> List[TaskEntity]:
+        """根据任务状态获取任务"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = select(TaskEntity).where(TaskEntity.status == task_status)
+                result = await session.execute(stmt)
+                task_entities = result.scalars().all()
+                return task_entities
+        except Exception as e:
+            err = "获取任务失败"
+            logging.exception("[TaskManager] %s", err)
+            raise e
+
+    @staticmethod
+    async def list_current_tasks_by_op_ids(op_ids: list[uuid.UUID], task_types: list[str] = None) -> List[TaskEntity]:
+        """根据op_id列表查询当前任务"""
+        try:
+            async with await DataBase.get_session() as session:
+                # 创建一个别名用于子查询
+                task_alias = aliased(TaskEntity)
+                if task_types is not None:
+                    subquery = (
+                        select(
+                            task_alias.id,  # 只选择需要的列，避免返回整个对象
+                            func.row_number().over(
+                                partition_by=task_alias.op_id,
+                                order_by=desc(task_alias.created_time)
+                            ).label('rn')
+                        )
+                        .where(
+                            task_alias.op_id.in_(op_ids),
+                            task_alias.type.in_(task_types),
+                        )
+                        .subquery()
+                    )
+                else:
+                    subquery = (
+                        select(
+                            task_alias.id,  # 只选择ID列，用于后续连接
+                            func.row_number().over(
+                                partition_by=task_alias.op_id,
+                                order_by=desc(task_alias.created_time)
+                            ).label('rn')
+                        )
+                        .where(
+                            task_alias.op_id.in_(op_ids),
+                        )
+                        .subquery()
+                    )
+
+                # 主查询连接子查询，获取完整的TaskEntity对象
+                stmt = (
+                    select(TaskEntity)
+                    .join(
+                        subquery,
+                        TaskEntity.id == subquery.c.id  # 通过ID连接确保获取完整对象
+                    )
+                    .where(subquery.c.rn == 1)  # 只取每个op_id的第一个结果
+                )
+                result = await session.execute(stmt)
+                task_entities = result.scalars().all()  # 直接获取TaskEntity对象列表
+                return task_entities
+        except Exception as e:
+            err = "查询当前任务失败"
+            logging.exception("[TaskManager] %s", err)
+            raise e
+
+    @staticmethod
+    async def list_task(user_sub: str, req: ListTaskRequest) -> Tuple[int, List[TaskEntity]]:
+        """列出任务"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = select(TaskEntity).where(
+                    and_(
+                        TaskEntity.user_id == user_sub,
+                        TaskEntity.status != TaskStatus.DELETED.value
+                    )
+                )
+                if req.team_id:
+                    stmt = stmt.where(TaskEntity.team_id == req.team_id)
+                if req.task_id:
+                    stmt = stmt.where(TaskEntity.id == req.task_id)
+                if req.task_type:
+                    stmt = stmt.where(TaskEntity.type == req.task_type.value)
+                if req.task_status:
+                    stmt = stmt.where(TaskEntity.status == req.task_status.value)
+
                 count_stmt = select(func.count()).select_from(stmt.subquery())
                 total = (await session.execute(count_stmt)).scalar()
-
-                # Apply pagination
-                stmt = stmt.offset((page_number-1)*page_size).limit(page_size)
-
-                # Execute the main query
+                stmt = stmt.offset((req.page - 1) * req.page_size).limit(req.page_size)
+                stmt = stmt.order_by(TaskEntity.created_time.desc())
+                stmt = stmt.order_by(TaskEntity.id.desc())
                 result = await session.execute(stmt)
-                task_list = result.scalars().all()
-
-                return (total, task_list)
+                task_entities = result.scalars().all()
+                return total, task_entities
         except Exception as e:
-            logging.error(f"Failed to select tasks by page: {e}")
-            return (0, [])
+            err = "列出任务失败"
+            logging.exception("[TaskManager] %s", err)
+            raise e
 
     @staticmethod
-    async def select_by_id(id: uuid.UUID) -> TaskEntity:
-        async with await PostgresDB.get_session() as session:
-            stmt = select(TaskEntity).where(TaskEntity.id == id)
-            result = await session.execute(stmt)
-            return result.scalar()
+    async def list_task_by_user_sub_and_team_id_and_type(
+            user_sub: str, team_id: uuid.UUID, task_type: TaskType) -> List[TaskEntity]:
+        """根据用户ID、团队ID和任务类型查询任务"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = select(TaskEntity).where(and_(TaskEntity.user_id == user_sub,
+                                                     TaskEntity.team_id == team_id,
+                                                     TaskEntity.type == task_type.value,
+                                                     TaskEntity.status != TaskStatus.DELETED.value))
+                result = await session.execute(stmt)
+                task_entities = result.scalars().all()
+                return task_entities
+        except Exception as e:
+            err = "查询任务失败"
+            logging.exception("[TaskManager] %s", err)
+            raise e
 
     @staticmethod
-    async def select_by_ids(ids: List[uuid.UUID]) -> List[TaskEntity]:
-        async with await PostgresDB.get_session() as session:
-            stmt = select(TaskEntity).where(TaskEntity.id.in_(ids))
-            result = await session.execute(stmt)
-            result = result.scalars().all()
-            return result
-
-    @staticmethod
-    async def select_by_user_id(user_id: uuid.UUID) -> TaskEntity:
-        async with await PostgresDB.get_session() as session:
-            stmt = select(TaskEntity).where(and_(TaskEntity.user_id == user_id,
-                                                 TaskEntity.status != TaskConstant.TASK_STATUS_DELETED))
-            result = await session.execute(stmt)
-            return result.scalars().all()
-
-    @staticmethod
-    async def select_by_op_id(op_id: uuid.UUID, method='one') -> TaskEntity:
-        async with await PostgresDB.get_session() as session:
-            stmt = select(TaskEntity).where(
-                TaskEntity.op_id == op_id).order_by(
-                desc(TaskEntity.created_time))
-            if method=='one':
-                stmt=stmt.limit(1)
-            result = await session.execute(stmt)
-            if method == 'one':
-                result = result.scalars().first()
-            else:
-                result = result.scalars().all()
-            return result
-    @staticmethod
-    async def select_latest_task_by_op_ids(op_ids: List[uuid.UUID]) -> List[TaskEntity]:
-        async with await PostgresDB.get_session() as session:
-            # 创建一个别名用于子查询
-            task_alias = aliased(TaskEntity)
-            
-            # 构建子查询，为每个op_id分配一个行号
-            subquery = (
-                select(
-                    task_alias,
-                    func.row_number().over(
-                        partition_by=task_alias.op_id,
-                        order_by=desc(task_alias.created_time)
-                    ).label('row_num')
-                )
-                .where(task_alias.op_id.in_(op_ids))
-                .subquery()
-            )
-            
-            # 主查询选择row_num为1的记录，即每个op_id的最新任务
-            stmt = (
-                select(TaskEntity)
-                .join(subquery, TaskEntity.id == subquery.c.id)
-                .where(subquery.c.row_num == 1)
-            )
-            
-            result = await session.execute(stmt)
-            return result.scalars().all()
-
-    @staticmethod
-    async def delete_by_op_id(op_id: uuid.UUID) -> TaskEntity:
-        async with await PostgresDB.get_session() as session:
-            stmt = delete(TaskEntity).where(
-                TaskEntity.op_id == op_id)
-            await session.execute(stmt)
-
-    @staticmethod
-    async def select_by_op_ids(op_ids: List[uuid.UUID]) -> List[TaskEntity]:
-        async with await PostgresDB.get_session() as session:
-            stmt = select(TaskEntity).where(TaskEntity.op_id.in_(op_ids))
-            result = await session.execute(stmt)
-            return result.scalars().all()
-
-    @staticmethod
-    async def select_by_user_id_and_task_type(
-            user_id: uuid.UUID, task_type: Optional[str] = None) -> List[TaskEntity]:
-        async with await PostgresDB.get_session() as session:
-            stmt = select(TaskEntity).where(TaskEntity.user_id == user_id)
-            if task_type:
-                stmt = stmt.where(TaskEntity.type == task_type)
-            stmt = stmt.order_by(TaskEntity.created_time.desc())
-            result = await session.execute(stmt)
-            return result.scalars().all()
-
-    @staticmethod
-    async def select_by_user_id_and_task_type_list(
-            user_id: uuid.UUID, task_type_list: Optional[List[str]] = []) -> List[TaskEntity]:
-        async with await PostgresDB.get_session() as session:
-            stmt = select(TaskEntity).where(TaskEntity.user_id == user_id)
-            stmt = stmt.where(TaskEntity.type.in_(task_type_list))
-            stmt = stmt.where(TaskEntity.status != TaskConstant.TASK_STATUS_DELETED)
-            stmt = stmt.order_by(TaskEntity.created_time.desc())
-            result = await session.execute(stmt)
-            return result.scalars().all()
-
-    @staticmethod
-    async def delete_by_id(id: uuid.UUID):
-        async with await PostgresDB.get_session() as session:
-            # 构建删除语句
-            stmt = (
-                select(TaskEntity)
-                .where(TaskEntity.id == id)
-            )
-            # 执行删除操作
-            result = await session.execute(stmt)
-            instances = result.scalars().all()
-            if instances:
-                for instance in instances:
-                    await session.delete(instance)
-            await session.commit()
-
-    @staticmethod
-    async def delete_by_ids(ids: List[uuid.UUID]):
-        async with await PostgresDB.get_session() as session:
-            # 构建删除语句
-            stmt = (
-                select(TaskEntity)
-                .where(TaskEntity.id.in_(ids))
-            )
-            # 执行删除操作
-            result = await session.execute(stmt)
-            instances = result.scalars().all()
-            if instances:
-                for instance in instances:
-                    await session.delete(instance)
-            await session.commit()
-
-
-class TaskStatusReportManager():
-
-    @staticmethod
-    async def insert(entity: TaskStatusReportEntity):
-        async with await PostgresDB.get_session() as session:
-            session.add(entity)
-            await session.commit()
-            return entity
-
-    @staticmethod
-    async def del_by_task_id(task_id: uuid.UUID):
-        async with await PostgresDB.get_session() as session:
-            stmt = (
-                select(TaskStatusReportEntity)
-                .where(TaskStatusReportEntity.task_id == task_id)
-            )
-            result = await session.execute(stmt)
-            entities = result.scalars().all()
-            for entity in entities:
-                await session.delete(entity)
-            await session.commit()
-
-    @staticmethod
-    async def select_by_task_id(task_id: uuid.UUID, limited: int = 10):
-        async with await PostgresDB.get_session() as session:
-            stmt = (
-                select(TaskStatusReportEntity)
-                .where(TaskStatusReportEntity.task_id == task_id)
-                .order_by(desc(TaskStatusReportEntity.created_time))
-                .limit(limited)
-            )
-            result = await session.execute(stmt)
-            return result.scalars().all()
-
-    @staticmethod
-    async def select_latest_report_by_task_ids(task_ids: List[uuid.UUID]) -> List[TaskStatusReportEntity]:
-        async with await PostgresDB.get_session() as session:
-            # 创建一个别名用于子查询
-            report_alias = aliased(TaskStatusReportEntity)
-            
-            # 构建子查询，为每个task_id分配一个行号
-            subquery = (
-                select(
-                    report_alias,
-                    func.row_number().over(
-                        partition_by=report_alias.task_id,
-                        order_by=desc(report_alias.created_time)
-                    ).label('row_num')
-                )
-                .where(report_alias.task_id.in_(task_ids))
-                .subquery()
-            )
-            # 主查询选择row_num为1的记录，即每个op_id的最新任务
-            stmt = (
-                select(TaskStatusReportEntity)
-                .join(subquery, TaskStatusReportEntity.id == subquery.c.id)
-                .where(subquery.c.row_num == 1)
-            )
-            
-            result = await session.execute(stmt)
-            return result.scalars().all()
+    async def update_task_by_id(task_id: uuid.UUID, task_dict: Dict) -> TaskEntity:
+        """根据任务ID更新任务"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = update(TaskEntity).where(TaskEntity.id == task_id).values(**task_dict)
+                await session.execute(stmt)
+                await session.commit()
+                stmt = select(TaskEntity).where(TaskEntity.id == task_id)
+                result = await session.execute(stmt)
+                task_entity = result.scalars().first()
+                return task_entity
+        except Exception as e:
+            err = "更新任务失败"
+            logging.exception("[TaskManager] %s", err)
+            raise e

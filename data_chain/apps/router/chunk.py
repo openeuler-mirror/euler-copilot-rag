@@ -1,43 +1,67 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-from typing import List
-from fastapi import APIRouter, Depends
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
+from data_chain.apps.service.session_service import get_user_sub, verify_user
+from fastapi import APIRouter, Depends, Query, Body
+from typing import Annotated
+from uuid import UUID
+from data_chain.entities.request_data import (
+    ListChunkRequest,
+    UpdateChunkRequest,
+    SearchChunkRequest,
+)
 
-from data_chain.models.service import ChunkDTO
-from data_chain.models.api import Page, BaseResponse, ListChunkRequest, SwitchChunkRequest
-from data_chain.exceptions.err_code import ErrorCode
-from data_chain.exceptions.exception import DocumentException
-from data_chain.apps.service.chunk_service import _validate_chunk_belong_to_user, list_chunk, switch_chunk
-from data_chain.apps.service.document_service import _validate_doucument_belong_to_user
-from data_chain.apps.service.user_service import verify_csrf_token, get_user_id, verify_user
-
-router = APIRouter(prefix='/chunk', tags=['Corpus'])
-
-
-@router.post('/list', response_model=BaseResponse[Page[ChunkDTO]],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def list(req: ListChunkRequest, user_id=Depends(get_user_id)):
-    try:
-        await _validate_doucument_belong_to_user(user_id, req.document_id)
-        params = dict(req)
-        chunk_list, total = await list_chunk(params, req.page_number, req.page_size)
-        chunk_page = Page(page_number=req.page_number, page_size=req.page_size,
-                          total=total,
-                          data_list=chunk_list)
-        return BaseResponse(data=chunk_page)
-    except DocumentException as e:
-        return BaseResponse(retcode=ErrorCode.CREATE_CHUNK_ERROR, retmsg=str(e.args[0]))
+from data_chain.entities.response_data import (
+    ListChunkMsg,
+    ListChunkResponse,
+    SearchChunkResponse,
+    UpdateChunkResponse,
+    UpdateChunkEnabledResponse
+)
+from data_chain.apps.service.router_service import get_route_info
+from data_chain.apps.service.document_service import DocumentService
+from data_chain.apps.service.chunk_service import ChunkService
+router = APIRouter(prefix='/chunk', tags=['Chunk'])
 
 
-@router.post('/switch', response_model=BaseResponse[str],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def switch(req: SwitchChunkRequest, user_id=Depends(get_user_id)):
-    try:
-        for id in req.ids:
-            await _validate_chunk_belong_to_user(user_id, id)
-        for id in req.ids:
-            await switch_chunk(id, req.enabled)
-        return BaseResponse(data='success')
-    except DocumentException as e:
-        return BaseResponse(retcode=ErrorCode.SWITCH_CHUNK_ERROR, retmsg=str(e.args[0]))
+@router.post('/list', response_model=ListChunkResponse, dependencies=[Depends(verify_user)])
+async def list_chunks_by_document_id(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        req: Annotated[ListChunkRequest, Body()],
+):
+    if not (await DocumentService.validate_user_action_to_document(user_sub, req.doc_id, action)):
+        raise Exception("用户没有权限访问该文档的分片")
+    list_chunk_msg = await ChunkService.list_chunks_by_document_id(req)
+    return ListChunkResponse(result=list_chunk_msg)
+
+
+@router.post('/search', response_model=SearchChunkResponse, dependencies=[Depends(verify_user)])
+async def search_chunks(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        req: Annotated[SearchChunkRequest, Body()],
+):
+    search_chunk_msg = await ChunkService.search_chunks(user_sub, action, req)
+    return SearchChunkResponse(result=search_chunk_msg)
+
+
+@router.put('', response_model=UpdateChunkResponse, dependencies=[Depends(verify_user)])
+async def update_chunk_by_id(user_sub: Annotated[str, Depends(get_user_sub)],
+                             action: Annotated[str, Depends(get_route_info)],
+                             chunk_id: Annotated[UUID, Query(alias="chunkId")],
+                             req: Annotated[UpdateChunkRequest, Body()]):
+    if not (await ChunkService.validate_user_action_to_chunk(user_sub, chunk_id, action)):
+        raise Exception("用户没有权限访问该文档的分片")
+    chunk_id = await ChunkService.update_chunk_by_id(chunk_id, req)
+    return UpdateChunkResponse(result=chunk_id)
+
+
+@router.put('/switch', response_model=UpdateChunkEnabledResponse, dependencies=[Depends(verify_user)])
+async def update_chunk_enabled_by_id(user_sub: Annotated[str, Depends(get_user_sub)],
+                                     action: Annotated[str, Depends(get_route_info)],
+                                     chunk_ids: Annotated[list[UUID], Body(alias="chunkId")],
+                                     enabled: Annotated[bool, Query()]):
+    for chunk_id in chunk_ids:
+        if not (await ChunkService.validate_user_action_to_chunk(user_sub, chunk_id, action)):
+            raise Exception("用户没有权限访问该文档的分片")
+    chunk_ids = await ChunkService.update_chunks_enabled_by_id(chunk_ids, enabled)
+    return UpdateChunkEnabledResponse(result=chunk_ids)

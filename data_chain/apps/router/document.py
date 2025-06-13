@@ -1,206 +1,185 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+
+from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
+from fastapi.responses import StreamingResponse, HTMLResponse, Response
+from typing import Annotated
 import urllib
-from typing import Dict, List
-import uuid
-from fastapi import HTTPException,status
-from data_chain.models.service import DocumentDTO, TemporaryDocumentDTO
-from data_chain.apps.service.user_service import verify_csrf_token, get_user_id, verify_user
-from data_chain.exceptions.err_code import ErrorCode
-from data_chain.exceptions.exception import DocumentException
-from data_chain.models.api import BaseResponse, Page
-from data_chain.models.api import DeleteDocumentRequest, ListDocumentRequest, UpdateDocumentRequest, \
-    RunDocumentRequest, SwitchDocumentRequest, ParserTemporaryDocumenRequest, GetTemporaryDocumentStatusRequest, \
-    DeleteTemporaryDocumentRequest, RelatedTemporaryDocumenRequest
-from data_chain.apps.service.knwoledge_base_service import _validate_knowledge_base_belong_to_user
-from data_chain.apps.service.document_service import _validate_doucument_belong_to_user, delete_document, \
-    generate_document_download_link, \
-    list_documents_by_knowledgebase_id, run_document, submit_upload_document_task, switch_document, update_document, \
-    get_file_name_and_extension, init_temporary_document_parse_task, delete_temporary_document, get_temporary_document_parse_status, \
-    get_related_document
-
+from uuid import UUID
 from httpx import AsyncClient
-from fastapi import Depends
-from fastapi import APIRouter, File, UploadFile
-from fastapi.responses import StreamingResponse
+from typing import Annotated
+from uuid import UUID
+from data_chain.entities.request_data import (
+    ListDocumentRequest,
+    UpdateDocumentRequest,
+    GetTemporaryDocumentStatusRequest,
+    UploadTemporaryRequest,
+    DeleteTemporaryDocumentRequest
+)
 
+from data_chain.entities.response_data import (
+    ListDocumentMsg,
+    ListDocumentResponse,
+    GetDocumentReportResponse,
+    UploadDocumentResponse,
+    ParseDocumentResponse,
+    UpdateDocumentResponse,
+    DeleteDocumentResponse,
+    GetTemporaryDocumentStatusResponse,
+    UploadTemporaryDocumentResponse,
+    DeleteTemporaryDocumentResponse
+)
+from data_chain.apps.service.session_service import get_user_sub, verify_user
+from data_chain.apps.service.router_service import get_route_info
+from data_chain.apps.service.knwoledge_base_service import KnowledgeBaseService
+from data_chain.apps.service.document_service import DocumentService
 router = APIRouter(prefix='/doc', tags=['Document'])
 
 
-@router.post('/list', response_model=BaseResponse[Page[DocumentDTO]],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def list(req: ListDocumentRequest, user_id=Depends(get_user_id)):
-    try:
-        await _validate_knowledge_base_belong_to_user(user_id, req.kb_id)
-        params = dict(req)
-        page_number = req.page_number
-        page_size = req.page_size
-        document_list_tuple = await list_documents_by_knowledgebase_id(params, page_number, page_size)
-        document_page = Page(page_number=req.page_number, page_size=req.page_size,
-                             total=document_list_tuple[1],
-                             data_list=document_list_tuple[0])
-        return BaseResponse(data=document_page)
-    except DocumentException as e:
-        return BaseResponse(retcode=ErrorCode.LIST_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
+@router.post('/list', response_model=ListDocumentResponse, dependencies=[Depends(verify_user)])
+async def list_doc(
+    user_sub: Annotated[str, Depends(get_user_sub)],
+    action: Annotated[str, Depends(get_route_info)],
+    req: Annotated[ListDocumentRequest, Body()]
+):
+    if not (await KnowledgeBaseService.validate_user_action_to_knowledge_base(user_sub, req.kb_id, action)):
+        raise Exception("用户没有权限访问该知识库的文档")
+    list_document_msg = await DocumentService.list_doc(req)
+    return ListDocumentResponse(result=list_document_msg)
 
 
-@router.post('/update', response_model=BaseResponse[DocumentDTO],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def update(req: UpdateDocumentRequest, user_id=Depends(get_user_id)):
-    try:
-        await _validate_doucument_belong_to_user(user_id, req.id)
-        tmp_dict = dict(req)
-        document = await update_document(tmp_dict)
-        return BaseResponse(data=document)
-    except DocumentException as e:
-        return BaseResponse(retcode=ErrorCode.RENAME_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
+@router.get('/download', dependencies=[Depends(verify_user)])
+async def download_doc_by_id(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        doc_id: Annotated[UUID, Query(alias="docId")]):
+    if not (await DocumentService.validate_user_action_to_document(user_sub, doc_id, action)):
+        raise Exception("用户没有权限访问该文档")
+    document_link_url = await DocumentService.generate_doc_download_url(doc_id)
+    document_name, extension = await DocumentService.get_doc_name_and_extension(doc_id)
+    async with AsyncClient() as async_client:
+        response = await async_client.get(document_link_url)
+        if response.status_code == 200:
+            content_disposition = f"attachment; filename={urllib.parse.quote(document_name.encode('utf-8'))}"
+
+            async def stream_generator():
+                async for chunk in response.aiter_bytes(chunk_size=8192):
+                    yield chunk
+
+            return StreamingResponse(stream_generator(), headers={
+                "Content-Disposition": content_disposition,
+                "Content-Length": str(response.headers.get('content-length'))
+            }, media_type="application/" + extension)
+        else:
+            raise Exception(f"下载文档失败，状态码: {response.status_code}")
 
 
-@router.post('/run', response_model=BaseResponse[List[DocumentDTO]],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def run(reqs: RunDocumentRequest, user_id=Depends(get_user_id)):
-    try:
-        run = reqs.run
-        ids = reqs.ids
-        document_dto_list = []
-        for req_id in ids:
-            await _validate_doucument_belong_to_user(user_id, req_id)
-            document = await run_document(dict(id=req_id, run=run))
-            document_dto_list.append(document)
-        return BaseResponse(data=document_dto_list)
-    except DocumentException as e:
-        return BaseResponse(retcode=ErrorCode.RUN_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
+@router.get('/report', response_model=GetDocumentReportResponse, dependencies=[Depends(verify_user)])
+async def get_doc_report(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        doc_id: Annotated[UUID, Query(alias="docId")]):
+    if not (await DocumentService.validate_user_action_to_document(user_sub, doc_id, action)):
+        raise Exception("用户没有权限访问该文档")
+    task_report = await DocumentService.get_doc_report(doc_id)
+    return GetDocumentReportResponse(result=task_report)
 
 
-@router.post('/switch', response_model=BaseResponse[DocumentDTO],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def switch(req: SwitchDocumentRequest, user_id=Depends(get_user_id)):
-    try:
-        await _validate_doucument_belong_to_user(user_id, req.id)
-        document = await switch_document(req.id, req.enabled)
-        return BaseResponse(data=document)
-    except DocumentException as e:
-        return BaseResponse(retcode=ErrorCode.SWITCH_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
+@router.get('/report/download', dependencies=[Depends(verify_user)])
+async def download_doc_report(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        doc_id: Annotated[UUID, Query(alias="docId")]):
+    if not (await DocumentService.validate_user_action_to_document(user_sub, doc_id, action)):
+        raise Exception("用户没有权限访问该文档")
+    report_link_url = await DocumentService.generate_doc_report_download_url(doc_id)
+    report_name = 'report.txt'
+    extension = 'txt'
+    async with AsyncClient() as async_client:
+        response = await async_client.get(report_link_url)
+        if response.status_code == 200:
+            content_disposition = f"attachment; filename={urllib.parse.quote(report_name.encode('utf-8'))}"
+
+            async def stream_generator():
+                async for chunk in response.aiter_bytes(chunk_size=8192):
+                    yield chunk
+
+            return StreamingResponse(stream_generator(), headers={
+                "Content-Disposition": content_disposition,
+                "Content-Length": str(response.headers.get('content-length'))
+            }, media_type="application/" + extension)
+        else:
+            raise Exception(f"下载文档报告失败，状态码: {response.status_code}")
 
 
-@router.post('/rm', response_model=BaseResponse[int],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def rm(req: DeleteDocumentRequest, user_id=Depends(get_user_id)):
-    try:
-        for id in req.ids:
-            await _validate_doucument_belong_to_user(user_id, id)
-        deleted_cnt = await delete_document(req.ids)
-        return BaseResponse(data=deleted_cnt)
-    except DocumentException as e:
-        return BaseResponse(retcode=ErrorCode.DELETE_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
+@router.post('', response_model=UploadDocumentResponse, dependencies=[Depends(verify_user)])
+async def upload_docs(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        kb_id: Annotated[UUID, Query(alias="kbId")],
+        docs: list[UploadFile] = File(...)):
+    if not (await KnowledgeBaseService.validate_user_action_to_knowledge_base(user_sub, kb_id, action)):
+        raise Exception("用户没有权限上传文档到该知识库")
+    doc_ids = await DocumentService.upload_docs(user_sub, kb_id, docs)
+    return UploadDocumentResponse(result=doc_ids)
 
 
-@router.post('/upload', response_model=BaseResponse[List[str]],
-             dependencies=[Depends(verify_user),
-                           Depends(verify_csrf_token)])
-async def upload(kb_id: str, files: List[UploadFile] = File(...), user_id=Depends(get_user_id)):
-    MAX_FILES = 128
-    MAX_SIZE = 50 * 1024 * 1024
-    MAX_TOTAL_SIZE = 500 * 1024 * 1024
-    if len(files) > MAX_FILES:
-        raise HTTPException(status_code=400, detail="Too many files. Maximum allowed is 50.")
-
-    total_size = 0
-    for file in files:
-        if file.size > MAX_SIZE:
-            raise HTTPException(status_code=400, detail="File size exceeds the limit (25MB).")
-        total_size += file.size
-
-    if total_size > MAX_TOTAL_SIZE:
-        raise HTTPException(status_code=400, detail="Total size of all files exceeds the limit (500MB).")
-    try:
-        await _validate_knowledge_base_belong_to_user(user_id, kb_id)
-        res = await submit_upload_document_task(user_id, kb_id, files)
-        return BaseResponse(data=res)
-    except DocumentException as e:
-        return BaseResponse(retcode=ErrorCode.UPLOAD_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
+@router.post('/parse', response_model=ParseDocumentResponse, dependencies=[Depends(verify_user)])
+async def parse_docuement_by_doc_ids(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        doc_ids: Annotated[list[UUID], Body(alias="docIds")],
+        parse: Annotated[bool, Query()]):
+    for doc_id in doc_ids:
+        if not (await DocumentService.validate_user_action_to_document(user_sub, doc_id, action)):
+            raise Exception("用户没有权限解析该文档")
+    doc_ids = await DocumentService.parse_docs(doc_ids, parse)
+    return ParseDocumentResponse(result=doc_ids)
 
 
-@router.get('/download', response_model=BaseResponse[Dict],
-            dependencies=[Depends(verify_user),
-                          Depends(verify_csrf_token)])
-async def download(id: uuid.UUID, user_id=Depends(get_user_id)):
-    try:
-        await _validate_doucument_belong_to_user(user_id, id)
-        document_link_url = await generate_document_download_link(id)
-        document_name, extension = await get_file_name_and_extension(id)
-        async with AsyncClient() as async_client:
-            response = await async_client.get(document_link_url)
-            if response.status_code == 200:
-                content_disposition = f"attachment; filename={urllib.parse.quote(document_name.encode('utf-8'))}"
-
-                async def stream_generator():
-                    async for chunk in response.aiter_bytes(chunk_size=8192):
-                        yield chunk
-
-                return StreamingResponse(stream_generator(), headers={
-                    "Content-Disposition": content_disposition,
-                    "Content-Length": str(response.headers.get('content-length'))
-                }, media_type="application/" + extension)
-            else:
-                return BaseResponse(
-                    retcode=ErrorCode.EXPORT_KNOWLEDGE_BASE_ERROR, retmsg="Failed to retrieve the file.", data=None)
-    except DocumentException as e:
-        return BaseResponse(retcode=ErrorCode.DOWNLOAD_DOCUMENT_ERROR, retmsg=str(e.args[0]), data=None)
+@router.put('', response_model=UpdateDocumentResponse, dependencies=[Depends(verify_user)])
+async def update_doc_by_doc_id(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        doc_id: Annotated[UUID, Query(alias="docId")],
+        req: Annotated[UpdateDocumentRequest, Body()]):
+    if not (await DocumentService.validate_user_action_to_document(user_sub, doc_id, action)):
+        raise Exception("用户没有权限更新该文档")
+    doc_id = await DocumentService.update_doc(doc_id, req)
+    return UpdateDocumentResponse(result=doc_id)
 
 
-@router.post('/temporary/related', response_model=BaseResponse[List[uuid.UUID]])
-async def related_temporary_doc(req: RelatedTemporaryDocumenRequest):
-    try:
-        results = await get_related_document(req.content,req.top_k, req.document_ids, req.kb_sn)
-        return BaseResponse(data=results)
-    except Exception as e:
-        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e), data=None)
-
-@router.post('/temporary/parser', response_model=BaseResponse[List[uuid.UUID]])
-async def parser_temporary_doc(req: ParserTemporaryDocumenRequest):
-    try:
-        temporary_document_list = []
-        for i in range(len(req.document_list)):
-            tmp_dict=dict(req.document_list[i])
-            if tmp_dict['type']=='application/pdf':
-                tmp_dict['type']='.pdf'
-            elif tmp_dict['type']=='text/html':
-                tmp_dict['type']='.html'
-            elif tmp_dict['type']=='text/plain':
-                tmp_dict['type']='.txt'
-            elif tmp_dict['type']=='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-                tmp_dict['type']='.xlsx'
-            elif tmp_dict['type']=='text/x-markdown':
-                tmp_dict['type']='.md'
-            elif tmp_dict['type']=='application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-                tmp_dict['type']='.docx'
-            elif tmp_dict['type']=='application/msword':
-                tmp_dict['type']='.doc'
-            temporary_document_list.append(tmp_dict)
-        result = await init_temporary_document_parse_task(temporary_document_list)
-        return BaseResponse(data=result)
-    except Exception as e:
-        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e), data=None)
+@router.delete('', response_model=DeleteDocumentResponse, dependencies=[Depends(verify_user)])
+async def delete_docs_by_ids(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        action: Annotated[str, Depends(get_route_info)],
+        doc_ids: Annotated[list[UUID], Body(alias="docIds")]):
+    for doc_id in doc_ids:
+        if not (await DocumentService.validate_user_action_to_document(user_sub, doc_id, action)):
+            raise Exception("用户没有权限删除该文档")
+    await DocumentService.delete_docs_by_ids(doc_ids)
+    return DeleteDocumentResponse(result=doc_ids)
 
 
-@router.post('/temporary/status', response_model=BaseResponse[List[TemporaryDocumentDTO]])
-async def get_temporary_doc_parse_status(req: GetTemporaryDocumentStatusRequest):
-    try:
-        result = await get_temporary_document_parse_status(req.ids)
-        return BaseResponse(data=result)
-    except Exception as e:
-        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e), data=None)
+@router.post('/temporary/status', response_model=GetTemporaryDocumentStatusResponse, dependencies=[
+    Depends(verify_user)])
+async def get_temporary_docs_status(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        req: Annotated[GetTemporaryDocumentStatusRequest, Body()]):
+    doc_status_list = await DocumentService.get_temporary_docs_status(user_sub, req.ids)
+    return GetTemporaryDocumentStatusResponse(result=doc_status_list)
 
 
-@router.post('/temporary/delete', response_model=BaseResponse[List[uuid.UUID]])
-async def delete_temporary_doc(req: DeleteTemporaryDocumentRequest):
-    try:
-        result = await delete_temporary_document(req.ids)
-        return BaseResponse(data=result)
-    except Exception as e:
-        return BaseResponse(retcode=status.HTTP_500_INTERNAL_SERVER_ERROR, retmsg=str(e), data=None)
+@router.post('/temporary/parser', response_model=UploadTemporaryDocumentResponse, dependencies=[Depends(verify_user)])
+async def upload_temporary_docs(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        req: Annotated[UploadTemporaryRequest, Body()]):
+    doc_ids = await DocumentService.upload_temporary_docs(user_sub, req)
+    return UploadTemporaryDocumentResponse(result=doc_ids)
+
+
+@router.post('/temporary/delete', response_model=DeleteTemporaryDocumentResponse, dependencies=[Depends(verify_user)])
+async def delete_temporary_docs(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        req: Annotated[DeleteTemporaryDocumentRequest, Body()]):
+    doc_ids = await DocumentService.delete_temporary_docs(user_sub, req.ids)
+    return DeleteTemporaryDocumentResponse(result=doc_ids)

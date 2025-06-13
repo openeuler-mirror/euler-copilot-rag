@@ -1,4 +1,4 @@
-FROM  hub.oepkgs.net/neocopilot/data_chain_back_base:1230
+FROM  hub.oepkgs.net/neocopilot/data_chain_back_end_base:0.9.6-x86
 
 COPY --chown=1001:1001 --chmod=750 ./ /rag-service/
 WORKDIR /rag-service

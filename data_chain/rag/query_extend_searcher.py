@@ -45,7 +45,7 @@ class QueryExtendSearcher(BaseSearcher):
         )
         sys_call = prompt_template.format(k=2*top_k, question=query)
         user_call = "请输出扩写的问题列表"
-        queries = await llm.nostream([], sys_call, user_call)
+        queries = await llm.nostream([], sys_call, user_call, st_str='[', en_str=']')
         try:
             queries = json.loads(queries)
             queries += [query]

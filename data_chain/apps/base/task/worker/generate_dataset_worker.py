@@ -189,7 +189,7 @@ class GenerateDataSetWorker(BaseWorker):
                             content=TokenTool.get_k_tokens_words_from_content(chunk, llm.max_tokens)
                         )
                         usr_call = '请输出问题的列表'
-                        sub_qs = await llm.nostream([], sys_call, usr_call)
+                        sub_qs = await llm.nostream([], sys_call, usr_call, st_str='[', en_str=']')
                         sub_qs = json.loads(sub_qs)
                     except Exception as e:
                         err = f"[GenerateDataSetWorker] 生成问题失败，错误信息: {e}"

@@ -196,6 +196,8 @@ class ParseDocumentWorker(BaseWorker):
                         link_nodes=[]
                     )
                     parse_result.nodes.append(node)
+            else:
+                parse_result.nodes = []
         else:
             if doc_entity.extension == 'xlsx' or doc_entity.extension == 'xls' or doc_entity.extension == 'csv':
                 for node in parse_result.nodes:

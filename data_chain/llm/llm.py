@@ -31,11 +31,22 @@ class LLM:
         chat.append(HumanMessage(content=user_call))
         return chat
 
-    async def nostream(self, chat, system_call, user_call):
+    async def nostream(self, chat, system_call, user_call,st_str:str=None,en_str:str=None):
         try:
             chat = self.assemble_chat(chat, system_call, user_call)
             response = await self.client.ainvoke(chat)
-            content = re.sub(r'<think>.*?</think>\n\n', '', response.content, flags=re.DOTALL)
+            content = re.sub(r'<think>.*?</think>\n?', '', response.content, flags=re.DOTALL)
+            content = re.sub(r'.*?</think>\n?', '', content, flags=re.DOTALL)
+            content=content.strip()     
+            if st_str is not None:
+                index = content.find(st_str)
+                if index != -1:
+                    content = content[index:]
+            if en_str is not None:
+                index = content[::-1].find(en_str[::-1])
+                if index != -1:
+                    content = content[:len(content)-index]
+            logging.error("[LLM] 非流式输出内容: %s", content)
         except Exception as e:
             err = f"[LLM] 非流式输出异常: {e}"
             logging.error("[LLM] %s", err)

@@ -568,7 +568,7 @@ class DataBase:
         database_url = f"postgresql+asyncpg://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
     engine = create_async_engine(
         database_url,
-        echo=False,
+        echo=True,
         pool_recycle=300,
         pool_pre_ping=True
     )

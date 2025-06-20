@@ -282,26 +282,15 @@ class DocumentEntity(Base):
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp()
     )
-    if config["DATABASE_TYPE"].lower() == 'opengauss':
-        __table_args__ = (
-            Index(
-                'abstract_vector_index',
-                abstract_vector,
-                opengauss_using='hnsw',
-                opengauss_with={'m': 16, 'ef_construction': 200},
-                opengauss_ops={'abstract_vector': 'vector_cosine_ops'}
-            ),
-        )
-    else:
-        __table_args__ = (
-            Index(
-                'abstract_vector_index',
-                abstract_vector,
-                postgresql_using='hnsw',
-                postgresql_with={'m': 16, 'ef_construction': 200},
-                postgresql_ops={'abstract_vector': 'vector_cosine_ops'}
-            ),
-        )
+    __table_args__ = (
+        Index(
+            'abstract_vector_index',
+            abstract_vector,
+            postgresql_using='hnsw',
+            postgresql_with={'m': 16, 'ef_construction': 200},
+            postgresql_ops={'abstract_vector': 'vector_cosine_ops'}
+        ),
+    )
 
 
 class ChunkEntity(Base):
@@ -333,26 +322,15 @@ class ChunkEntity(Base):
         TIMESTAMP(timezone=True),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp())
-    if config["DATABASE_TYPE"].lower() == 'opengauss':
-        __table_args__ = (
-            Index(
-                'text_vector_index',
-                text_vector,
-                opengauss_using='hnsw',
-                opengauss_with={'m': 16, 'ef_construction': 200},
-                opengauss_ops={'text_vector': 'vector_cosine_ops'}
-            ),
-        )
-    else:
-        __table_args__ = (
-            Index(
-                'text_vector_index',
-                text_vector,
-                postgresql_using='hnsw',
-                postgresql_with={'m': 16, 'ef_construction': 200},
-                postgresql_ops={'text_vector': 'vector_cosine_ops'}
-            ),
-        )
+    __table_args__ = (
+        Index(
+            'text_vector_index',
+            text_vector,
+            postgresql_using='hnsw',
+            postgresql_with={'m': 16, 'ef_construction': 200},
+            postgresql_ops={'text_vector': 'vector_cosine_ops'}
+        ),
+    )
 
 
 class ImageEntity(Base):
@@ -568,7 +546,7 @@ class DataBase:
         database_url = f"postgresql+asyncpg://{config['DATABASE_USER']}:{encoded_password}@{config['DATABASE_HOST']}:{config['DATABASE_PORT']}/{config['DATABASE_DB']}"
     engine = create_async_engine(
         database_url,
-        echo=True,
+        echo=False,
         pool_recycle=300,
         pool_pre_ping=True
     )

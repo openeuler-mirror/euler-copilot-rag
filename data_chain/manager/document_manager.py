@@ -62,7 +62,7 @@ class DocumentManager():
                 if doc_ids:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
                 stmt = stmt.order_by(
-                    similarity_score.desc()
+                    similarity_score
                 )
 
                 result = await session.execute(stmt)

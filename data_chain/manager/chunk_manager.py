@@ -198,7 +198,7 @@ class ChunkManager():
                     stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
 
                 # 应用排序条件
-                stmt = stmt.order_by(similarity_score.desc())
+                stmt = stmt.order_by(similarity_score)
                 stmt = stmt.limit(top_k)
 
                 # 执行最终查询

@@ -156,7 +156,7 @@ class GenerateDataSetWorker(BaseWorker):
                     l = j-1
                     r = j+1
                     tokens_sub = 0
-                    while TokenTool.get_tokens(chunk) < llm.max_tokens:
+                    while TokenTool.get_tokens(chunk) < max(llm.max_tokens//2, 2048):
                         if l < 0 and r >= len(doc_chunk.chunks):
                             break
                         if tokens_sub > 0:

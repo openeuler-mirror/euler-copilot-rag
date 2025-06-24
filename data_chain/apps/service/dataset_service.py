@@ -279,6 +279,7 @@ class DataSetService:
         """生成数据集"""
         try:
             dataset_entity = await DatasetManager.get_dataset_by_dataset_id(dataset_id)
+            task_id = None
             if generate:
                 if dataset_entity.is_imported:
                     err = "数据集为导入数据集，不能重新生成"
